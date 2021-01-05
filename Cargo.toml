@@ -1,0 +1,23 @@
+[package]
+name = "ubi"
+version = "0.1.0"
+authors = ["Dave Rolsky <autarch@urth.org>"]
+edition = "2018"
+
+[dependencies]
+anyhow = "~1"
+bzip2 = "~0.4"
+clap = "3.0.0-beta.2"
+fern = { version = "~0.6", features = ["colored"] }
+flate2 = "~1"
+log = "~0.4"
+octocrab = "~0.8"
+platforms = "~1"
+regex = "~1"
+reqwest = "~0.10"
+tar = "~0.4"
+tempfile = "~3"
+tokio = { version = "0.2", default-features = false, features = ["macros"] }
+xz = "~0.1"
+zip = "~0.5"
+zip-extensions = "~0.6"
