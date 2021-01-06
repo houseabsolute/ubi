@@ -185,16 +185,15 @@ impl UBI {
 
     fn exe_name(matches: &ArgMatches, project_name: &str) -> String {
         let exe = match matches.value_of("exe") {
-            Some(e) => {
+            Some(e) => e.to_string(),
+            None => {
+                let parts = project_name.split('/').collect::<Vec<&str>>();
+                let e = parts[parts.len() - 1].to_string();
                 if cfg!(windows) {
                     format!("{}.exe", e)
                 } else {
-                    e.to_string()
+                    e
                 }
-            }
-            None => {
-                let parts = project_name.split('/').collect::<Vec<&str>>();
-                parts[parts.len() - 1].to_string()
             }
         };
         debug!("exe name = {}", exe);
