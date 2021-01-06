@@ -1,12 +1,14 @@
 use anyhow::{anyhow, Context, Result};
 use std::env;
 use std::fs;
-#[cfg(target_family = "unix")]
-use std::os::unix::fs::PermissionsExt;
-use std::os::unix::prelude::*;
 use std::path::PathBuf;
 use std::process;
 use tempfile::{tempdir, TempDir};
+
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::PermissionsExt;
+#[cfg(target_family = "unix")]
+use std::os::unix::prelude::*;
 
 #[test]
 fn tests() -> Result<()> {
