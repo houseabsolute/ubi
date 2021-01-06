@@ -8,7 +8,6 @@ use log::{debug, error};
 use octocrab::models::repos::Release;
 use platforms::target::{TARGET_ARCH, TARGET_OS};
 use regex::Regex;
-use reqwest;
 use reqwest::StatusCode;
 use std::env;
 use std::fs::{create_dir_all, set_permissions, File, Permissions};
@@ -18,7 +17,6 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use tar::Archive;
 use tempfile::{tempdir, TempDir};
-use tokio;
 use xz::read::XzDecoder;
 use zip::ZipArchive;
 use zip_extensions::read::ZipArchiveExtensions;
@@ -282,7 +280,7 @@ impl UBI {
         {
             let mut archive_file = File::create(&archive_path)?;
             while let Some(c) = res.chunk().await? {
-                archive_file.write(c.as_ref())?;
+                archive_file.write_all(c.as_ref())?;
             }
         }
 
@@ -342,20 +340,19 @@ impl UBI {
         // crate) and Go (based on
         // https://gist.github.com/asukakenji/f15ba7e588ac42795f421b48b8aede63).
         #[cfg(target_os = "linux")]
-        return Regex::new(r"(?i:(?:\b|_)linux(?:\b|_))").map_err(|e| anyhow::Error::new(e));
+        return Regex::new(r"(?i:(?:\b|_)linux(?:\b|_))").map_err(anyhow::Error::new);
 
         #[cfg(target_os = "freebsd")]
-        return Regex::new(r"(?i:(?:\b|_)freebsd(?:\b|_))").map_err(|e| anyhow::Error::new(e));
+        return Regex::new(r"(?i:(?:\b|_)freebsd(?:\b|_))").map_err(anyhow::Error::new);
 
         #[cfg(target_os = "openbsd")]
-        return Regex::new(r"(?i:(?:\b|_)openbsd(?:\b|_))").map_err(|e| anyhow::Error::new(e));
+        return Regex::new(r"(?i:(?:\b|_)openbsd(?:\b|_))").map_err(anyhow::Error::new);
 
         #[cfg(target_os = "macos")]
-        return Regex::new(r"(?i:(?:\b|_)(?:darwin|macos)(?:\b|_))")
-            .map_err(|e| anyhow::Error::new(e));
+        return Regex::new(r"(?i:(?:\b|_)(?:darwin|macos)(?:\b|_))").map_err(anyhow::Error::new);
 
         #[cfg(target_os = "windows")]
-        return Regex::new(r"(?i:(?:\b|_)windows(?:\b|_))").map_err(|e| anyhow::Error::new(e));
+        return Regex::new(r"(?i:(?:\b|_)windows(?:\b|_))").map_err(anyhow::Error::new);
 
         #[allow(unreachable_code)]
         Err(anyhow!(
@@ -391,7 +388,7 @@ impl UBI {
             }
             others.push(m);
         }
-        Regex::new(&others.join("|")).map_err(|e| anyhow::Error::new(e))
+        Regex::new(&others.join("|")).map_err(anyhow::Error::new)
     }
 
     fn extract_binary(&self, archive_file: PathBuf) -> Result<()> {
@@ -411,14 +408,14 @@ impl UBI {
             let path = PathBuf::from(zip.by_index(i).unwrap().name());
             if let Some(os_name) = path.file_name() {
                 if let Some(n) = os_name.to_str() {
-                    if n == &self.exe {
+                    if n == self.exe {
                         debug!(
                             "extracting zip file member to {}",
                             self.install_path.to_string_lossy(),
                         );
                         let res = zip.extract_file(i, &self.install_path, true);
                         return match res {
-                            Ok(r) => Ok(r),
+                            Ok(_) => Ok(()),
                             Err(e) => Err(anyhow::Error::new(e)),
                         };
                     }
@@ -446,7 +443,7 @@ impl UBI {
             debug!("found tarball entry with path {}", path.to_string_lossy());
             if let Some(os_name) = path.file_name() {
                 if let Some(n) = os_name.to_str() {
-                    if n == &self.exe {
+                    if n == self.exe {
                         debug!(
                             "extracting tarball entry to {}",
                             self.install_path.to_string_lossy(),
@@ -495,7 +492,7 @@ impl UBI {
 
         #[cfg(target_family = "unix")]
         match set_permissions(&self.install_path, Permissions::from_mode(0o755)) {
-            Ok(r) => Ok(r),
+            Ok(_) => Ok(()),
             Err(e) => Err(anyhow::Error::new(e)),
         }
     }
