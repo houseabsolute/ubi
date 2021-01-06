@@ -82,7 +82,7 @@ fn make_pathbuf(path: &[&str]) -> PathBuf {
     pb
 }
 
-fn run_test(cmd: &PathBuf, args: &[&str], expect: PathBuf) -> Result<TempDir> {
+fn run_test(cmd: &PathBuf, args: &[&str], mut expect: PathBuf) -> Result<TempDir> {
     let td = tempdir()?;
     env::set_current_dir(td.path())?;
 
@@ -95,7 +95,12 @@ fn run_test(cmd: &PathBuf, args: &[&str], expect: PathBuf) -> Result<TempDir> {
         Err(e) => return Err(e),
     }
 
+    if cfg!(windows) && !expect.to_string_lossy().ends_with(".exe") {
+        expect.set_extension("exe");
+    }
+
     let expect_str = expect.to_string_lossy().into_owned();
+
     let meta = fs::metadata(expect).context(format!("getting fs metadata for {}", expect_str))?;
     assert!(meta.is_file(), "downloaded file into expected location",);
     #[cfg(target_family = "unix")]
