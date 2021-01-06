@@ -10,16 +10,19 @@ use platforms::target::{TARGET_ARCH, TARGET_OS};
 use regex::Regex;
 use reqwest::StatusCode;
 use std::env;
-use std::fs::{create_dir_all, set_permissions, File, Permissions};
+use std::fs::{create_dir_all, File};
 use std::io::prelude::*;
-#[cfg(target_family = "unix")]
-use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use tar::Archive;
 use tempfile::{tempdir, TempDir};
 use xz::read::XzDecoder;
 use zip::ZipArchive;
 use zip_extensions::read::ZipArchiveExtensions;
+
+#[cfg(target_family = "unix")]
+use std::fs::{set_permissions, Permissions};
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::PermissionsExt;
 
 #[tokio::main]
 async fn main() {
