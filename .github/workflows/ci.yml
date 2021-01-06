@@ -4,6 +4,7 @@ on: [push, pull_request]
 
 env:
   CRATE_NAME: ubi
+  GITHUB_TOKEN: ${{ github.token }}
   RUST_BACKTRACE: 1
 
 jobs:
