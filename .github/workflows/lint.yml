@@ -1,0 +1,43 @@
+name: Linting
+
+on: [push, pull_request]
+
+env:
+  CRATE_NAME: precious
+  RUST_BACKTRACE: 1
+
+jobs:
+  test:
+    name: Check that code is lint clean using precious
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache cargo target directories
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target              
+          key: cargo-and-target
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: default
+          toolchain: stable
+          override: true
+      - name: Configure Git
+        run: |
+          git config --global user.email "jdoe@example.com"
+          git config --global user.name "J. Doe"  
+      - name: Download precious
+        uses: dsaltares/fetch-gh-release-asset@0.0.5
+        with:
+          repo: houseabsolute/precious
+          file: precious-Linux-x86_64.tar.gz
+      - name: Untar precious
+        run: |
+          tar -xvzf precious-Linux-x86_64.tar.gz
+      - name: Run precious
+        run: |
+          ./precious lint -a

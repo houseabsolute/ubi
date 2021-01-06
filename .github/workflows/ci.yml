@@ -1,0 +1,128 @@
+name: Continuous integration
+
+on: [push, pull_request]
+
+env:
+  CRATE_NAME: ubi
+  RUST_BACKTRACE: 1
+
+jobs:
+  test:
+    name: Test - ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
+    runs-on: ${{ matrix.platform.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - os_name: Linux
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os_name: macOS
+            os: macOS-latest
+            target: x86_64-apple-darwin
+          - os_name: Windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+        toolchain:
+          - stable
+          - beta
+          - nightly
+    steps:
+      - uses: actions/checkout@v2
+      # Workaround for https://github.com/actions/cache/issues/403.
+      - name: Install GNU tar on macOS
+        run: |
+          brew install gnu-tar
+          echo "PATH=/usr/local/opt/gnu-tar/libexec/gnubin:$PATH" >> $GITHUB_ENV
+        if: matrix.platform.os == 'macOS-latest'
+      - name: Cache cargo target directories
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target              
+          key: cargo-${{ matrix.platform.os }}-${{ matrix.platform.target }}-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}-v2
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: default
+          toolchain: ${{ matrix.toolchain }}
+          override: true
+      - name: Configure Git
+        run: |
+          git config --global user.email "jdoe@example.com"
+          git config --global user.name "J. Doe"  
+      - name: Run cargo check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --target=${{ matrix.platform.target }}
+      - name: Run cargo test 
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --target=${{ matrix.platform.target }}
+
+  # Copied from https://github.com/urbica/martin/blob/master/.github/workflows/ci.yml
+  release:
+    name: Release - ${{ matrix.platform.os_name }}
+    if: startsWith( github.ref, 'refs/tags/v' )
+    needs: [test]
+    strategy:
+      matrix:
+        platform:
+          - os_name: Linux
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            bin: ubi
+            name: ubi-Linux-x86_64.tar.gz
+          - os_name: Windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bin: ubi.exe
+            name: ubi-Windows-x86_64.zip
+          - os_name: macOS
+            os: macOS-latest
+            target: x86_64-apple-darwin
+            bin: ubi
+            name: ubi-Darwin-x86_64.tar.gz
+    runs-on: ${{ matrix.platform.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          target: ${{ matrix.platform.target }}
+      - name: Build binary
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target ${{ matrix.platform.target }}
+      - name: Package as archive
+        shell: bash
+        run: |
+          strip target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}
+          cd target/${{ matrix.platform.target }}/release
+          if [[ "${{ matrix.platform.os }}" == "windows-latest" ]]
+          then
+            7z a ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}
+          else
+            tar czvf ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}
+          fi
+          cd -
+      - name: Generate SHA-256
+        if: matrix.platform.os == 'macOS-latest'
+        run: shasum -a 256 ${{ matrix.platform.name }}
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          files: "ubi*"
+          body_path: Changes.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
