@@ -12,6 +12,9 @@ use std::os::unix::prelude::*;
 
 #[test]
 fn tests() -> Result<()> {
+    let cargo = make_pathbuf(&["cargo"]);
+    run_command(&cargo, &["build"])?;
+
     let mut ubi = env::current_dir()?;
     ubi.push("target");
     ubi.push("debug");
