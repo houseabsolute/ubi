@@ -1,6 +1,6 @@
 [package]
 name = "ubi"
-version = "0.0.0"
+version = "0.0.1"
 authors = ["Dave Rolsky <autarch@urth.org>"]
 edition = "2018"
 
