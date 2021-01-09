@@ -64,10 +64,7 @@ fn tests() -> Result<()> {
         make_pathbuf(&["sub", "dir", "precious"]),
     )?;
 
-    let mut rg = String::from("rg");
-    if cfg!(windows) {
-        rg.push_str(".exe");
-    }
+    let rg = String::from("rg");
     run_test(
         &ubi,
         &["--project", "BurntSushi/ripgrep", "--exe", &rg],

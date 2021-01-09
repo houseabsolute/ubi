@@ -82,8 +82,8 @@ fn app<'a>() -> App<'a> {
                 .about(concat!(
                     "The name of this project's executable. By default this is the same as the",
                     " project name, so for houseabsolute/precious we look for precious or",
-                    " precious.exe. Note that if you provide this on Windows you must",
-                    " include the file extension",
+                    r#" precious.exe. When running on Windows the ".exe" suffix will be added"#,
+                    "as needed.",
                 )),
         )
         .arg(
@@ -185,7 +185,13 @@ impl UBI {
 
     fn exe_name(matches: &ArgMatches, project_name: &str) -> String {
         let exe = match matches.value_of("exe") {
-            Some(e) => e.to_string(),
+            Some(e) => {
+                if cfg!(windows) && !e.ends_with(".exe") {
+                    format!("{}.exe", e)
+                } else {
+                    e.to_string()
+                }
+            }
             None => {
                 let parts = project_name.split('/').collect::<Vec<&str>>();
                 let e = parts[parts.len() - 1].to_string();

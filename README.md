@@ -37,26 +37,28 @@ script](https://github.com/houseabsolute/ubi/issues/1).
 
 ## How to Use It
 
-    USAGE:
-        ubi [FLAGS] [OPTIONS] --project <project>
+```
+USAGE:
+    ubi [FLAGS] [OPTIONS] --project <project>
 
-    FLAGS:
-        -d, --debug      Enable debugging output
-        -h, --help       Prints help information
-        -q, --quiet      Suppresses most output
-        -v, --verbose    Enable verbose output
-        -V, --version    Prints version information
+FLAGS:
+    -d, --debug      Enable debugging output
+    -h, --help       Prints help information
+    -q, --quiet      Suppresses most output
+    -v, --verbose    Enable verbose output
+    -V, --version    Prints version information
 
-    OPTIONS:
-        -e, --exe <exe>            The name of this project's executable. By default this is the same as
-                                   the project name, so for houseabsolute/precious we look for precious
-                                   or precious.exe. Note that if you provide this on Windows you must
-                                   include the file extension
-        -i, --in <in>              The directory in which the binary should be placed. Defaults to
-                                   ./bin.
-        -p, --project <project>    The project you want to install, like houseabsolute/precious or
-                                   https://github.com/houseabsolute/precious.
-        -t, --tag <tag>            The tag to download. Defaults to the latest release.
+OPTIONS:
+    -e, --exe <exe>            The name of this project's executable. By default this is the same as
+                               the project name, so for houseabsolute/precious we look for precious
+                               or precious.exe. When running on Windows the ".exe" suffix will be
+                               addedas needed.
+    -i, --in <in>              The directory in which the binary should be placed. Defaults to
+                               ./bin.
+    -p, --project <project>    The project you want to install, like houseabsolute/precious or
+                               https://github.com/houseabsolute/precious.
+    -t, --tag <tag>            The tag to download. Defaults to the latest release.
+```
 
 ## Using a GitHub Token
 
