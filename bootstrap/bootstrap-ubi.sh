@@ -26,7 +26,7 @@ case "$KERNEL" in
     Linux)
         PLATFORM="Linux"
         ;;
-    darwin)
+    Darwin)
         PLATFORM="Darwin"
         ;;
     *)
