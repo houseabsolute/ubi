@@ -19,7 +19,7 @@ if [ $(id -u) -eq 0 ]; then
     TARGET="/usr/local/bin"
 fi
 
-chdir "$TARGET"
+cd "$TARGET"
 
 KERNEL=$(uname -s)
 case "$KERNEL" in
