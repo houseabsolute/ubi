@@ -37,7 +37,7 @@ esac
 
 ARCH=$(uname -p)
 case "$ARCH" in
-     x86_64)
+     x86_64|i386)
          CPU="x86_64"
          ;;
      *)
