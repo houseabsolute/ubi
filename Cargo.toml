@@ -15,7 +15,7 @@ clap = "3.0.0-beta.2"
 fern = { version = "~0.6", features = ["colored"] }
 flate2 = "~1"
 log = "~0.4"
-octocrab = "~0.8"
+octocrab = "~0.8.7"
 platforms = "~1"
 regex = "~1"
 reqwest = "~0.11"
