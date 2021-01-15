@@ -24,7 +24,7 @@ use std::fs::{set_permissions, Permissions};
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::PermissionsExt;
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     let matches = app().get_matches();
     let res = init_logger(&matches);
