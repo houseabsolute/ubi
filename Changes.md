@@ -1,3 +1,9 @@
+## 0.0.3 - 2021-01-15
+
+* Update tokio and other async deps to avoid panics and eliminate deprecated
+  net2 crate from dep tree.
+
+
 ## 0.0.2 - 2021-01-09
 
 * When running on Windows, add ".exe" to the user-supplied --exe name if it
