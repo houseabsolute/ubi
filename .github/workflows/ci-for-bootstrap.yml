@@ -1,0 +1,61 @@
+name: Continuous integration for bootstrap scripts
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    name: Bootstrap - ${{ matrix.platform.os_name }}
+    runs-on: ${{ matrix.platform.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - os_name: Linux
+            os: ubuntu-latest
+            script: bootstrap-ubi.sh
+          - os_name: macOS
+            os: macOS-latest
+            script: bootstrap-ubi.sh
+          - os_name: Windows
+            os: windows-latest
+            script: bootstrap-ubi.ps1
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run bootstrap script
+        shell: bash
+        run: |
+          set -e
+          mkdir -p "$HOME/bin"
+
+          ./bootstrap/${{ matrix.platform.script }}
+          if [ ! -x "$HOME/bin/ubi" ]; then
+              echo "Running ./bootstrap/${{ matrix.platform.script }} did not install ubi!"
+              exit 1
+          fi
+
+          "$HOME/bin/ubi" --project houseabsolute/precious --in "$HOME/bin"
+          if [ ! -x "$HOME/bin/precious" ]; then
+              echo "Running ubi did not install precious!"
+              exit 1
+          fi
+
+          exit 0
+        if: ${{ matrix.platform.os_name != 'Windows' }}
+      - name: Run bootstrap script
+        shell: powershell
+        run: |
+          powershell -exec bypass ./bootstrap/bootstrap-ubi.ps1
+
+          if ( -not( Test-Path -Path "ubi.exe" ) ) {
+              Write-Host "Running ./bootstrap/${{ matrix.platform.script }} did not install ubi!"
+              exit 1
+          }
+
+          ./ubi.exe --project houseabsolute/precious --in "."
+          if ( -not( Test-Path -Path "precious.exe" ) ) {
+              Write-Host "Running ubi did not install precious!"
+              exit 2
+          }
+
+          exit 0
+        if: ${{ matrix.platform.os_name == 'Windows' }}

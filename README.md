@@ -22,9 +22,9 @@ far) that provide a half-assed implementation of `ubi`:
 ### Linux and macOS
 
 ```
-$> curl --silent --location \
-       https://raw.githubusercontent.com/houseabsolute/ubi/master/bootstrap/bootstrap-ubi.sh |
-       sh
+curl --silent --location \
+    https://raw.githubusercontent.com/houseabsolute/ubi/master/bootstrap/bootstrap-ubi.sh |
+    sh
 ```
 
 If you run this as a non-root user, it will install `ubi` into `$HOME/bin`. If
@@ -32,8 +32,12 @@ run as root it installs it into `/usr/local/bin`.
 
 ### Windows
 
-[I need some help with writing a Powershell
-script](https://github.com/houseabsolute/ubi/issues/1).
+```
+powershell -exec bypass -c "Invoke-WebRequest -URI 'https://raw.githubusercontent.com/houseabsolute/ubi/ci-for-bootstrap/bootstrap/bootstrap-ubi.ps1' -UseBasicParsing | Invoke-Expression"
+```
+
+You can run this from a command or Powershell command line. This will install
+`ubi.exe` into the directory where you run this.
 
 ## How to Use It
 
