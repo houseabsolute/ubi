@@ -80,8 +80,7 @@ executable. Having a single tool capable of downloading the right binary for
 your platform is quite handy.
 
 Yes, this can be done in half a dozen lines of shell on Unix systems, but do
-you know how to do the equivalent in Powershell? I don't. Seriously, I could
-use [some help with this](https://github.com/houseabsolute/ubi/issues/1).
+you know how to do the equivalent in Powershell?
 
 Once you have `ubi` installed, you can use it to install any of these many
 single-binary tools available on GitHub, on any supported platform.
