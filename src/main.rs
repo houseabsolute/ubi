@@ -312,6 +312,8 @@ impl UBI {
             other_arch_matcher.as_str(),
         );
 
+        let mut maybe: Vec<&str> = vec![];
+
         // This could all be done much more simply with the iterator's .find()
         // method, but then there's no place to put all the debugging output.
         for asset in &self.release_info.assets {
@@ -327,21 +329,57 @@ impl UBI {
                 continue;
             }
 
+            if asset.name.ends_with(".deb") {
+                debug!("skipping deb {}", asset.name);
+                continue;
+            }
+            if asset.name.ends_with(".rpm") {
+                debug!("skipping rpm {}", asset.name);
+                continue;
+            }
+
             debug!("it matches our OS and CPU architecture");
-            return Ok(asset.name.clone());
+            maybe.push(&asset.name);
         }
 
-        let assets = self
-            .release_info
-            .assets
-            .iter()
-            .map(|a| a.name.clone())
-            .collect::<Vec<String>>()
-            .join(", ");
-        Err(anyhow!(
-            "could not find a release for this OS and architecture from {}",
-            assets
-        ))
+        if maybe.is_empty() {
+            let assets = self
+                .release_info
+                .assets
+                .iter()
+                .map(|a| a.name.clone())
+                .collect::<Vec<String>>()
+                .join(", ");
+            return Err(anyhow!(
+                "could not find a release for this OS and architecture from {}",
+                assets
+            ));
+        }
+
+        let asset = self.pick_asset(maybe);
+        debug!("picked asset named {}", asset);
+
+        Ok(asset)
+    }
+
+    fn pick_asset(&self, maybe: Vec<&str>) -> String {
+        if maybe.len() == 1 {
+            debug!("only found one candidate asset");
+            return maybe.first().unwrap().to_string();
+        }
+
+        if TARGET_ARCH.to_string().contains("64") {
+            debug!(
+                "found multiple installation candidates, looking for 64-bit binary first in {:?}",
+                maybe,
+            );
+            if let Some(m) = maybe.iter().find(|&v| v.contains("64")) {
+                return m.to_string();
+            }
+        }
+
+        // I don't have any other criteria I could use to pick the right one.
+        maybe.first().unwrap().to_string()
     }
 
     fn os_matcher() -> Result<Regex> {
@@ -377,16 +415,17 @@ impl UBI {
         // https://gist.github.com/asukakenji/f15ba7e588ac42795f421b48b8aede63).
         let arch_matches = &[
             r"(?i:(?:\b|_)aarch64(?:\b|_))",
-            r"(?i:(?:\b|_)arm(?:v[0-9]+)?(?:\b|_))",
+            r"(?i:(?:\b|_)arm(?:v[0-9]+|64)?(?:\b|_))",
             r"(?i:(?:\b|_)mips(?:\b|_))",
             r"(?i:(?:\b|_)mips64(?:\b|_))",
             r"(?i:(?:\b|_)powerpc32(?:\b|_))",
-            r"(?i:(?:\b|_)(?:powerpc64|ppc)(?:\b|_))",
+            r"(?i:(?:\b|_)(?:powerpc64|ppc(?:64(?:le|be)?)?)(?:\b|_))",
             r"(?i:(?:\b|_)riscv(?:\b|_))",
             r"(?i:(?:\b|_)sparc(?:\b|_))",
             r"(?i:(?:\b|_)sparc64(?:\b|_))",
             r"(?i:(?:\b|_)(?:x86|386)(?:\b|_))",
             r"(?i:(?:\b|_)(?:x86_64|amd64)(?:\b|_))",
+            r"(?i:(?:\b|_)s390x?(?:\b|_))",
         ];
 
         debug!("current CPU architecture = {}", TARGET_ARCH.as_str());

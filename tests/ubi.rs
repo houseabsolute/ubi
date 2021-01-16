@@ -43,7 +43,7 @@ fn tests() -> Result<()> {
                 );
             }
             Err(e) => return Err(e),
-        };
+        }
     }
 
     run_test(
@@ -75,6 +75,26 @@ fn tests() -> Result<()> {
         &["--project", "rust-analyzer/rust-analyzer"],
         make_pathbuf(&["bin", "rust-analyzer"]),
     )?;
+
+    {
+        let golangci_lint_bin = make_pathbuf(&["bin", "golangci-lint"]);
+        let _td = run_test(
+            &ubi,
+            &["--project", "golangci/golangci-lint"],
+            golangci_lint_bin.clone(),
+        )?;
+        match run_command(&golangci_lint_bin, &["--version"]) {
+            Ok((code, stdout, _)) => {
+                assert!(code == 0, "exit code is 0");
+                assert!(stdout.is_some(), "got stdout from golangci-lint");
+                assert!(
+                    stdout.unwrap().contains("golangci-lint has version"),
+                    "downloaded an executable"
+                );
+            }
+            Err(e) => return Err(e),
+        }
+    }
 
     Ok(())
 }

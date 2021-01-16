@@ -1,3 +1,14 @@
+## 0.0.5
+
+* Include s390 and s390x in possible arch list. This also fixes a bug where
+  that arch might be used when running `ubi` on any platform.
+
+* Ignore `.deb` and `.rpm` files.
+
+* Look for multiple valid files to download and prefer 64-bit binaries on
+  64-bit CPUs.
+
+
 ## 0.0.4 - 2021-01-15
 
 * Add support for releases which are either the bare executable or a gzipped
