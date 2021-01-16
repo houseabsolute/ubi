@@ -1,4 +1,4 @@
-## 0.0.5
+## 0.0.5 - 2021-01-15
 
 * Include s390 and s390x in possible arch list. This also fixes a bug where
   that arch might be used when running `ubi` on any platform.
