@@ -1,4 +1,4 @@
-name: Continuous integration
+name: Integration tests for ubi
 
 on: [push, pull_request]
 

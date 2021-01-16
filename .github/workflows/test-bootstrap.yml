@@ -1,4 +1,4 @@
-name: Continuous integration for bootstrap scripts
+name: Test bootstrap
 
 on: [push, pull_request]
 
