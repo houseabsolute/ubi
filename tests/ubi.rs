@@ -64,11 +64,16 @@ fn tests() -> Result<()> {
         make_pathbuf(&["sub", "dir", "precious"]),
     )?;
 
-    let rg = String::from("rg");
     run_test(
         &ubi,
-        &["--project", "BurntSushi/ripgrep", "--exe", &rg],
+        &["--project", "BurntSushi/ripgrep", "--exe", "rg"],
         make_pathbuf(&["bin", "rg"]),
+    )?;
+
+    run_test(
+        &ubi,
+        &["--project", "rust-analyzer/rust-analyzer"],
+        make_pathbuf(&["bin", "rust-analyzer"]),
     )?;
 
     Ok(())

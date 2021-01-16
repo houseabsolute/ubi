@@ -239,7 +239,10 @@ impl UBI {
             None => octocrab.repos(o, p).releases().get_latest().await,
         };
         match res {
-            Ok(r) => Ok(r),
+            Ok(r) => {
+                debug!("tag = {}", r.tag_name);
+                Ok(r)
+            }
             Err(e) => Err(anyhow::Error::new(e)),
         }
     }
@@ -286,9 +289,9 @@ impl UBI {
         archive_path.push(archive_name);
 
         {
-            let mut archive_file = File::create(&archive_path)?;
+            let mut downloaded_file = File::create(&archive_path)?;
             while let Some(c) = res.chunk().await? {
-                archive_file.write_all(c.as_ref())?;
+                downloaded_file.write_all(c.as_ref())?;
             }
         }
 
@@ -399,19 +402,35 @@ impl UBI {
         Regex::new(&others.join("|")).map_err(anyhow::Error::new)
     }
 
-    fn extract_binary(&self, archive_file: PathBuf) -> Result<()> {
-        if let Some(e) = archive_file.extension() {
-            if e == "zip" {
-                return self.extract_zip(archive_file);
-            }
+    fn extract_binary(&self, downloaded_file: PathBuf) -> Result<()> {
+        let filename = downloaded_file
+            .file_name()
+            .unwrap_or_else(|| {
+                panic!(
+                    "downloaded file path {} has no filename!",
+                    downloaded_file.to_string_lossy()
+                )
+            })
+            .to_string_lossy();
+        if filename.ends_with(".tar.gz")
+            || filename.ends_with(".tgz")
+            || filename.ends_with(".tar.bz")
+            || filename.ends_with(".tbz")
+        {
+            self.extract_tarball(downloaded_file)
+        } else if filename.ends_with(".zip") {
+            self.extract_zip(downloaded_file)
+        } else if filename.ends_with(".gz") {
+            self.ungzip(downloaded_file)
+        } else {
+            self.copy_executable(downloaded_file)
         }
-        self.extract_tarball(archive_file)
     }
 
-    fn extract_zip(&self, archive_file: PathBuf) -> Result<()> {
+    fn extract_zip(&self, downloaded_file: PathBuf) -> Result<()> {
         debug!("extracting binary from zip file");
 
-        let mut zip = ZipArchive::new(File::open(&archive_file)?)?;
+        let mut zip = ZipArchive::new(File::open(&downloaded_file)?)?;
         for i in 0..zip.len() {
             let path = PathBuf::from(zip.by_index(i).unwrap().name());
             if let Some(os_name) = path.file_name() {
@@ -438,13 +457,13 @@ impl UBI {
         ))
     }
 
-    fn extract_tarball(&self, archive_file: PathBuf) -> Result<()> {
+    fn extract_tarball(&self, downloaded_file: PathBuf) -> Result<()> {
         debug!(
             "extracting binary from tarball at {}",
-            archive_file.to_string_lossy(),
+            downloaded_file.to_string_lossy(),
         );
 
-        let mut arch = Self::tar_reader_for(archive_file)?;
+        let mut arch = Self::tar_reader_for(downloaded_file)?;
         for entry in arch.entries()? {
             let mut entry = entry?;
             let path = entry.path()?;
@@ -472,10 +491,10 @@ impl UBI {
         ))
     }
 
-    fn tar_reader_for(archive_file: PathBuf) -> Result<Archive<Box<dyn Read>>> {
-        let file = File::open(&archive_file)?;
+    fn tar_reader_for(downloaded_file: PathBuf) -> Result<Archive<Box<dyn Read>>> {
+        let file = File::open(&downloaded_file)?;
 
-        let ext = archive_file.extension();
+        let ext = downloaded_file.extension();
         match ext {
             Some(ext) => match ext.to_str() {
                 Some("bz") | Some("tbz") => Ok(Archive::new(Box::new(BzDecoder::new(file)))),
@@ -487,11 +506,28 @@ impl UBI {
                 )),
                 None => Err(anyhow!(
                     "tarball {:?} has a non-UTF-8 extension",
-                    archive_file,
+                    downloaded_file,
                 )),
             },
             None => Ok(Archive::new(Box::new(file))),
         }
+    }
+
+    fn ungzip(&self, downloaded_file: PathBuf) -> Result<()> {
+        debug!("uncompressing binary from gzip file");
+
+        let mut reader = GzDecoder::new(File::open(&downloaded_file)?);
+        let mut writer = File::create(&self.install_path)?;
+        std::io::copy(&mut reader, &mut writer)?;
+
+        Ok(())
+    }
+
+    fn copy_executable(&self, exe_file: PathBuf) -> Result<()> {
+        debug!("copying binary to final location");
+        std::fs::copy(&exe_file, &self.install_path)?;
+
+        Ok(())
     }
 
     fn make_binary_executable(&self) -> Result<()> {

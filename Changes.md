@@ -1,3 +1,9 @@
+## 0.0.4 - 2021-01-15
+
+* Add support for releases which are either the bare executable or a gzipped
+  executable, like rust-analyzer.
+
+
 ## 0.0.3 - 2021-01-15
 
 * Update tokio and other async deps to avoid panics and eliminate deprecated
