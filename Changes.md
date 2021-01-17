@@ -1,4 +1,4 @@
-## 0.0.6
+## 0.0.6 - 2021-01-15
 
 * Changed CPU architecture matching to be stricter based on the current
   platform's CPU.
