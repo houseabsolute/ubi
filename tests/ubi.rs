@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context, Result};
 use std::env;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process;
 use tempfile::{tempdir, TempDir};
 
@@ -13,7 +13,7 @@ use std::os::unix::prelude::*;
 #[test]
 fn tests() -> Result<()> {
     let cargo = make_pathbuf(&["cargo"]);
-    run_command(&cargo, &["build"])?;
+    run_command(cargo.as_ref(), &["build"])?;
 
     let mut ubi = env::current_dir()?;
     ubi.push("target");
@@ -21,7 +21,7 @@ fn tests() -> Result<()> {
     ubi.push("ubi");
 
     run_test(
-        &ubi,
+        ubi.as_ref(),
         &["--project", "houseabsolute/precious"],
         make_pathbuf(&["bin", "precious"]),
     )?;
@@ -29,11 +29,11 @@ fn tests() -> Result<()> {
     {
         let precious_bin = make_pathbuf(&["bin", "precious"]);
         let _td = run_test(
-            &ubi,
+            ubi.as_ref(),
             &["--project", "houseabsolute/precious", "--tag", "v0.0.6"],
             precious_bin.clone(),
         )?;
-        match run_command(&precious_bin, &["--version"]) {
+        match run_command(precious_bin.as_ref(), &["--version"]) {
             Ok((code, stdout, _)) => {
                 assert!(code == 0, "exit code is 0");
                 assert!(stdout.is_some(), "got stdout from precious");
@@ -47,14 +47,14 @@ fn tests() -> Result<()> {
     }
 
     run_test(
-        &ubi,
+        ubi.as_ref(),
         &["--project", "https://github.com/houseabsolute/precious"],
         make_pathbuf(&["bin", "precious"]),
     )?;
 
     let in_dir = make_pathbuf(&["sub", "dir"]);
     run_test(
-        &ubi,
+        ubi.as_ref(),
         &[
             "--project",
             "houseabsolute/precious",
@@ -65,7 +65,7 @@ fn tests() -> Result<()> {
     )?;
 
     run_test(
-        &ubi,
+        ubi.as_ref(),
         &["--project", "BurntSushi/ripgrep", "--exe", "rg"],
         make_pathbuf(&["bin", "rg"]),
     )?;
@@ -73,11 +73,11 @@ fn tests() -> Result<()> {
     {
         let rust_analyzer_bin = make_pathbuf(&["bin", "rust-analyzer"]);
         let _td = run_test(
-            &ubi,
+            ubi.as_ref(),
             &["--project", "rust-analyzer/rust-analyzer"],
             rust_analyzer_bin.clone(),
         )?;
-        match run_command(&rust_analyzer_bin, &["--help"]) {
+        match run_command(rust_analyzer_bin.as_ref(), &["--help"]) {
             Ok((code, _, stderr)) => {
                 assert!(code == 0, "exit code is 0");
                 assert!(stderr.is_some(), "got stderr from rust-analyzer");
@@ -93,11 +93,11 @@ fn tests() -> Result<()> {
     {
         let golangci_lint_bin = make_pathbuf(&["bin", "golangci-lint"]);
         let _td = run_test(
-            &ubi,
+            ubi.as_ref(),
             &["--project", "golangci/golangci-lint"],
             golangci_lint_bin.clone(),
         )?;
-        match run_command(&golangci_lint_bin, &["--version"]) {
+        match run_command(golangci_lint_bin.as_ref(), &["--version"]) {
             Ok((code, stdout, _)) => {
                 assert!(code == 0, "exit code is 0");
                 assert!(stdout.is_some(), "got stdout from golangci-lint");
@@ -122,11 +122,11 @@ fn make_pathbuf(path: &[&str]) -> PathBuf {
     pb
 }
 
-fn run_test(cmd: &PathBuf, args: &[&str], mut expect: PathBuf) -> Result<TempDir> {
+fn run_test(cmd: &Path, args: &[&str], mut expect: PathBuf) -> Result<TempDir> {
     let td = tempdir()?;
     env::set_current_dir(td.path())?;
 
-    match run_command(cmd, args) {
+    match run_command(cmd.as_ref(), args) {
         Ok((code, stdout, stderr)) => {
             assert!(code == 0, "exit code is 0");
             assert!(stdout.is_none(), "no output to stdout");
@@ -152,7 +152,7 @@ fn run_test(cmd: &PathBuf, args: &[&str], mut expect: PathBuf) -> Result<TempDir
     Ok(td)
 }
 
-pub fn run_command(cmd: &PathBuf, args: &[&str]) -> Result<(i32, Option<String>, Option<String>)> {
+pub fn run_command(cmd: &Path, args: &[&str]) -> Result<(i32, Option<String>, Option<String>)> {
     let mut c = process::Command::new(cmd);
     for a in args.iter() {
         c.arg(a);
@@ -163,7 +163,7 @@ pub fn run_command(cmd: &PathBuf, args: &[&str]) -> Result<(i32, Option<String>,
 
 fn output_from_command(
     mut c: process::Command,
-    cmd: &PathBuf,
+    cmd: &Path,
     args: &[&str],
 ) -> Result<(i32, Option<String>, Option<String>)> {
     let cstr = command_string(cmd, args);
@@ -203,7 +203,7 @@ fn output_from_command(
     }
 }
 
-fn command_string(cmd: &PathBuf, args: &[&str]) -> String {
+fn command_string(cmd: &Path, args: &[&str]) -> String {
     let mut cstr = cmd.to_string_lossy().into_owned();
     if !args.is_empty() {
         cstr.push(' ');
