@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use bzip2::read::BzDecoder;
 use clap::{App, Arg, ArgGroup, ArgMatches};
 use fern::colors::{Color, ColoredLevelConfig};
@@ -304,27 +304,31 @@ impl UBI {
         }
 
         let os_matcher = Self::os_matcher()?;
-        debug!("matching binaries against OS using {}", os_matcher.as_str());
+        debug!("matching assets against OS using {}", os_matcher.as_str());
 
         let arch_matcher = Self::arch_matcher()?;
         debug!(
-            "matching binaries against CPU architecture using {}",
+            "matching assets against CPU architecture using {}",
             arch_matcher.as_str(),
         );
 
         let mut maybe: Vec<&str> = vec![];
+
+        let valid_extensions: &'static [&'static str] =
+            &[".tar.gz", ".tgz", ".tar.bz", ".tbz", ".zip", ".gz"];
 
         // This could all be done much more simply with the iterator's .find()
         // method, but then there's no place to put all the debugging output.
         for asset in &self.release_info.assets {
             debug!("matching against asset name = {}", asset.name);
 
-            if asset.name.ends_with(".deb") {
-                debug!("skipping deb {}", asset.name);
-                continue;
-            }
-            if asset.name.ends_with(".rpm") {
-                debug!("skipping rpm {}", asset.name);
+            if asset.name.contains('.')
+                && valid_extensions
+                    .iter()
+                    .find(|&v| asset.name.ends_with(v))
+                    .is_none()
+            {
+                debug!("it appears to have an invalid extension");
                 continue;
             }
 
@@ -569,8 +573,14 @@ impl UBI {
     fn ungzip(&self, downloaded_file: PathBuf) -> Result<()> {
         debug!("uncompressing binary from gzip file");
 
-        let mut reader = GzDecoder::new(File::open(&downloaded_file)?);
-        let mut writer = File::create(&self.install_path)?;
+        let mut reader = GzDecoder::new(File::open(&downloaded_file).with_context(|| {
+            format!(
+                "Failed to open file at {}",
+                downloaded_file.to_string_lossy(),
+            )
+        })?);
+        let mut writer = File::create(&self.install_path)
+            .with_context(|| format!("Cannot write to {}", self.install_path.to_string_lossy()))?;
         std::io::copy(&mut reader, &mut writer)?;
 
         Ok(())

@@ -3,6 +3,10 @@
 * Changed CPU architecture matching to be stricter based on the current
   platform's CPU.
 
+* Changed file extension mapping to work of an allowed list of
+  extensions. This is stricter than the previous check, which just filtered
+  out a few things like `.deb` and `.rpm`.
+
 
 ## 0.0.5 - 2021-01-15
 

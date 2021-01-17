@@ -70,11 +70,25 @@ fn tests() -> Result<()> {
         make_pathbuf(&["bin", "rg"]),
     )?;
 
-    run_test(
-        &ubi,
-        &["--project", "rust-analyzer/rust-analyzer"],
-        make_pathbuf(&["bin", "rust-analyzer"]),
-    )?;
+    {
+        let rust_analyzer_bin = make_pathbuf(&["bin", "rust-analyzer"]);
+        let _td = run_test(
+            &ubi,
+            &["--project", "rust-analyzer/rust-analyzer"],
+            rust_analyzer_bin.clone(),
+        )?;
+        match run_command(&rust_analyzer_bin, &["--help"]) {
+            Ok((code, _, stderr)) => {
+                assert!(code == 0, "exit code is 0");
+                assert!(stderr.is_some(), "got stderr from rust-analyzer");
+                assert!(
+                    stderr.unwrap().contains("rust-analyzer [FLAGS] [COMMAND]"),
+                    "got expected --help errput"
+                );
+            }
+            Err(e) => return Err(e),
+        }
+    }
 
     {
         let golangci_lint_bin = make_pathbuf(&["bin", "golangci-lint"]);
