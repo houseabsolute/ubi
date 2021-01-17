@@ -1,3 +1,9 @@
+## 0.0.6
+
+* Changed CPU architecture matching to be stricter based on the current
+  platform's CPU.
+
+
 ## 0.0.5 - 2021-01-15
 
 * Include s390 and s390x in possible arch list. This also fixes a bug where

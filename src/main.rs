@@ -306,10 +306,10 @@ impl UBI {
         let os_matcher = Self::os_matcher()?;
         debug!("matching binaries against OS using {}", os_matcher.as_str());
 
-        let other_arch_matcher = Self::other_arch_matcher()?;
+        let arch_matcher = Self::arch_matcher()?;
         debug!(
-            "matching binaries to filter out other CPU architectures using {}",
-            other_arch_matcher.as_str(),
+            "matching binaries against CPU architecture using {}",
+            arch_matcher.as_str(),
         );
 
         let mut maybe: Vec<&str> = vec![];
@@ -318,16 +318,6 @@ impl UBI {
         // method, but then there's no place to put all the debugging output.
         for asset in &self.release_info.assets {
             debug!("matching against asset name = {}", asset.name);
-            if os_matcher.is_match(&asset.name) {
-                debug!("matches our OS");
-                if other_arch_matcher.is_match(&asset.name) {
-                    debug!("but matches the wrong CPU architecture - skipping");
-                    continue;
-                }
-            } else {
-                debug!("does not match our OS");
-                continue;
-            }
 
             if asset.name.ends_with(".deb") {
                 debug!("skipping deb {}", asset.name);
@@ -338,8 +328,17 @@ impl UBI {
                 continue;
             }
 
-            debug!("it matches our OS and CPU architecture");
-            maybe.push(&asset.name);
+            if os_matcher.is_match(&asset.name) {
+                debug!("matches our OS");
+                if arch_matcher.is_match(&asset.name) {
+                    debug!("matches our CPU architecture");
+                    maybe.push(&asset.name);
+                } else {
+                    debug!("does not match our CPU architecture");
+                }
+            } else {
+                debug!("does not match our OS");
+            }
         }
 
         if maybe.is_empty() {
@@ -409,36 +408,51 @@ impl UBI {
         ))
     }
 
-    fn other_arch_matcher() -> Result<Regex> {
-        // These values are those supported by Rust (based on the platforms
-        // crate) and Go (based on
-        // https://gist.github.com/asukakenji/f15ba7e588ac42795f421b48b8aede63).
-        let arch_matches = &[
-            r"(?i:(?:\b|_)aarch64(?:\b|_))",
-            r"(?i:(?:\b|_)arm(?:v[0-9]+|64)?(?:\b|_))",
-            r"(?i:(?:\b|_)mips(?:\b|_))",
-            r"(?i:(?:\b|_)mips64(?:\b|_))",
-            r"(?i:(?:\b|_)powerpc32(?:\b|_))",
-            r"(?i:(?:\b|_)(?:powerpc64|ppc(?:64(?:le|be)?)?)(?:\b|_))",
-            r"(?i:(?:\b|_)riscv(?:\b|_))",
-            r"(?i:(?:\b|_)sparc(?:\b|_))",
-            r"(?i:(?:\b|_)sparc64(?:\b|_))",
-            r"(?i:(?:\b|_)(?:x86|386)(?:\b|_))",
-            r"(?i:(?:\b|_)(?:x86_64|amd64)(?:\b|_))",
-            r"(?i:(?:\b|_)s390x?(?:\b|_))",
-        ];
-
+    fn arch_matcher() -> Result<Regex> {
         debug!("current CPU architecture = {}", TARGET_ARCH.as_str());
 
-        let mut others: Vec<&str> = vec![];
-        for m in arch_matches {
-            let r = Regex::new(m)?;
-            if r.is_match(TARGET_ARCH.as_str()) {
-                continue;
-            }
-            others.push(m);
-        }
-        Regex::new(&others.join("|")).map_err(anyhow::Error::new)
+        #[cfg(target_arch = "aarch64")]
+        return Regex::new(r"(?i:(?:\b|_)aarch64(?:\b|_))").map_err(anyhow::Error::new);
+
+        #[cfg(target_arch = "arm")]
+        return Regex::new(r"(?i:(?:\b|_)arm(?:v[0-9]+|64)?(?:\b|_))").map_err(anyhow::Error::new);
+
+        #[cfg(target_arch = "mips")]
+        return Regex::new(r"(?i:(?:\b|_)mips(?:\b|_))").map_err(anyhow::Error::new);
+
+        #[cfg(target_arch = "mips64")]
+        return Regex::new(r"(?i:(?:\b|_)mips64(?:\b|_))").map_err(anyhow::Error::new);
+
+        #[cfg(target_arch = "powerpc")]
+        return Regex::new(r"(?i:(?:\b|_)(?:powerpc32(?:\b|_))").map_err(anyhow::Error::new);
+
+        #[cfg(target_arch = "powerpc64")]
+        return Regex::new(r"(?i:(?:\b|_)(?:powerpc64|ppc64(?:le|be)?)?)(?:\b|_))")
+            .map_err(anyhow::Error::new);
+
+        #[cfg(target_arch = "riscv")]
+        return Regex::new(r"(?i:(?:\b|_)riscv(?:\b|_))").map_err(anyhow::Error::new);
+
+        #[cfg(target_arch = "s390x")]
+        return Regex::new(r"(?i:(?:\b|_)s390x(?:\b|_))").map_err(anyhow::Error::new);
+
+        #[cfg(target_arch = "sparc")]
+        return Regex::new(r"(?i:(?:\b|_)sparc(?:\b|_))").map_err(anyhow::Error::new);
+
+        #[cfg(target_arch = "sparc64")]
+        return Regex::new(r"(?i:(?:\b|_)sparc(?:64)?(?:\b|_))").map_err(anyhow::Error::new);
+
+        #[cfg(target_arch = "x86")]
+        return Regex::new(r"(?i:(?:\b|_)(?:x86|386)(?:\b|_(?!64)))").map_err(anyhow::Error::new);
+
+        #[cfg(target_arch = "x86_64")]
+        return Regex::new(r"(?i:(?:\b|_)(?:x86|386|x86_64|amd64)(?:\b|_))")
+            .map_err(anyhow::Error::new);
+
+        #[allow(unreachable_code)]
+        Err(anyhow!(
+            "Cannot determine what type of compiled binary to use for this CPU architecture"
+        ))
     }
 
     fn extract_binary(&self, downloaded_file: PathBuf) -> Result<()> {
