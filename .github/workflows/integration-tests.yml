@@ -1,4 +1,4 @@
-name: Integration tests for ubi
+name: Integration tests and release
 
 on: [push, pull_request]
 
