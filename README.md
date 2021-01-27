@@ -67,9 +67,9 @@ OPTIONS:
 ## Using a GitHub Token
 
 If the `GITHUB_TOKEN` environment variable is set, then this will be used for
-all API calls. You will almost certainly need to do if you are using `ubi` in
-a CI environment that runs jobs frequently, as GitHub has a very low rate
-limit for anonymous API requests.
+all API calls. You will almost certainly need to do this if you are using
+`ubi` in a CI environment that runs jobs frequently, as GitHub has a very low
+rate limit for anonymous API requests.
 
 ## Why This Is Useful
 
