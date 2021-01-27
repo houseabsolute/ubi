@@ -89,7 +89,7 @@ single-binary tools available on GitHub, on any supported platform.
 
 I think so. While you can of course use `go` or `cargo` to install these
 tools, that requires an entire language toolchain. Then you have to actually
-compile the tool, which may require many downloading and compiling
+compile the tool, which may require downloading and compiling many
 dependencies. This is going to be a lot slower and more error prone than
 installing a binary.
 
