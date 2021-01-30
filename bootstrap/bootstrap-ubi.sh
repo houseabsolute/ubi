@@ -19,6 +19,11 @@ if [ $(id -u) -eq 0 ]; then
     TARGET="/usr/local/bin"
 fi
 
+if [ ! -d "$TARGET" ]; then
+    echo "boostrap-ubi.sh: The install target directory, $TARGET, does not exist"
+    exit 2
+fi
+
 cd "$TARGET"
 
 KERNEL=$(uname -s)
