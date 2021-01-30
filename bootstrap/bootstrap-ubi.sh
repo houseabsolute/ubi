@@ -10,7 +10,7 @@ TAG=$(
 )
 
 if [ -z "$TAG" ]; then
-    echo "Cannot find a UBI release!"
+    echo "boostrap-ubi.sh: Cannot find a UBI release!"
     exit 1
 fi
 
@@ -35,8 +35,8 @@ case "$KERNEL" in
         PLATFORM="Darwin"
         ;;
     *)
-        echo "Cannot determine what binary to download for your kernel: $KERNEL"
-        exit 2
+        echo "boostrap-ubi.sh: Cannot determine what binary to download for your kernel: $KERNEL"
+        exit 3
         ;;
 esac
 
@@ -46,8 +46,8 @@ case "$ARCH" in
          CPU="x86_64"
          ;;
      *)
-         echo "Cannot determine what binary to download for your CPU architecture: $ARCH"
-         exit 3
+         echo "boostrap-ubi.sh: Cannot determine what binary to download for your CPU architecture: $ARCH"
+         exit 4
 esac
 
 curl --silent --location https://github.com/houseabsolute/ubi/releases/download/"$TAG"/ubi-"$PLATFORM"-"$CPU".tar.gz |
