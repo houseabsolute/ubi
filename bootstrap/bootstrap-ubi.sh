@@ -1,10 +1,15 @@
 #!/bin/sh
 
 set -e
+set -x
+
+if [ -n "$GITHUB_AUTH" ]; then
+    USER="--user $GITHUB_AUTH"
+fi
 
 TAG=$(
     # From https://gist.github.com/lukechilds/a83e1d7127b78fef38c2914c4ececc3c
-    curl --silent "https://api.github.com/repos/houseabsolute/ubi/releases/latest" |
+    curl --silent $USER "https://api.github.com/repos/houseabsolute/ubi/releases/latest" |
         grep '"tag_name":' |
         sed -E 's/.*"([^"]+)".*/\1/'
 )

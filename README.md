@@ -30,6 +30,11 @@ curl --silent --location \
 If you run this as a non-root user, it will install `ubi` into `$HOME/bin`. If
 run as root it installs it into `/usr/local/bin`.
 
+If the `GITHUB_AUTH` env var is set, then the bootstrap script will pass
+`--user $GITHUB_AUTH` when it hits the GitHub API. This is only necessary if
+you are hitting the GitHub anonymous API usage limits. This is unlikely to
+happen unless you're running the bootstrap script repeatedly for testing.
+
 ### Windows
 
 ```
