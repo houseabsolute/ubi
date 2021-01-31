@@ -12,6 +12,7 @@ function install_tools () {
          https://raw.githubusercontent.com/houseabsolute/ubi/master/bootstrap/bootstrap-ubi.sh |
         sh
     run "rustup component add clippy"
+    run "ubi --project houseabsolute/precious --in ~/bin"
     run "ubi --project houseabsolute/omegasort --in ~/bin"
 }
 
