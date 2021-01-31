@@ -15,6 +15,17 @@ type     = "lint"
 include  = "**/*.rs"
 run_mode = "root"
 chdir    = true
-cmd      = ["cargo", "clippy", "-q", "--", "-D", "clippy::all"]
-ok_exit_codes = [0]
-lint_failure_exit_codes = [1]
+cmd      = "$PRECIOUS_ROOT/dev/bin/force-clippy.sh"
+ok_exit_codes = 0
+lint_failure_exit_codes = 101
+expect_stderr = true
+
+[commands.omegasort-gitignore]
+type = "both"
+include = "**/.gitignore"
+cmd = [ "omegasort", "--sort=path" ]
+lint_flags = "--check"
+tidy_flags = "--in-place"
+ok_exit_codes = 0
+lint_failure_exit_codes = 1
+expect_stderr = true

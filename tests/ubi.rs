@@ -126,7 +126,7 @@ fn run_test(cmd: &Path, args: &[&str], mut expect: PathBuf) -> Result<TempDir> {
     let td = tempdir()?;
     env::set_current_dir(td.path())?;
 
-    match run_command(cmd.as_ref(), args) {
+    match run_command(cmd, args) {
         Ok((code, stdout, stderr)) => {
             assert!(code == 0, "exit code is 0");
             assert!(stdout.is_none(), "no output to stdout");
