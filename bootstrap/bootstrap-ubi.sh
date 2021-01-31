@@ -1,7 +1,6 @@
 #!/bin/sh
 
 set -e
-set -x
 
 if [ -n "$GITHUB_AUTH" ]; then
     USER="--user $GITHUB_AUTH"
