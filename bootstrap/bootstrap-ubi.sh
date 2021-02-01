@@ -59,3 +59,14 @@ esac
 
 curl --silent --location https://github.com/houseabsolute/ubi/releases/download/"$TAG"/ubi-"$PLATFORM"-"$CPU".tar.gz |
     tar -xzf - ubi 
+
+echo ""
+echo "boostrap-ubi.sh: ubi has been installed to $TARGET."
+
+set +e
+echo ":$PATH:" | grep --extended-regexp ":$TARGET:" > /dev/null
+if [ "$?" != "0" ]; then
+    echo "boostrap-ubi.sh: It looks like $TARGET is not in your PATH. You may want to add it to use ubi."
+fi
+
+echo ""
