@@ -44,14 +44,17 @@ case "$KERNEL" in
         ;;
 esac
 
-ARCH=$(uname -p)
+# I previous had uname -p but that reports all sorts of weird stuff. On one
+# person's Linux x86_64 machine it reported "unknown". On macOS x86_64 you get
+# "i386". Why? I have no idea.
+ARCH=$(uname -m)
 case "$ARCH" in
-     x86_64|i386)
-         CPU="x86_64"
-         ;;
-     *)
-         echo "boostrap-ubi.sh: Cannot determine what binary to download for your CPU architecture: $ARCH"
-         exit 4
+    x86_64)
+        CPU="x86_64"
+        ;;
+    *)
+        echo "boostrap-ubi.sh: Cannot determine what binary to download for your CPU architecture: $ARCH"
+        exit 4
 esac
 
 curl --silent --location https://github.com/houseabsolute/ubi/releases/download/"$TAG"/ubi-"$PLATFORM"-"$CPU".tar.gz |
