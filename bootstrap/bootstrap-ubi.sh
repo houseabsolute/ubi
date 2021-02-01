@@ -2,13 +2,13 @@
 
 set -e
 
-if [ -n "$GITHUB_AUTH" ]; then
-    USER="--user $GITHUB_AUTH"
+if [ -n "$GITHUB_TOKEN" ]; then
+    AUTH="--header \"Authorization: token $GITHUB_TOKEN\""
 fi
 
 TAG=$(
     # From https://gist.github.com/lukechilds/a83e1d7127b78fef38c2914c4ececc3c
-    curl --silent $USER "https://api.github.com/repos/houseabsolute/ubi/releases/latest" |
+    curl --silent $AUTH "https://api.github.com/repos/houseabsolute/ubi/releases/latest" |
         grep '"tag_name":' |
         sed -E 's/.*"([^"]+)".*/\1/'
 )
