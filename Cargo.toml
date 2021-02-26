@@ -15,10 +15,10 @@ clap = "3.0.0-beta.2"
 fern = { version = "~0.6", features = ["colored"] }
 flate2 = "~1"
 log = "~0.4"
-octocrab = "~0.8, >= 0.8.7"
+octocrab = { version = "~0.8, >= 0.8.7", default-features = false, features = ["rustls"] }
 platforms = "~1"
 regex = "~1"
-reqwest = "~0.11"
+reqwest = { version = "~0.11", default-features = false, features = [ "gzip", "rustls-tls" ] }
 tar = "~0.4"
 tempfile = "~3"
 tokio = { version = "~1", default-features = false, features = ["macros", "rt"] }
