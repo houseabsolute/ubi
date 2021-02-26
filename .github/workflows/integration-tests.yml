@@ -68,7 +68,7 @@ jobs:
   # Copied from https://github.com/urbica/martin/blob/master/.github/workflows/ci.yml
   release:
     name: Release - ${{ matrix.platform.os_name }}
-    if: startsWith( github.ref, 'refs/tags/v' )
+    if: startsWith( github.ref, 'refs/tags/v' ) || github.ref == 'refs/tags/test-release'
     needs: [test]
     strategy:
       matrix:
@@ -129,3 +129,4 @@ jobs:
           body_path: Changes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: startsWith( github.ref, 'refs/tags/v' )
