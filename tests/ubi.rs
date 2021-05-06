@@ -78,12 +78,14 @@ fn tests() -> Result<()> {
             rust_analyzer_bin.clone(),
         )?;
         match run_command(rust_analyzer_bin.as_ref(), &["--help"]) {
-            Ok((code, _, stderr)) => {
+            Ok((code, stdout, _)) => {
                 assert!(code == 0, "exit code is 0");
-                assert!(stderr.is_some(), "got stderr from rust-analyzer");
+                assert!(stdout.is_some(), "got stdout from rust-analyzer");
                 assert!(
-                    stderr.unwrap().contains("rust-analyzer [FLAGS] [COMMAND]"),
-                    "got expected --help errput"
+                    stdout
+                        .unwrap()
+                        .contains("LSP server for the Rust programming language"),
+                    "got expected --help output"
                 );
             }
             Err(e) => return Err(e),
