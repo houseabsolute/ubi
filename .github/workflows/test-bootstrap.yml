@@ -2,6 +2,9 @@ name: Test bootstrap
 
 on: [push, pull_request]
 
+env:
+  GITHUB_TOKEN: ${{ github.token }}
+
 jobs:
   test:
     name: Bootstrap - ${{ matrix.platform.os_name }}
