@@ -32,7 +32,7 @@ async fn main() {
         eprintln!("Error creating logger: {}", e);
         std::process::exit(126);
     }
-    let u = UBI::new(&matches).await;
+    let u = Ubi::new(&matches).await;
     let status = match u {
         Ok(u) => u.run().await,
         Err(e) => {
@@ -145,7 +145,7 @@ pub fn init_logger(matches: &ArgMatches) -> Result<(), log::SetLoggerError> {
 }
 
 #[derive(Debug)]
-struct UBI {
+struct Ubi {
     project_name: String,
     exe: String,
     install_path: PathBuf,
@@ -153,13 +153,13 @@ struct UBI {
     quiet: bool,
 }
 
-impl UBI {
-    pub async fn new(matches: &ArgMatches) -> Result<UBI> {
+impl Ubi {
+    pub async fn new(matches: &ArgMatches) -> Result<Ubi> {
         let project_name = Self::parse_project_name(matches.value_of("project"))?;
         let exe = Self::exe_name(matches, &project_name);
         let install_path = Self::install_path(matches, &exe)?;
         let release_info = Self::release_info(matches.value_of("tag"), &project_name).await?;
-        Ok(UBI {
+        Ok(Ubi {
             project_name,
             exe,
             install_path,
