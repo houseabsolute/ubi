@@ -33,9 +33,9 @@ run as root it installs it into `/usr/local/bin`.
 To install `ubi` into an arbitrary location, set the `$TARGET` env var:
 
 ```
-TARGET=~/local/bin curl --silent --location \
+curl --silent --location \
     https://raw.githubusercontent.com/houseabsolute/ubi/master/bootstrap/bootstrap-ubi.sh |
-    sh
+    TARGET=~/local/bin sh
 ```
 
 If the `GITHUB_TOKEN` env var is set, then the bootstrap script will use this
