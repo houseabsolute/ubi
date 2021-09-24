@@ -152,7 +152,6 @@ struct Ubi {
     exe: String,
     install_path: PathBuf,
     release_info: Release,
-    quiet: bool,
 }
 
 impl Ubi {
@@ -166,7 +165,6 @@ impl Ubi {
             exe,
             install_path,
             release_info,
-            quiet: matches.is_present("quiet"),
         })
     }
 
