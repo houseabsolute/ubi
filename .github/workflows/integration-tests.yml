@@ -30,20 +30,8 @@ jobs:
           - nightly
     steps:
       - uses: actions/checkout@v2
-      # Workaround for https://github.com/actions/cache/issues/403.
-      - name: Install GNU tar on macOS
-        run: |
-          brew install gnu-tar
-          echo "PATH=/usr/local/opt/gnu-tar/libexec/gnubin:$PATH" >> $GITHUB_ENV
-        if: matrix.platform.os == 'macOS-latest'
-      - name: Cache cargo target directories
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target              
-          key: cargo-${{ matrix.platform.os }}-${{ matrix.platform.target }}-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}-v2
+      - name: Cache cargo & target directories
+        uses: Swatinem/rust-cache@v1
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
