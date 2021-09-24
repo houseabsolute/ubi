@@ -6,16 +6,25 @@ if [ -n "$GITHUB_TOKEN" ]; then
     AUTH="--header \"Authorization: token $GITHUB_TOKEN\""
 fi
 
+URI="https://api.github.com/repos/houseabsolute/ubi/releases/latest"
+RELEASES=$(curl --show-error --silent $AUTH $URI)
+if [ -z "$RELEASES" ]; then
+    >&2 echo "Did not get a response body back from $URI"
+    exit 1
+fi
+
 TAG=$(
     # From https://gist.github.com/lukechilds/a83e1d7127b78fef38c2914c4ececc3c
-    curl --silent $AUTH "https://api.github.com/repos/houseabsolute/ubi/releases/latest" |
+    echo "$RELEASES" |
         grep '"tag_name":' |
         sed -E 's/.*"([^"]+)".*/\1/'
 )
 
 if [ -z "$TAG" ]; then
-    echo "boostrap-ubi.sh: Cannot find a UBI release!"
-    exit 1
+    >&2 echo "boostrap-ubi.sh: Cannot find a UBI release based on GitHub API response!"
+    >&2 echo ""
+    >&2 echo "$RELEASES"
+    exit 2
 fi
 
 TARGET="$HOME/bin"
@@ -24,8 +33,8 @@ if [ $(id -u) -eq 0 ]; then
 fi
 
 if [ ! -d "$TARGET" ]; then
-    echo "boostrap-ubi.sh: The install target directory, $TARGET, does not exist"
-    exit 2
+    2>& echo "boostrap-ubi.sh: The install target directory, $TARGET, does not exist"
+    exit 3
 fi
 
 cd "$TARGET"
