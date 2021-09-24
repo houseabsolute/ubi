@@ -16,8 +16,8 @@ nice too.
 You can install it by hand by downloading the latest [release from the
 releases page](https://github.com/houseabsolute/ubi/releases).
 
-There are also bootstrap install scripts (well, one script for Unix systems so
-far) that provide a half-assed implementation of `ubi`:
+There are also bootstrap install scripts that provide a half-assed
+implementation of `ubi`:
 
 ### Linux and macOS
 
