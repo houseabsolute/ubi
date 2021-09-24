@@ -30,6 +30,14 @@ curl --silent --location \
 If you run this as a non-root user, it will install `ubi` into `$HOME/bin`. If
 run as root it installs it into `/usr/local/bin`.
 
+To install `ubi` into an arbitrary location, set the `$TARGET` env var:
+
+```
+TARGET=~/local/bin curl --silent --location \
+    https://raw.githubusercontent.com/houseabsolute/ubi/master/bootstrap/bootstrap-ubi.sh |
+    sh
+```
+
 If the `GITHUB_TOKEN` env var is set, then the bootstrap script will use this
 when it hits the GitHub API. This is only necessary if you are hitting the
 GitHub anonymous API usage limits. This is unlikely to happen unless you're

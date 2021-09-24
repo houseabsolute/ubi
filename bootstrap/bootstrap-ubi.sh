@@ -27,7 +27,8 @@ if [ -z "$TAG" ]; then
     exit 2
 fi
 
-TARGET="$HOME/bin"
+TARGET="${TARGET:=$HOME/bin}"
+
 if [ $(id -u) -eq 0 ]; then
     TARGET="/usr/local/bin"
 fi
