@@ -24,7 +24,7 @@ implementation of `ubi`:
 ```
 curl --silent --location \
     https://raw.githubusercontent.com/houseabsolute/ubi/master/bootstrap/bootstrap-ubi.sh |
-    bash
+    sh
 ```
 
 If you run this as a non-root user, it will install `ubi` into `$HOME/bin`. If

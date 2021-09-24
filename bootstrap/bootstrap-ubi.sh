@@ -1,16 +1,14 @@
-#!/bin/bash
+#!/bin/sh
 
 set -e
+set -x
 
-CURL_ARGS=(--show-error --silent)
 if [ -n "$GITHUB_TOKEN" ]; then
-    CURL_ARGS+=("--header" "Authorization:token%20$GITHUB_TOKEN")
+    AUTH="--header Authorization:token%20$GITHUB_TOKEN"
 fi
 
 URI="https://api.github.com/repos/houseabsolute/ubi/releases/latest"
-CURL_ARGS+=($URI)
-
-RELEASES=$(curl ${CURL_ARGS[@]})
+RELEASES=$(curl $AUTH --show-error --silent $URI)
 if [ -z "$RELEASES" ]; then
     >&2 echo "Did not get a response body back from $URI"
     exit 1
