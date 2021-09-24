@@ -118,6 +118,8 @@ pub fn init_logger(matches: &ArgMatches) -> Result<(), log::SetLoggerError> {
         log::LevelFilter::Debug
     } else if matches.is_present("verbose") {
         log::LevelFilter::Info
+    } else if matches.is_present("quiet") {
+        log::LevelFilter::Error
     } else {
         log::LevelFilter::Warn
     };
