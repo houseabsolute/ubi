@@ -122,7 +122,7 @@ pub fn init_logger(matches: &ArgMatches) -> Result<(), log::SetLoggerError> {
         log::LevelFilter::Warn
     };
 
-    let level_colors = line_colors.clone().info(Color::Green).debug(Color::Black);
+    let level_colors = line_colors.info(Color::Green).debug(Color::Black);
 
     Dispatch::new()
         .format(move |out, message, record| {
@@ -323,10 +323,7 @@ impl Ubi {
             debug!("matching against asset name = {}", asset.name);
 
             if asset.name.contains('.')
-                && valid_extensions
-                    .iter()
-                    .find(|&v| asset.name.ends_with(v))
-                    .is_none()
+                && !valid_extensions.iter().any(|&v| asset.name.ends_with(v))
             {
                 debug!("it appears to have an invalid extension");
                 continue;
