@@ -1,7 +1,6 @@
 #!/bin/sh
 
 set -e
-set -x
 
 if [ -n "$GITHUB_TOKEN" ]; then
     AUTH="--header Authorization:token%20$GITHUB_TOKEN"
