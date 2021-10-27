@@ -5,7 +5,7 @@ exclude = [
 [commands.rustfmt]
 type    = "both"
 include = "**/*.rs"
-cmd     = ["rustfmt", "--edition", "2018"]
+cmd     = [ "rustfmt", "--edition", "2021" ]
 lint_flags = "--check"
 ok_exit_codes = [0]
 lint_failure_exit_codes = [1]
