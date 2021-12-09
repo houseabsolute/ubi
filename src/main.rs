@@ -55,7 +55,7 @@ fn app<'a>() -> App<'a> {
                 .short('p')
                 .takes_value(true)
                 .required(true)
-                .about(concat!(
+                .help(concat!(
                     "The project you want to install, like houseabsolute/precious",
                     " or https://github.com/houseabsolute/precious.",
                 )),
@@ -65,21 +65,21 @@ fn app<'a>() -> App<'a> {
                 .long("tag")
                 .short('t')
                 .takes_value(true)
-                .about("The tag to download. Defaults to the latest release."),
+                .help("The tag to download. Defaults to the latest release."),
         )
         .arg(
             Arg::new("in")
                 .long("in")
                 .short('i')
                 .takes_value(true)
-                .about("The directory in which the binary should be placed. Defaults to ./bin."),
+                .help("The directory in which the binary should be placed. Defaults to ./bin."),
         )
         .arg(
             Arg::new("exe")
                 .long("exe")
                 .short('e')
                 .takes_value(true)
-                .about(concat!(
+                .help(concat!(
                     "The name of this project's executable. By default this is the same as the",
                     " project name, so for houseabsolute/precious we look for precious or",
                     r#" precious.exe. When running on Windows the ".exe" suffix will be added"#,
@@ -90,19 +90,19 @@ fn app<'a>() -> App<'a> {
             Arg::new("verbose")
                 .short('v')
                 .long("verbose")
-                .about("Enable verbose output"),
+                .help("Enable verbose output"),
         )
         .arg(
             Arg::new("debug")
                 .short('d')
                 .long("debug")
-                .about("Enable debugging output"),
+                .help("Enable debugging output"),
         )
         .arg(
             Arg::new("quiet")
                 .short('q')
                 .long("quiet")
-                .about("Suppresses most output"),
+                .help("Suppresses most output"),
         )
         .group(ArgGroup::new("log-level").args(&["verbose", "debug", "quiet"]))
 }
