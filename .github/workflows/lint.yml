@@ -23,7 +23,7 @@ jobs:
       - name: Configure Git
         run: |
           git config --global user.email "jdoe@example.com"
-          git config --global user.name "J. Doe"  
+          git config --global user.name "J. Doe"
       - name: Run install-dev-tools.sh
         run: |
           set -e
