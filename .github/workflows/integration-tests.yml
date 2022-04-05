@@ -46,12 +46,12 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --target=${{ matrix.platform.target }}
+          args: --locked --target=${{ matrix.platform.target }}
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --target=${{ matrix.platform.target }}
+          args: --locked --target=${{ matrix.platform.target }}
 
   # Copied from https://github.com/urbica/martin/blob/master/.github/workflows/ci.yml
   release:
@@ -91,7 +91,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --target ${{ matrix.platform.target }}
+          args: --locked --release --target ${{ matrix.platform.target }}
       - name: Package as archive
         shell: bash
         run: |
