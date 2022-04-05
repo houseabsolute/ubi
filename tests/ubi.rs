@@ -59,7 +59,7 @@ fn tests() -> Result<()> {
             "--project",
             "houseabsolute/precious",
             "--in",
-            &in_dir.to_string_lossy().into_owned(),
+            &in_dir.to_string_lossy(),
         ],
         make_pathbuf(&["sub", "dir", "precious"]),
     )?;
