@@ -9,19 +9,19 @@ license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [dependencies]
-anyhow = "1.0.53"
+anyhow = "1.0.57"
 bzip2 = "0.4.3"
-clap = "3.0.14"
-fern = { version = "0.6.0", features = ["colored"] }
-flate2 = "1.0.22"
-log = "0.4.14"
-octocrab = "0.15.4"
+clap = "3.1.12"
+fern = { version = "0.6.1", features = ["colored"] }
+flate2 = "1.0.23"
+log = "0.4.16"
+octocrab = { version = "0.15.4", default-features = false, features = ["rustls"] }
 platforms = "2.0.0"
-regex = "1.5.4"
-reqwest = "0.11.9"
+regex = "1.5.5"
+reqwest = { version = "0.11.10", default-features = false, features = ["gzip", "rustls-tls"] }
 tar = "0.4.38"
 tempfile = "3.3.0"
-tokio = { version = "1.16.1", default-features = false, features = ["macros", "rt"] }
+tokio = { version = "1.17.0", default-features = false, features = ["macros", "rt"] }
 xz = "0.1.0"
 zip = "0.5.13"
 zip-extensions = "0.6.1"
