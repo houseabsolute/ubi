@@ -76,6 +76,11 @@ jobs:
             target: x86_64-apple-darwin
             bin: ubi
             name: ubi-Darwin-x86_64.tar.gz
+          - os_name: macOS
+            os: macOS-latest
+            target: aarch64-apple-darwin
+            bin: ubi
+            name: ubi-Darwin-aarch64.tar.gz
     runs-on: ${{ matrix.platform.os }}
     steps:
       - name: Checkout
