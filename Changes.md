@@ -1,4 +1,4 @@
-## 0.0.7
+## 0.0.7 - 2022-04-23
 
 * Include "x64" as a match for the `x86_64` architecture.
 
