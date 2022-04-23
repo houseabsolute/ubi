@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use bzip2::read::BzDecoder;
-use clap::{App, Arg, ArgGroup, ArgMatches};
+use clap::{Arg, ArgGroup, ArgMatches, Command};
 use fern::colors::{Color, ColoredLevelConfig};
 use fern::Dispatch;
 use flate2::read::GzDecoder;
@@ -44,8 +44,8 @@ async fn main() {
     std::process::exit(status);
 }
 
-fn app<'a>() -> App<'a> {
-    App::new("ubi")
+fn app<'a>() -> Command<'a> {
+    Command::new("ubi")
         .version(env!("CARGO_PKG_VERSION"))
         .author("Dave Rolsky <autarch@urth.org>")
         .about("The universal binary release installer")
