@@ -447,7 +447,7 @@ impl Ubi {
         return Regex::new(r"(?i:(?:\b|_)(?:x86|386)(?:\b|_(?!64)))").map_err(anyhow::Error::new);
 
         #[cfg(target_arch = "x86_64")]
-        return Regex::new(r"(?i:(?:\b|_)(?:x86|386|x86_64|amd64)(?:\b|_))")
+        return Regex::new(r"(?i:(?:\b|_)(?:x86|386|x86_64|x64|amd64)(?:\b|_))")
             .map_err(anyhow::Error::new);
 
         #[allow(unreachable_code)]

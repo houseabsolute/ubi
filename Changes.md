@@ -1,3 +1,8 @@
+## 0.0.7
+
+* Include "x64" as a match for the `x86_64` architecture.
+
+
 ## 0.0.6 - 2021-01-15
 
 * Changed CPU architecture matching to be stricter based on the current
