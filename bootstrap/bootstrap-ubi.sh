@@ -71,13 +71,16 @@ case "$ARCH" in
     x86_64)
         CPU="x86_64"
         ;;
+    arm64)
+        CPU="aarch64"
+        ;;
     *)
         echo "boostrap-ubi.sh: Cannot determine what binary to download for your CPU architecture: $ARCH"
         exit 4
 esac
 
 curl --silent --location https://github.com/houseabsolute/ubi/releases/download/"$TAG"/ubi-"$PLATFORM"-"$CPU".tar.gz |
-    tar -xzf - ubi 
+    tar -xzf - ubi
 
 echo ""
 echo "boostrap-ubi.sh: ubi has been installed to $TARGET."
