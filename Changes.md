@@ -4,6 +4,7 @@
   Actions now build on Ubuntu 18.04 instead of 20.04. This restore
   compatibility with systems using glibc 2.27. Reported by Olaf Alders. GH
   #16.
+* This release also includes native ARM64 binaries for macOS 11+.
 
 
 ## 0.0.7 - 2022-04-23
