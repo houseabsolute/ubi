@@ -66,26 +66,42 @@ jobs:
     strategy:
       matrix:
         platform:
-          - os_name: Linux
+          - os_name: Linux-x86_64
             os: ubuntu-18.04
             target: x86_64-unknown-linux-gnu
             bin: ubi
             name: ubi-Linux-x86_64.tar.gz
+            cross: false
+          - os_name: Linux-aarch64
+            os: ubuntu-18.04
+            target: aarch64-unknown-linux-gnu
+            bin: ubi
+            name: ubi-Linux-aarch64.tar.gz
+            cross: true
+          - os_name: Linux-armv7
+            os: ubuntu-18.04
+            target: armv7-unknown-linux-gnueabihf
+            bin: ubi
+            name: ubi-Linux-aarch64.tar.gz
+            cross: true
           - os_name: Windows
             os: windows-latest
             target: x86_64-pc-windows-msvc
             bin: ubi.exe
             name: ubi-Windows-x86_64.zip
-          - os_name: macOS
+            cross: false
+          - os_name: macOS-x86_64
             os: macOS-latest
             target: x86_64-apple-darwin
             bin: ubi
             name: ubi-Darwin-x86_64.tar.gz
-          - os_name: macOS
+            cross: false
+          - os_name: macOS-aarch64
             os: macOS-latest
             target: aarch64-apple-darwin
             bin: ubi
             name: ubi-Darwin-aarch64.tar.gz
+            cross: false
     runs-on: ${{ matrix.platform.os }}
     steps:
       - name: Checkout
@@ -100,15 +116,18 @@ jobs:
       - name: Build binary
         uses: actions-rs/cargo@v1
         with:
+          use-cross: ${{ matrix.platform.cross }}
           command: build
           args: --locked --release --target ${{ matrix.platform.target }}
       - name: Package as archive
         shell: bash
         run: |
-          strip target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}
+          if [[ "${{ matrix.platform.cross }}" == "false" ]]; then
+            # strip doesn't work with non-native binaries on Linux, AFAICT.
+            strip target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}
+          fi
           cd target/${{ matrix.platform.target }}/release
-          if [[ "${{ matrix.platform.os }}" == "windows-latest" ]]
-          then
+          if [[ "${{ matrix.platform.os }}" == "windows-latest" ]]; then
             7z a ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}
           else
             tar czvf ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}
