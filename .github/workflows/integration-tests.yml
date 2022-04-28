@@ -133,6 +133,12 @@ jobs:
             tar czvf ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}
           fi
           cd -
+      - name: Publish release artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ubi-${{ matrix.platform.os_name }}
+          path: "ubi*"
+        if: github.ref == 'refs/tags/test-release'
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v1
         with:
