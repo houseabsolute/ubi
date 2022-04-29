@@ -1,3 +1,8 @@
+## 0.0.9
+
+* This release includes native binaries for Linux ARM64 and ARM (32-bit).
+
+
 ## 0.0.8 - 2022-04-25
 
 * No code changes from the last release. The binary releases built by GitHub
