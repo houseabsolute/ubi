@@ -15,7 +15,7 @@ clap = "3.1.12"
 fern = { version = "0.6.1", features = ["colored"] }
 flate2 = "1.0.23"
 log = "0.4.16"
-octocrab = { version = "0.15.4", default-features = false, features = ["rustls"] }
+octocrab = { version = "0.16.0", default-features = false, features = ["rustls"] }
 platforms = "2.0.0"
 regex = "1.5.5"
 reqwest = { version = "0.11.10", default-features = false, features = ["gzip", "rustls-tls"] }
