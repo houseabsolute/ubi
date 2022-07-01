@@ -1,6 +1,12 @@
 ## 0.0.9
 
 * This release includes native binaries for Linux ARM64 and ARM (32-bit).
+* Added a new flag, `--matching`, which can be used to pick a specific release
+  file when there are multiple matching options for your OS and CPU
+  architecture. Based on PR #18 from Marco Fontani. Fixes #17.
+* When there multiple matches and `--matching` is not given, the same release
+  file will always be picked. Previously this was not guaranteed.
+* Improved filtering of 32-bit executables when running on 64-bit machines.
 
 
 ## 0.0.8 - 2022-04-25

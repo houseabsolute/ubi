@@ -105,7 +105,49 @@ fn tests() -> Result<()> {
                 assert!(stdout.is_some(), "got stdout from golangci-lint");
                 assert!(
                     stdout.unwrap().contains("golangci-lint has version"),
-                    "downloaded an executable"
+                    "got the expected stdout",
+                );
+            }
+            Err(e) => return Err(e),
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let delta_bin = make_pathbuf(&["bin", "delta"]);
+        let _td = run_test(
+            ubi.as_ref(),
+            &[
+                "--project",
+                "dandavison/delta",
+                "--tag",
+                "0.13.0",
+                "--matching",
+                "musl",
+            ],
+            delta_bin.clone(),
+        )?;
+        match run_command(delta_bin.as_ref(), &["--version"]) {
+            Ok((code, stdout, _)) => {
+                assert!(code == 0, "exit code is 0");
+                assert!(stdout.is_some(), "got stdout from delta");
+                assert!(
+                    stdout.unwrap().contains("delta 0.13.0"),
+                    "got the expected stdout",
+                );
+            }
+            Err(e) => return Err(e),
+        }
+        match run_command(
+            &PathBuf::from("file"),
+            &[delta_bin.to_string_lossy().as_ref()],
+        ) {
+            Ok((code, stdout, _)) => {
+                assert!(code == 0, "exit code is 0");
+                assert!(stdout.is_some(), "got stdout from file");
+                assert!(
+                    stdout.unwrap().contains("statically linked"),
+                    "got the expected stdout",
                 );
             }
             Err(e) => return Err(e),
@@ -131,8 +173,16 @@ fn run_test(cmd: &Path, args: &[&str], mut expect: PathBuf) -> Result<TempDir> {
     match run_command(cmd, args) {
         Ok((code, stdout, stderr)) => {
             assert!(code == 0, "exit code is 0");
-            assert!(stdout.is_none(), "no output to stdout");
-            assert!(stderr.is_none(), "no output to stdout");
+            assert_eq!(
+                stdout.unwrap_or_default(),
+                String::new(),
+                "no output to stdout",
+            );
+            assert_eq!(
+                stderr.unwrap_or_default(),
+                String::new(),
+                "no output to stderr",
+            );
         }
         Err(e) => return Err(e),
     }

@@ -87,6 +87,18 @@ fn app<'a>() -> Command<'a> {
                 )),
         )
         .arg(
+            Arg::new("matching")
+                .long("matching")
+                .short('m')
+                .takes_value(true)
+                .help(concat!(
+                    "A string that will be matched against the release filename when there are",
+                    r#" multiple files for your OS/arch, i.e. "gnu" or "musl". Note that this will"#,
+                    " be ignored if there is only used when there is only one matching release",
+                    " filename for your OS/arch",
+                )),
+        )
+        .arg(
             Arg::new("verbose")
                 .short('v')
                 .long("verbose")
@@ -150,6 +162,7 @@ pub fn init_logger(matches: &ArgMatches) -> Result<(), log::SetLoggerError> {
 struct Ubi {
     project_name: String,
     exe: String,
+    matching: String,
     install_path: PathBuf,
     release_info: Release,
 }
@@ -160,9 +173,11 @@ impl Ubi {
         let exe = Self::exe_name(matches, &project_name);
         let install_path = Self::install_path(matches, &exe)?;
         let release_info = Self::release_info(matches.value_of("tag"), &project_name).await?;
+        let matching = Self::matching_value(matches);
         Ok(Ubi {
             project_name,
             exe,
+            matching,
             install_path,
             release_info,
         })
@@ -181,6 +196,15 @@ impl Ubi {
         debug!("Parsed project {} = {} / {}", p, org, proj);
 
         Ok(format!("{}/{}", org, proj))
+    }
+
+    fn matching_value(matches: &ArgMatches) -> String {
+        let m = match matches.value_of("matching") {
+            Some(e) => e.to_string(),
+            None => "".to_string(),
+        };
+        debug!("matching = {}", m);
+        m
     }
 
     fn exe_name(matches: &ArgMatches, project_name: &str) -> String {
@@ -312,7 +336,7 @@ impl Ubi {
             arch_matcher.as_str(),
         );
 
-        let mut maybe: Vec<&str> = vec![];
+        let mut asset_names: Vec<&str> = vec![];
 
         let valid_extensions: &'static [&'static str] =
             &[".tar.gz", ".tgz", ".tar.bz", ".tbz", ".zip", ".gz"];
@@ -333,7 +357,7 @@ impl Ubi {
                 debug!("matches our OS");
                 if arch_matcher.is_match(&asset.name) {
                     debug!("matches our CPU architecture");
-                    maybe.push(&asset.name);
+                    asset_names.push(&asset.name);
                 } else {
                     debug!("does not match our CPU architecture");
                 }
@@ -342,7 +366,7 @@ impl Ubi {
             }
         }
 
-        if maybe.is_empty() {
+        if asset_names.is_empty() {
             let assets = self
                 .release_info
                 .assets
@@ -356,30 +380,48 @@ impl Ubi {
             ));
         }
 
-        let asset = self.pick_asset(maybe);
+        let asset = self.pick_asset(asset_names)?;
         debug!("picked asset named {}", asset);
 
         Ok(asset)
     }
 
-    fn pick_asset(&self, maybe: Vec<&str>) -> String {
-        if maybe.len() == 1 {
+    fn pick_asset(&self, mut asset_names: Vec<&str>) -> Result<String> {
+        if asset_names.len() == 1 {
             debug!("only found one candidate asset");
-            return maybe.first().unwrap().to_string();
+            return Ok(asset_names.first().unwrap().to_string());
         }
 
         if TARGET_ARCH.to_string().contains("64") {
             debug!(
-                "found multiple installation candidates, looking for 64-bit binary first in {:?}",
-                maybe,
+                "found multiple candidate assets, filtering for 64-bit binaries in {:?}",
+                asset_names,
             );
-            if let Some(m) = maybe.iter().find(|&v| v.contains("64")) {
-                return m.to_string();
-            }
+            asset_names = asset_names
+                .into_iter()
+                .filter(|v| v.contains("64"))
+                .collect();
         }
 
-        // I don't have any other criteria I could use to pick the right one.
-        maybe.first().unwrap().to_string()
+        if !self.matching.is_empty() {
+            debug!(
+                r#"looking for an asset matching the string "{}" passed in --matching"#,
+                self.matching
+            );
+            if let Some(m) = asset_names.iter().find(|&&a| a.contains(&self.matching)) {
+                return Ok(m.to_string());
+            }
+            return Err(anyhow!(
+                r#"could not find any assets containing our --matching string, "{}""#,
+                self.matching,
+            ));
+        }
+
+        debug!("cannot disambiguate multiple asset names, picking the first one");
+        // We don't have any other criteria I could use to pick the right one,
+        // and we want to pick the same one every time.
+        asset_names.sort();
+        Ok(asset_names.first().unwrap().to_string())
     }
 
     fn os_matcher() -> Result<Regex> {
