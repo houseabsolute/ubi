@@ -1,4 +1,4 @@
-## 0.0.9
+## 0.0.9 - 2022-07-02
 
 * This release includes native binaries for Linux ARM64 and ARM (32-bit).
 * Added a new flag, `--matching`, which can be used to pick a specific release
