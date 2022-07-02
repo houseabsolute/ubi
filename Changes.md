@@ -12,7 +12,7 @@
 ## 0.0.8 - 2022-04-25
 
 * No code changes from the last release. The binary releases built by GitHub
-  Actions now build on Ubuntu 18.04 instead of 20.04. This restore
+  Actions now build on Ubuntu 18.04 instead of 20.04. This restores
   compatibility with systems using glibc 2.27. Reported by Olaf Alders. GH
   #16.
 * This release also includes native ARM64 binaries for macOS 11+.
