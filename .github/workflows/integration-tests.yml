@@ -82,7 +82,7 @@ jobs:
             os: ubuntu-18.04
             target: armv7-unknown-linux-gnueabihf
             bin: ubi
-            name: ubi-Linux-aarch64.tar.gz
+            name: ubi-Linux-armv7.tar.gz
             cross: true
           - os_name: Windows
             os: windows-latest

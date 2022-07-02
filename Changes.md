@@ -1,3 +1,9 @@
+## 0.0.10 - 2022-07-02
+
+* Fixed releases for Linux ARM64 and ARM 32-bit. The 32-bit release was
+  getting uploaded as aarch64.
+
+
 ## 0.0.9 - 2022-07-02
 
 * This release includes native binaries for Linux ARM64 and ARM (32-bit).
