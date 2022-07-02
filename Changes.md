@@ -27,7 +27,6 @@
 
 * Changed CPU architecture matching to be stricter based on the current
   platform's CPU.
-
 * Changed file extension mapping to work of an allowed list of
   extensions. This is stricter than the previous check, which just filtered
   out a few things like `.deb` and `.rpm`.
@@ -37,9 +36,7 @@
 
 * Include s390 and s390x in possible arch list. This also fixes a bug where
   that arch might be used when running `ubi` on any platform.
-
 * Ignore `.deb` and `.rpm` files.
-
 * Look for multiple valid files to download and prefer 64-bit binaries on
   64-bit CPUs.
 
