@@ -56,25 +56,27 @@ You can run this from a command or Powershell command line. This will install
 
 ```
 USAGE:
-    ubi [FLAGS] [OPTIONS] --project <project>
-
-FLAGS:
-    -d, --debug      Enable debugging output
-    -h, --help       Prints help information
-    -q, --quiet      Suppresses most output
-    -v, --verbose    Enable verbose output
-    -V, --version    Prints version information
+    ubi [OPTIONS] --project <project>
 
 OPTIONS:
-    -e, --exe <exe>            The name of this project's executable. By default this is the same as
-                               the project name, so for houseabsolute/precious we look for precious
-                               or precious.exe. When running on Windows the ".exe" suffix will be
-                               addedas needed.
-    -i, --in <in>              The directory in which the binary should be placed. Defaults to
-                               ./bin.
-    -p, --project <project>    The project you want to install, like houseabsolute/precious or
-                               https://github.com/houseabsolute/precious.
-    -t, --tag <tag>            The tag to download. Defaults to the latest release.
+    -d, --debug                  Enable debugging output
+    -e, --exe <exe>              The name of this project's executable. By default this is the same
+                                 as the project name, so for houseabsolute/precious we look for
+                                 precious or precious.exe. When running on Windows the ".exe" suffix
+                                 will be addedas needed.
+    -h, --help                   Print help information
+    -i, --in <in>                The directory in which the binary should be placed. Defaults to
+                                 ./bin.
+    -m, --matching <matching>    A string that will be matched against the release filename when
+                                 there are multiple files for your OS/arch, i.e. "gnu" or "musl".
+                                 Note that this will be ignored if there is only used when there is
+                                 only one matching release filename for your OS/arch
+    -p, --project <project>      The project you want to install, like houseabsolute/precious or
+                                 https://github.com/houseabsolute/precious.
+    -q, --quiet                  Suppresses most output
+    -t, --tag <tag>              The tag to download. Defaults to the latest release.
+    -v, --verbose                Enable verbose output
+    -V, --version                Print version information
 ```
 
 ## Using a GitHub Token
