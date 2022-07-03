@@ -1,4 +1,4 @@
-## 0.0.11
+## 0.0.11 - 2022-07-03
 
 * Improved handling of urls passed to `--project` so any path that contains an
   org/user and repo works. For example
