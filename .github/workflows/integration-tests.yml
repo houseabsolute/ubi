@@ -68,21 +68,21 @@ jobs:
         platform:
           - os_name: Linux-x86_64
             os: ubuntu-18.04
-            target: x86_64-unknown-linux-gnu
+            target: x86_64-unknown-linux-musl
             bin: ubi
-            name: ubi-Linux-x86_64.tar.gz
-            cross: false
+            name: ubi-Linux-x86_64-musl.tar.gz
+            cross: true
           - os_name: Linux-aarch64
             os: ubuntu-18.04
-            target: aarch64-unknown-linux-gnu
+            target: aarch64-unknown-linux-musl
             bin: ubi
-            name: ubi-Linux-aarch64.tar.gz
+            name: ubi-Linux-aarch64-musl.tar.gz
             cross: true
-          - os_name: Linux-armv7
+          - os_name: Linux-arm
             os: ubuntu-18.04
-            target: armv7-unknown-linux-gnueabihf
+            target: arm-unknown-linux-musleabi
             bin: ubi
-            name: ubi-Linux-armv7.tar.gz
+            name: ubi-Linux-arm-musl.tar.gz
             cross: true
           - os_name: Windows
             os: windows-latest

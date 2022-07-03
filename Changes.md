@@ -4,6 +4,10 @@
   org/user and repo works. For example
   `https://github.com/houseabsolute/precious/releases` and
   `https://github.com/BurntSushi/ripgrep/pull/2049` will now work.
+* All Linux binaries are now compiled with musl statically linked instead of
+  dynamically linking glibc. This should increase portability.
+* The Linux ARM target is now just "arm" instead of "armv7", without hard
+  floats ("hf"). This should make the ARM binary more portable.
 
 
 ## 0.0.10 - 2022-07-02
