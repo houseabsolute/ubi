@@ -50,9 +50,11 @@ fi
 cd "$TARGET"
 
 KERNEL=$(uname -s)
+ABI=""
 case "$KERNEL" in
     Linux)
         PLATFORM="Linux"
+        ABI="-musl"
         ;;
     Darwin)
         PLATFORM="Darwin"
@@ -79,7 +81,7 @@ case "$ARCH" in
         exit 4
 esac
 
-curl --silent --location https://github.com/houseabsolute/ubi/releases/download/"$TAG"/ubi-"$PLATFORM"-"$CPU".tar.gz |
+curl --silent --location https://github.com/houseabsolute/ubi/releases/download/"$TAG"/ubi-"$PLATFORM"-"$CPU""$ABI".tar.gz |
     tar -xzf - ubi
 
 echo ""
