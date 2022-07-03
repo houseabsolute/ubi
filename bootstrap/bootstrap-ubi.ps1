@@ -5,7 +5,7 @@ $DlFileURL = (Invoke-WebRequest -URI "https://github.com/houseabsolute/ubi/relea
 $DlFileName = "ubi-Windows-x86_64.zip"
 
 $DlFileURL = "$DlFileURL" -replace '/tag/','/download/'
-$DlFileURL = "$DlFileURL/$DlFileName" 
+$DlFileURL = "$DlFileURL/$DlFileName"
 
 $TempFile = "$env:TEMP/$DlFileName"
 
