@@ -81,8 +81,26 @@ case "$ARCH" in
         exit 4
 esac
 
-curl --silent --location https://github.com/houseabsolute/ubi/releases/download/"$TAG"/ubi-"$PLATFORM"-"$CPU""$ABI".tar.gz |
-    tar -xzf - ubi
+FILENAME="ubi-$PLATFORM-$CPU$ABI.tar.gz"
+URL="https://github.com/houseabsolute/ubi/releases/download/$TAG/$FILENAME"
+
+TEMPDIR=$( mktemp -d )
+trap 'rm -rf -- "$TEMPDIR"' EXIT
+LOCAL_FILE="$TEMPDIR/$FILENAME"
+
+echo "downloading $URL"
+STATUS=$( curl --silent --output "$LOCAL_FILE" --write-out "%{http_code}" --location "$URL" )
+if [ -z "$STATUS" ]; then
+    >&2 echo "curl failed to download $URL and did not print a status code"
+    exit 5
+elif [ "$STATUS" != "200" ]; then
+    >&2 echo "curl failed to download $URL with status code = $STATUS"
+    exit 6
+fi
+
+tar -xzf "$LOCAL_FILE" ubi
+
+rm -rf -- "$TEMPDIR"
 
 echo ""
 echo "boostrap-ubi.sh: ubi has been installed to $TARGET."
