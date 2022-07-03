@@ -52,6 +52,15 @@ fn tests() -> Result<()> {
         make_pathbuf(&["bin", "precious"]),
     )?;
 
+    run_test(
+        ubi.as_ref(),
+        &[
+            "--project",
+            "https://github.com/houseabsolute/precious/releases",
+        ],
+        make_pathbuf(&["bin", "precious"]),
+    )?;
+
     let in_dir = make_pathbuf(&["sub", "dir"]);
     run_test(
         ubi.as_ref(),

@@ -15,6 +15,7 @@ use std::io::prelude::*;
 use std::path::PathBuf;
 use tar::Archive;
 use tempfile::{tempdir, TempDir};
+use url::Url;
 use xz::read::XzDecoder;
 use zip::ZipArchive;
 use zip_extensions::read::ZipArchiveExtensions;
@@ -184,16 +185,24 @@ impl Ubi {
     }
 
     fn parse_project_name(project: Option<&str>) -> Result<String> {
-        // We know this is Some because --project is required.
-        let p = project.unwrap();
-        let parts = p.split('/').collect::<Vec<&str>>();
+        // We know that project is Some because --project is required.
+        let project = project.unwrap();
+        let url = if project.starts_with("http") {
+            Url::parse(project)?
+        } else {
+            let base = Url::parse("https://github.com")?;
+            base.join(project)?
+        };
+        let parts = url.path().split('/').collect::<Vec<_>>();
         if parts.len() < 2 {
-            return Err(anyhow!("could not parse project name from {}", p));
+            return Err(anyhow!(
+                "could not parse org and repo name from --project: {}",
+                url
+            ));
         }
-
-        let org = parts[parts.len() - 2];
-        let proj = parts[parts.len() - 1];
-        debug!("Parsed project {} = {} / {}", p, org, proj);
+        // The first part is an empty string for the leading '/' in the path.
+        let (org, proj) = (parts[1], parts[2]);
+        debug!("Parsed project {} = {} / {}", project, org, proj);
 
         Ok(format!("{}/{}", org, proj))
     }

@@ -1,3 +1,11 @@
+## 0.0.11
+
+* Improved handling of urls passed to `--project` so any path that contains an
+  org/user and repo works. For example
+  `https://github.com/houseabsolute/precious/releases` and
+  `https://github.com/BurntSushi/ripgrep/pull/2049` will now work.
+
+
 ## 0.0.10 - 2022-07-02
 
 * Fixed releases for Linux ARM64 and ARM 32-bit. The 32-bit release was

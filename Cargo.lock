@@ -1216,6 +1216,7 @@ dependencies = [
  "tar",
  "tempfile",
  "tokio",
+ "url",
  "xz",
  "zip",
  "zip-extensions",
