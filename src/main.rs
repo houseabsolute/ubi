@@ -194,7 +194,7 @@ impl Ubi {
             base.join(project)?
         };
         let parts = url.path().split('/').collect::<Vec<_>>();
-        if parts.len() < 2 {
+        if parts.len() < 3 {
             return Err(anyhow!(
                 "could not parse org and repo name from --project: {}",
                 url
