@@ -517,10 +517,12 @@ impl Ubi {
                 )
             })
             .to_string_lossy();
-        if filename.ends_with(".tar.gz")
-            || filename.ends_with(".tgz")
-            || filename.ends_with(".tar.bz")
+        if filename.ends_with(".tar.bz")
             || filename.ends_with(".tbz")
+            || filename.ends_with(".tar.gz")
+            || filename.ends_with(".tgz")
+            || filename.ends_with(".tar.xz")
+            || filename.ends_with(".txz")
         {
             self.extract_tarball(downloaded_file)
         } else if filename.ends_with(".zip") {
