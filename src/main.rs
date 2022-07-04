@@ -194,12 +194,13 @@ impl Ubi {
             base.join(project)?
         };
         let parts = url.path().split('/').collect::<Vec<_>>();
-        if parts.len() < 3 {
+        if parts.len() < 3 || parts[1].is_empty() || parts[2].is_empty() {
             return Err(anyhow!(
                 "could not parse org and repo name from --project: {}",
-                url
+                project,
             ));
         }
+
         // The first part is an empty string for the leading '/' in the path.
         let (org, proj) = (parts[1], parts[2]);
         debug!("Parsed project {} = {} / {}", project, org, proj);
