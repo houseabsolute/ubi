@@ -1,3 +1,10 @@
+## 0.0.12
+
+* Handle bare xz-compressed binaries. Previously ubi would download and
+  "install" the compressed file as an executable. Now ubi will uncompress this
+  file properly. Based on PR #19 from Marco Fontani.
+
+
 ## 0.0.11 - 2022-07-03
 
 * Improved handling of urls passed to `--project` so any path that contains an
