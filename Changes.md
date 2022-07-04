@@ -1,4 +1,4 @@
-## 0.0.12
+## 0.0.12 - 2022-07-04
 
 * Handle bare xz-compressed binaries. Previously ubi would download and
   "install" the compressed file as an executable. Now ubi will uncompress this
