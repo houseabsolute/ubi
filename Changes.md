@@ -1,8 +1,8 @@
 ## 0.0.12 - 2022-07-04
 
-* Handle bare xz-compressed binaries. Previously ubi would download and
-  "install" the compressed file as an executable. Now ubi will uncompress this
-  file properly. Based on PR #19 from Marco Fontani.
+* Bare xz-compressed binaries are now handled properly. Previously ubi would
+  download and "install" the compressed file as an executable. Now ubi will
+  uncompress this file properly. Based on PR #19 from Marco Fontani.
 * Fixed a bug in handling of xz-compressed tarballs. There was some support
   for this, but it wasn't complete. These should now be handled just like
   other compressed tarballs.
