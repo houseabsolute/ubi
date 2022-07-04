@@ -1,6 +1,10 @@
 name: Test bootstrap
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  release:
+    types: [published]
 
 env:
   GITHUB_TOKEN: ${{ github.token }}
