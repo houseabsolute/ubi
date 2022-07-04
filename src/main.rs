@@ -12,7 +12,7 @@ use reqwest::StatusCode;
 use std::env;
 use std::fs::{create_dir_all, File};
 use std::io::prelude::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tar::Archive;
 use tempfile::{tempdir, TempDir};
 use url::Url;
@@ -527,6 +527,8 @@ impl Ubi {
             self.extract_zip(downloaded_file)
         } else if filename.ends_with(".gz") {
             self.ungzip(downloaded_file)
+        } else if filename.ends_with(".xz") {
+            self.unxz(downloaded_file)
         } else {
             self.copy_executable(downloaded_file)
         }
@@ -535,7 +537,7 @@ impl Ubi {
     fn extract_zip(&self, downloaded_file: PathBuf) -> Result<()> {
         debug!("extracting binary from zip file");
 
-        let mut zip = ZipArchive::new(File::open(&downloaded_file)?)?;
+        let mut zip = ZipArchive::new(open_file(&downloaded_file)?)?;
         for i in 0..zip.len() {
             let path = PathBuf::from(zip.by_index(i).unwrap().name());
             if let Some(os_name) = path.file_name() {
@@ -597,7 +599,7 @@ impl Ubi {
     }
 
     fn tar_reader_for(downloaded_file: PathBuf) -> Result<Archive<Box<dyn Read>>> {
-        let file = File::open(&downloaded_file)?;
+        let file = open_file(&downloaded_file)?;
 
         let ext = downloaded_file.extension();
         match ext {
@@ -620,17 +622,20 @@ impl Ubi {
 
     fn ungzip(&self, downloaded_file: PathBuf) -> Result<()> {
         debug!("uncompressing binary from gzip file");
+        let reader = GzDecoder::new(open_file(&downloaded_file)?);
+        self.write_to_install_path(reader)
+    }
 
-        let mut reader = GzDecoder::new(File::open(&downloaded_file).with_context(|| {
-            format!(
-                "Failed to open file at {}",
-                downloaded_file.to_string_lossy(),
-            )
-        })?);
+    fn unxz(&self, downloaded_file: PathBuf) -> Result<()> {
+        debug!("uncompressing binary from xz file");
+        let reader = XzDecoder::new(open_file(&downloaded_file)?);
+        self.write_to_install_path(reader)
+    }
+
+    fn write_to_install_path(&self, mut reader: impl Read) -> Result<()> {
         let mut writer = File::create(&self.install_path)
             .with_context(|| format!("Cannot write to {}", self.install_path.to_string_lossy()))?;
         std::io::copy(&mut reader, &mut writer)?;
-
         Ok(())
     }
 
@@ -651,4 +656,8 @@ impl Ubi {
             Err(e) => Err(anyhow::Error::new(e)),
         }
     }
+}
+
+fn open_file(path: &Path) -> Result<File> {
+    File::open(path).with_context(|| format!("Failed to open file at {}", path.to_string_lossy()))
 }

@@ -121,6 +121,29 @@ fn tests() -> Result<()> {
         }
     }
 
+    // This project only has a Linux release. It has a single `.xz` file in
+    // its releases which uncompresses to an ELF binary.
+    #[cfg(target_os = "linux")]
+    {
+        let prettycrontab_bin = make_pathbuf(&["bin", "prettycrontab"]);
+        let _td = run_test(
+            ubi.as_ref(),
+            &["--project", "mfontani/prettycrontab", "--tag", "v0.0.2"],
+            prettycrontab_bin.clone(),
+        )?;
+        match run_command(prettycrontab_bin.as_ref(), &["-version"]) {
+            Ok((code, stdout, _)) => {
+                assert!(code == 0, "exit code is 0");
+                assert!(stdout.is_some(), "got stdout from prettycrontab");
+                assert!(
+                    stdout.unwrap().contains("v0.0.2"),
+                    "got the expected stdout",
+                );
+            }
+            Err(e) => return Err(e),
+        }
+    }
+
     #[cfg(target_os = "linux")]
     {
         let delta_bin = make_pathbuf(&["bin", "delta"]);
