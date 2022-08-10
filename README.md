@@ -63,7 +63,7 @@ OPTIONS:
     -e, --exe <exe>              The name of this project's executable. By default this is the same
                                  as the project name, so for houseabsolute/precious we look for
                                  precious or precious.exe. When running on Windows the ".exe" suffix
-                                 will be addedas needed.
+                                 will be added as needed.
     -h, --help                   Print help information
     -i, --in <in>                The directory in which the binary should be placed. Defaults to
                                  ./bin.
