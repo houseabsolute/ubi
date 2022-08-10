@@ -84,7 +84,7 @@ fn app<'a>() -> Command<'a> {
                     "The name of this project's executable. By default this is the same as the",
                     " project name, so for houseabsolute/precious we look for precious or",
                     r#" precious.exe. When running on Windows the ".exe" suffix will be added"#,
-                    "as needed.",
+                    " as needed.",
                 )),
         )
         .arg(
