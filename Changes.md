@@ -1,4 +1,4 @@
-## 0.0.13
+## 0.0.13 - 2022-09-01
 
 * Releases are now downloaded using the GitHub REST API instead of trying to
   just download a tarball directly. This lets `ubi` download releases from
