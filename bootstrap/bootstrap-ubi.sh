@@ -36,11 +36,13 @@ if [ -z "$TAG" ]; then
     exit 2
 fi
 
-TARGET="${TARGET:=$HOME/bin}"
-
 if [ $(id -u) -eq 0 ]; then
-    TARGET="/usr/local/bin"
+    DEFAULT_TARGET="/usr/local/bin"
+else
+    DEFAULT_TARGET="$HOME/bin"
 fi
+
+TARGET="${TARGET:=$DEFAULT_TARGET}"
 
 if [ ! -d "$TARGET" ]; then
     2>& echo "boostrap-ubi.sh: The install target directory, $TARGET, does not exist"
