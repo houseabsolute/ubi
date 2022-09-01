@@ -16,7 +16,7 @@ jobs:
       matrix:
         platform:
           - os_name: Linux
-            os: ubuntu-18.04
+            os: ubuntu-20.04
             target: x86_64-unknown-linux-gnu
           - os_name: macOS
             os: macOS-latest
@@ -33,10 +33,7 @@ jobs:
       - name: Cache cargo & target directories
         uses: Swatinem/rust-cache@v1
         with:
-          # This was needed to get builds working on Ubuntu 18.04. The
-          # previous cache of the libc crate built on 20.04 will not work with
-          # 18.04, since 18.04 has an earlier glibc version.
-          key: "v1"
+          key: "v2"
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -67,19 +64,19 @@ jobs:
       matrix:
         platform:
           - os_name: Linux-x86_64
-            os: ubuntu-18.04
+            os: ubuntu-20.04
             target: x86_64-unknown-linux-musl
             bin: ubi
             name: ubi-Linux-x86_64-musl.tar.gz
             cross: true
           - os_name: Linux-aarch64
-            os: ubuntu-18.04
+            os: ubuntu-20.04
             target: aarch64-unknown-linux-musl
             bin: ubi
             name: ubi-Linux-aarch64-musl.tar.gz
             cross: true
           - os_name: Linux-arm
-            os: ubuntu-18.04
+            os: ubuntu-20.04
             target: arm-unknown-linux-musleabi
             bin: ubi
             name: ubi-Linux-arm-musl.tar.gz
