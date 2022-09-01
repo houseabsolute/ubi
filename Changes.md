@@ -1,3 +1,10 @@
+## 0.0.13
+
+* Releases are now downloaded using the GitHub REST API instead of trying to
+  just download a tarball directly. This lets `ubi` download releases from
+  private projects.
+
+
 ## 0.0.12 - 2022-07-04
 
 * Bare xz-compressed binaries are now handled properly. Previously ubi would

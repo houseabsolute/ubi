@@ -5,7 +5,7 @@ use fern::colors::{Color, ColoredLevelConfig};
 use fern::Dispatch;
 use flate2::read::GzDecoder;
 use log::{debug, error};
-use octocrab::models::repos::Release;
+use octocrab::models::repos::{Asset, Release};
 use platforms::target::{TARGET_ARCH, TARGET_OS};
 use regex::Regex;
 use reqwest::StatusCode;
@@ -45,9 +45,11 @@ async fn main() {
     std::process::exit(status);
 }
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 fn app<'a>() -> Command<'a> {
     Command::new("ubi")
-        .version(env!("CARGO_PKG_VERSION"))
+        .version(VERSION)
         .author("Dave Rolsky <autarch@urth.org>")
         .about("The universal binary release installer")
         .arg(
@@ -161,26 +163,32 @@ pub fn init_logger(matches: &ArgMatches) -> Result<(), log::SetLoggerError> {
 
 #[derive(Debug)]
 struct Ubi {
-    project_name: String,
     exe: String,
     matching: String,
     install_path: PathBuf,
     release_info: Release,
+    github_token: Option<String>,
 }
 
 impl Ubi {
     pub async fn new(matches: &ArgMatches) -> Result<Ubi> {
         let project_name = Self::parse_project_name(matches.value_of("project"))?;
         let exe = Self::exe_name(matches, &project_name);
-        let install_path = Self::install_path(matches, &exe)?;
-        let release_info = Self::release_info(matches.value_of("tag"), &project_name).await?;
         let matching = Self::matching_value(matches);
+        let github_token = Self::github_token();
+        let release_info = Self::release_info(
+            github_token.as_deref(),
+            matches.value_of("tag"),
+            &project_name,
+        )
+        .await?;
+        let install_path = Self::install_path(matches, &exe)?;
         Ok(Ubi {
-            project_name,
             exe,
             matching,
             install_path,
             release_info,
+            github_token,
         })
     }
 
@@ -255,17 +263,27 @@ impl Ubi {
         Ok(i)
     }
 
-    async fn release_info(tag: Option<&str>, project_name: &str) -> Result<Release> {
+    fn github_token() -> Option<String> {
+        env::var("GITHUB_TOKEN").ok()
+    }
+
+    async fn release_info(
+        github_token: Option<&str>,
+        tag: Option<&str>,
+        project_name: &str,
+    ) -> Result<Release> {
         let mut parts = project_name.split('/');
         let o = parts.next().unwrap();
         let p = parts.next().unwrap();
 
-        let octocrab = match env::var("GITHUB_TOKEN") {
-            Ok(t) => {
+        let octocrab = match github_token {
+            Some(t) => {
                 debug!("adding GitHub token to GitHub requests");
-                octocrab::Octocrab::builder().personal_token(t).build()?
+                octocrab::Octocrab::builder()
+                    .personal_token(t.to_string())
+                    .build()?
             }
-            Err(_) => octocrab::Octocrab::builder().build()?,
+            None => octocrab::Octocrab::builder().build()?,
         };
 
         let res = match tag {
@@ -301,16 +319,22 @@ impl Ubi {
     }
 
     async fn download_release(&self) -> Result<(TempDir, PathBuf)> {
-        let archive_name = self.archive_name()?;
-        debug!("downloading asset named {}", archive_name);
+        //        dbg!(&self.release_info);
+        let asset = self.asset()?;
+        debug!("downloading asset named {}", asset.name);
 
-        let download_url = format!(
-            "https://github.com/{}/releases/download/{}/{}",
-            self.project_name, self.release_info.tag_name, archive_name,
-        );
-        let mut res = reqwest::get(&download_url).await?;
+        let client = reqwest::Client::builder().gzip(true).build()?;
+        let mut req = client
+            .request(reqwest::Method::GET, asset.url.clone())
+            .header("User-Agent", format!("ubi version {VERSION}"))
+            .header("Accept", "application/octet-stream");
+
+        if let Some(t) = &self.github_token {
+            req = req.bearer_auth(t);
+        }
+        let mut res = client.execute(req.build()?).await?;
         if res.status() != StatusCode::OK {
-            let mut msg = format!("error requesting {}: {}", download_url, res.status());
+            let mut msg = format!("error requesting {}: {}", asset.url, res.status());
             if let Ok(t) = res.text().await {
                 msg.push('\n');
                 msg.push_str(&t);
@@ -320,7 +344,7 @@ impl Ubi {
 
         let td = tempdir()?;
         let mut archive_path = td.path().to_owned();
-        archive_path.push(archive_name);
+        archive_path.push(&asset.name);
 
         {
             let mut downloaded_file = File::create(&archive_path)?;
@@ -332,9 +356,9 @@ impl Ubi {
         Ok((td, archive_path))
     }
 
-    fn archive_name(&self) -> Result<String> {
+    fn asset(&self) -> Result<&Asset> {
         if self.release_info.assets.len() == 1 {
-            return Ok(self.release_info.assets[0].name.clone());
+            return Ok(&self.release_info.assets[0]);
         }
 
         let os_matcher = Self::os_matcher()?;
@@ -346,7 +370,7 @@ impl Ubi {
             arch_matcher.as_str(),
         );
 
-        let mut asset_names: Vec<&str> = vec![];
+        let mut assets: Vec<&Asset> = vec![];
 
         let valid_extensions: &'static [&'static str] =
             &[".tar.gz", ".tgz", ".tar.bz", ".tbz", ".zip", ".gz"];
@@ -367,7 +391,7 @@ impl Ubi {
                 debug!("matches our OS");
                 if arch_matcher.is_match(&asset.name) {
                     debug!("matches our CPU architecture");
-                    asset_names.push(&asset.name);
+                    assets.push(asset);
                 } else {
                     debug!("does not match our CPU architecture");
                 }
@@ -376,8 +400,8 @@ impl Ubi {
             }
         }
 
-        if asset_names.is_empty() {
-            let assets = self
+        if assets.is_empty() {
+            let asset_names = self
                 .release_info
                 .assets
                 .iter()
@@ -385,32 +409,32 @@ impl Ubi {
                 .collect::<Vec<String>>()
                 .join(", ");
             return Err(anyhow!(
-                "could not find a release for this OS and architecture from {}",
-                assets
+                "could not find a release for this OS and architecture from {asset_names:}",
             ));
         }
 
-        let asset = self.pick_asset(asset_names)?;
-        debug!("picked asset named {}", asset);
+        let asset = self.pick_asset(assets)?;
+        debug!("picked asset named {}", asset.name);
 
         Ok(asset)
     }
 
-    fn pick_asset(&self, mut asset_names: Vec<&str>) -> Result<String> {
-        if asset_names.len() == 1 {
+    fn pick_asset<'a>(&'a self, mut assets: Vec<&'a Asset>) -> Result<&'a Asset> {
+        if assets.len() == 1 {
             debug!("only found one candidate asset");
-            return Ok(asset_names.first().unwrap().to_string());
+            return Ok(assets[0]);
         }
 
+        let asset_names = assets.iter().map(|a| a.name.as_str()).collect::<Vec<_>>();
         if TARGET_ARCH.to_string().contains("64") {
             debug!(
                 "found multiple candidate assets, filtering for 64-bit binaries in {:?}",
                 asset_names,
             );
-            asset_names = asset_names
+            assets = assets
                 .into_iter()
-                .filter(|v| v.contains("64"))
-                .collect();
+                .filter(|a| a.name.contains("64"))
+                .collect::<Vec<_>>();
         }
 
         if !self.matching.is_empty() {
@@ -418,8 +442,8 @@ impl Ubi {
                 r#"looking for an asset matching the string "{}" passed in --matching"#,
                 self.matching
             );
-            if let Some(m) = asset_names.iter().find(|&&a| a.contains(&self.matching)) {
-                return Ok(m.to_string());
+            if let Some(m) = assets.iter().find(|&a| a.name.contains(&self.matching)) {
+                return Ok(*m);
             }
             return Err(anyhow!(
                 r#"could not find any assets containing our --matching string, "{}""#,
@@ -430,8 +454,8 @@ impl Ubi {
         debug!("cannot disambiguate multiple asset names, picking the first one");
         // We don't have any other criteria I could use to pick the right one,
         // and we want to pick the same one every time.
-        asset_names.sort();
-        Ok(asset_names.first().unwrap().to_string())
+        assets.sort_by_key(|a| &a.name);
+        Ok(assets.remove(0))
     }
 
     fn os_matcher() -> Result<Regex> {
