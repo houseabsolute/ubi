@@ -319,7 +319,6 @@ impl Ubi {
     }
 
     async fn download_release(&self) -> Result<(TempDir, PathBuf)> {
-        //        dbg!(&self.release_info);
         let asset = self.asset()?;
         debug!("downloading asset named {}", asset.name);
 
