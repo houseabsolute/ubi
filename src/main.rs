@@ -37,8 +37,8 @@ async fn main() {
     let status = match u {
         Ok(u) => u.run().await,
         Err(e) => {
-            debug!("{:#?}", e);
-            error!("{}", e);
+            debug!("{e:#?}");
+            error!("{e}");
             127
         }
     };
@@ -213,7 +213,7 @@ impl Ubi {
         let (org, proj) = (parts[1], parts[2]);
         debug!("Parsed project {} = {} / {}", project, org, proj);
 
-        Ok(format!("{}/{}", org, proj))
+        Ok(format!("{org}/{proj}"))
     }
 
     fn matching_value(matches: &ArgMatches) -> String {
@@ -221,7 +221,7 @@ impl Ubi {
             Some(e) => e.to_string(),
             None => "".to_string(),
         };
-        debug!("matching = {}", m);
+        debug!("matching = {m}");
         m
     }
 
@@ -229,7 +229,7 @@ impl Ubi {
         let exe = match matches.value_of("exe") {
             Some(e) => {
                 if cfg!(windows) && !e.ends_with(".exe") {
-                    format!("{}.exe", e)
+                    format!("{e}.exe")
                 } else {
                     e.to_string()
                 }
@@ -238,13 +238,13 @@ impl Ubi {
                 let parts = project_name.split('/').collect::<Vec<&str>>();
                 let e = parts[parts.len() - 1].to_string();
                 if cfg!(windows) {
-                    format!("{}.exe", e)
+                    format!("{e}.exe")
                 } else {
                     e
                 }
             }
         };
-        debug!("exe name = {}", exe);
+        debug!("exe name = {exe}");
         exe
     }
 
@@ -303,8 +303,8 @@ impl Ubi {
         match self.install_binary().await {
             Ok(()) => 0,
             Err(e) => {
-                debug!("{:#?}", e);
-                error!("{}", e);
+                debug!("{e:#?}");
+                error!("{e}");
                 1
             }
         }
