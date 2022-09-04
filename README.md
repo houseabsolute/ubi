@@ -56,7 +56,7 @@ You can run this from a command or Powershell command line. This will install
 
 ```
 USAGE:
-    ubi [OPTIONS] --project <project>
+    ubi [OPTIONS]
 
 OPTIONS:
     -d, --debug                  Enable debugging output
@@ -75,6 +75,10 @@ OPTIONS:
                                  https://github.com/houseabsolute/precious.
     -q, --quiet                  Suppresses most output
     -t, --tag <tag>              The tag to download. Defaults to the latest release.
+    -u, --url <url>              The url of the file to download. This can be provided instead of a
+                                 project or tag. This will not use the GitHub API, so you will never
+                                 hit the GitHub API limits. This means you do not need to set a
+                                 GITHUB_TOKEN env var except for private repos.
     -v, --verbose                Enable verbose output
     -V, --version                Print version information
 ```
@@ -82,9 +86,13 @@ OPTIONS:
 ## Using a GitHub Token
 
 If the `GITHUB_TOKEN` environment variable is set, then this will be used for
-all API calls. You will almost certainly need to do this if you are using
-`ubi` in a CI environment that runs jobs frequently, as GitHub has a very low
-rate limit for anonymous API requests.
+all API calls. This is required to download releases for a private project. If
+you are running `ubi` in a CI environment that runs jobs frequently, you may
+also need this, as GitHub has a very low rate limit for anonymous API
+requests.
+
+However, you can also use the `--url` option to bypass the GitHub API by
+providing the download link directly.
 
 ## Why This Is Useful
 
@@ -97,8 +105,8 @@ your platform is quite handy.
 Yes, this can be done in half a dozen lines of shell on Unix systems, but do
 you know how to do the equivalent in Powershell?
 
-Once you have `ubi` installed, you can use it to install any of these many
-single-binary tools available on GitHub, on any supported platform.
+Once you have `ubi` installed, you can use it to install any of these
+single-binary tools available on GitHub, on Linux, macOS, and Windows.
 
 ### Is This Better Than Installing from Source?
 
@@ -111,9 +119,7 @@ installing a binary.
 ### Is This Better Than Installing from a deb/RPM/homebrew/chocolatey Package?
 
 That's debatable. The big advantage of using `ubi` is that you can use the
-exact same tool on many platforms. The big disadvantage is that you don't get
-a full package that contains metadata (like a license file) or extras like
-shell completion files, nor can you easily uninstall it using a package
-manager.
-
-And of course, not every tool has packages for every platform.
+exact same tool on Linux, macOS, and Windows. The big disadvantage is that you
+don't get a full package that contains metadata (like a license file) or
+extras like shell completion files, nor can you easily uninstall it using a
+package manager.

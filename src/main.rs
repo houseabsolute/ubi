@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Context, Error, Result};
 use bzip2::read::BzDecoder;
 use clap::{Arg, ArgGroup, ArgMatches, Command};
 use fern::colors::{Color, ColoredLevelConfig};
@@ -35,14 +35,24 @@ async fn main() {
     }
     let u = Ubi::new(&matches).await;
     let status = match u {
-        Ok(u) => u.run().await,
+        Ok(u) => match u.run().await {
+            Ok(()) => 0,
+            Err(e) => {
+                print_err(e);
+                1
+            }
+        },
         Err(e) => {
-            debug!("{e:#?}");
-            error!("{e}");
+            print_err(e);
             127
         }
     };
     std::process::exit(status);
+}
+
+fn print_err(e: Error) {
+    debug!("{e:#?}");
+    error!("{e}");
 }
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -57,7 +67,6 @@ fn app<'a>() -> Command<'a> {
                 .long("project")
                 .short('p')
                 .takes_value(true)
-                .required(true)
                 .help(concat!(
                     "The project you want to install, like houseabsolute/precious",
                     " or https://github.com/houseabsolute/precious.",
@@ -69,6 +78,19 @@ fn app<'a>() -> Command<'a> {
                 .short('t')
                 .takes_value(true)
                 .help("The tag to download. Defaults to the latest release."),
+        )
+        .arg(
+            Arg::new("url")
+                .long("url")
+                .short('u')
+                .takes_value(true)
+                .help(concat!(
+                    "The url of the file to download. This can be provided",
+                    " instead of a project or tag. This will not use the GitHub API,",
+                    " so you will never hit the GitHub API limits. This means you",
+                    " do not need to set a GITHUB_TOKEN env var except for",
+                    " private repos.",
+                )),
         )
         .arg(
             Arg::new("in")
@@ -163,55 +185,59 @@ pub fn init_logger(matches: &ArgMatches) -> Result<(), log::SetLoggerError> {
 
 #[derive(Debug)]
 struct Ubi {
+    project_name: String,
+    tag: Option<String>,
+    url: Option<Url>,
     exe: String,
     matching: String,
     install_path: PathBuf,
-    release_info: Release,
     github_token: Option<String>,
 }
 
 impl Ubi {
     pub async fn new(matches: &ArgMatches) -> Result<Ubi> {
-        let project_name = Self::parse_project_name(matches.value_of("project"))?;
+        let url = match matches.value_of("url") {
+            Some(u) => Some(Url::parse(u)?),
+            None => None,
+        };
+        let project_name = Self::parse_project_name(matches.value_of("project"), url.as_ref())?;
         let exe = Self::exe_name(matches, &project_name);
         let matching = Self::matching_value(matches);
-        let github_token = Self::github_token();
-        let release_info = Self::release_info(
-            github_token.as_deref(),
-            matches.value_of("tag"),
-            &project_name,
-        )
-        .await?;
         let install_path = Self::install_path(matches, &exe)?;
+        let github_token = Self::github_token();
         Ok(Ubi {
+            project_name,
+            tag: matches.value_of("tag").map(|s| s.to_string()),
+            url,
             exe,
             matching,
             install_path,
-            release_info,
             github_token,
         })
     }
 
-    fn parse_project_name(project: Option<&str>) -> Result<String> {
-        // We know that project is Some because --project is required.
-        let project = project.unwrap();
-        let url = if project.starts_with("http") {
-            Url::parse(project)?
+    fn parse_project_name(project: Option<&str>, url: Option<&Url>) -> Result<String> {
+        let (parsed, from) = if let Some(project) = project {
+            if project.starts_with("http") {
+                (Url::parse(project)?, format!("--project: {project}"))
+            } else {
+                let base = Url::parse("https://github.com")?;
+                (base.join(project)?, format!("--project: {project}"))
+            }
+        } else if let Some(u) = url {
+            (u.clone(), format!("--url: {u}"))
         } else {
-            let base = Url::parse("https://github.com")?;
-            base.join(project)?
+            return Err(anyhow!("You must pass a --project or --url."));
         };
-        let parts = url.path().split('/').collect::<Vec<_>>();
+
+        let parts = parsed.path().split('/').collect::<Vec<_>>();
         if parts.len() < 3 || parts[1].is_empty() || parts[2].is_empty() {
-            return Err(anyhow!(
-                "could not parse org and repo name from --project: {}",
-                project,
-            ));
+            return Err(anyhow!("could not parse org and repo name from {from}"));
         }
 
         // The first part is an empty string for the leading '/' in the path.
         let (org, proj) = (parts[1], parts[2]);
-        debug!("Parsed project {} = {} / {}", project, org, proj);
+        debug!("Parsed {from} = {org} / {proj}");
 
         Ok(format!("{org}/{proj}"))
     }
@@ -248,6 +274,10 @@ impl Ubi {
         exe
     }
 
+    fn github_token() -> Option<String> {
+        env::var("GITHUB_TOKEN").ok()
+    }
+
     fn install_path(matches: &ArgMatches, exe: &str) -> Result<PathBuf> {
         let mut i = match matches.value_of("in") {
             Some(i) => PathBuf::from(i),
@@ -263,51 +293,8 @@ impl Ubi {
         Ok(i)
     }
 
-    fn github_token() -> Option<String> {
-        env::var("GITHUB_TOKEN").ok()
-    }
-
-    async fn release_info(
-        github_token: Option<&str>,
-        tag: Option<&str>,
-        project_name: &str,
-    ) -> Result<Release> {
-        let mut parts = project_name.split('/');
-        let o = parts.next().unwrap();
-        let p = parts.next().unwrap();
-
-        let octocrab = match github_token {
-            Some(t) => {
-                debug!("adding GitHub token to GitHub requests");
-                octocrab::Octocrab::builder()
-                    .personal_token(t.to_string())
-                    .build()?
-            }
-            None => octocrab::Octocrab::builder().build()?,
-        };
-
-        let res = match tag {
-            Some(t) => octocrab.repos(o, p).releases().get_by_tag(t).await,
-            None => octocrab.repos(o, p).releases().get_latest().await,
-        };
-        match res {
-            Ok(r) => {
-                debug!("tag = {}", r.tag_name);
-                Ok(r)
-            }
-            Err(e) => Err(anyhow::Error::new(e)),
-        }
-    }
-
-    async fn run(&self) -> i32 {
-        match self.install_binary().await {
-            Ok(()) => 0,
-            Err(e) => {
-                debug!("{e:#?}");
-                error!("{e}");
-                1
-            }
-        }
+    async fn run(&self) -> Result<()> {
+        self.install_binary().await
     }
 
     async fn install_binary(&self) -> Result<()> {
@@ -319,12 +306,12 @@ impl Ubi {
     }
 
     async fn download_release(&self) -> Result<(TempDir, PathBuf)> {
-        let asset = self.asset()?;
-        debug!("downloading asset named {}", asset.name);
+        let (asset_url, asset_name) = self.asset().await?;
+        debug!("downloading asset from {}", asset_url);
 
         let client = reqwest::Client::builder().gzip(true).build()?;
         let mut req = client
-            .request(reqwest::Method::GET, asset.url.clone())
+            .request(reqwest::Method::GET, asset_url.clone())
             .header("User-Agent", format!("ubi version {VERSION}"))
             .header("Accept", "application/octet-stream");
 
@@ -333,7 +320,7 @@ impl Ubi {
         }
         let mut res = client.execute(req.build()?).await?;
         if res.status() != StatusCode::OK {
-            let mut msg = format!("error requesting {}: {}", asset.url, res.status());
+            let mut msg = format!("error requesting {}: {}", asset_url, res.status());
             if let Ok(t) = res.text().await {
                 msg.push('\n');
                 msg.push_str(&t);
@@ -343,7 +330,8 @@ impl Ubi {
 
         let td = tempdir()?;
         let mut archive_path = td.path().to_owned();
-        archive_path.push(&asset.name);
+        archive_path.push(&asset_name);
+        debug!("archive path is {}", archive_path.to_string_lossy());
 
         {
             let mut downloaded_file = File::create(&archive_path)?;
@@ -355,28 +343,40 @@ impl Ubi {
         Ok((td, archive_path))
     }
 
-    fn asset(&self) -> Result<&Asset> {
-        if self.release_info.assets.len() == 1 {
-            return Ok(&self.release_info.assets[0]);
+    async fn asset(&self) -> Result<(Url, String)> {
+        if let Some(url) = &self.url {
+            return Ok((
+                url.clone(),
+                url.path().split('/').last().unwrap().to_string(),
+            ));
         }
 
-        let os_matcher = Self::os_matcher()?;
+        let mut release_info = self.release_info().await?;
+        if release_info.assets.len() == 1 {
+            let asset = release_info.assets.remove(0);
+            return Ok((asset.url, asset.name));
+        }
+
+        let os_matcher = os_matcher()?;
         debug!("matching assets against OS using {}", os_matcher.as_str());
 
-        let arch_matcher = Self::arch_matcher()?;
+        let arch_matcher = arch_matcher()?;
         debug!(
             "matching assets against CPU architecture using {}",
             arch_matcher.as_str(),
         );
 
-        let mut assets: Vec<&Asset> = vec![];
+        let mut assets: Vec<Asset> = vec![];
+        let mut names: Vec<String> = vec![];
 
         let valid_extensions: &'static [&'static str] =
             &[".tar.gz", ".tgz", ".tar.bz", ".tbz", ".zip", ".gz"];
 
         // This could all be done much more simply with the iterator's .find()
         // method, but then there's no place to put all the debugging output.
-        for asset in &self.release_info.assets {
+        for asset in release_info.assets {
+            names.push(asset.name.clone());
+
             debug!("matching against asset name = {}", asset.name);
 
             if asset.name.contains('.')
@@ -400,28 +400,50 @@ impl Ubi {
         }
 
         if assets.is_empty() {
-            let asset_names = self
-                .release_info
-                .assets
-                .iter()
-                .map(|a| a.name.clone())
-                .collect::<Vec<String>>()
-                .join(", ");
+            let all_names = names.join(", ");
             return Err(anyhow!(
-                "could not find a release for this OS and architecture from {asset_names:}",
+                "could not find a release for this OS and architecture from {all_names}",
             ));
         }
 
         let asset = self.pick_asset(assets)?;
         debug!("picked asset named {}", asset.name);
 
-        Ok(asset)
+        Ok((asset.url, asset.name))
     }
 
-    fn pick_asset<'a>(&'a self, mut assets: Vec<&'a Asset>) -> Result<&'a Asset> {
+    async fn release_info(&self) -> Result<Release> {
+        let mut parts = self.project_name.split('/');
+        let o = parts.next().unwrap();
+        let p = parts.next().unwrap();
+
+        let octocrab = match &self.github_token {
+            Some(t) => {
+                debug!("adding GitHub token to GitHub requests");
+                octocrab::Octocrab::builder()
+                    .personal_token(t.to_string())
+                    .build()?
+            }
+            None => octocrab::Octocrab::builder().build()?,
+        };
+
+        let res = match &self.tag {
+            Some(t) => octocrab.repos(o, p).releases().get_by_tag(t).await,
+            None => octocrab.repos(o, p).releases().get_latest().await,
+        };
+        match res {
+            Ok(r) => {
+                debug!("tag = {}", r.tag_name);
+                Ok(r)
+            }
+            Err(e) => Err(anyhow::Error::new(e)),
+        }
+    }
+
+    fn pick_asset(&self, mut assets: Vec<Asset>) -> Result<Asset> {
         if assets.len() == 1 {
             debug!("only found one candidate asset");
-            return Ok(assets[0]);
+            return Ok(assets.remove(0));
         }
 
         let asset_names = assets.iter().map(|a| a.name.as_str()).collect::<Vec<_>>();
@@ -441,8 +463,8 @@ impl Ubi {
                 r#"looking for an asset matching the string "{}" passed in --matching"#,
                 self.matching
             );
-            if let Some(m) = assets.iter().find(|&a| a.name.contains(&self.matching)) {
-                return Ok(*m);
+            if let Some(m) = assets.into_iter().find(|a| a.name.contains(&self.matching)) {
+                return Ok(m);
             }
             return Err(anyhow!(
                 r#"could not find any assets containing our --matching string, "{}""#,
@@ -453,82 +475,8 @@ impl Ubi {
         debug!("cannot disambiguate multiple asset names, picking the first one");
         // We don't have any other criteria I could use to pick the right one,
         // and we want to pick the same one every time.
-        assets.sort_by_key(|a| &a.name);
+        assets.sort_by_key(|a| a.name.clone());
         Ok(assets.remove(0))
-    }
-
-    fn os_matcher() -> Result<Regex> {
-        debug!("current OS = {}", TARGET_OS.as_str());
-
-        // These values are those supported by Rust (based on the platforms
-        // crate) and Go (based on
-        // https://gist.github.com/asukakenji/f15ba7e588ac42795f421b48b8aede63).
-        #[cfg(target_os = "linux")]
-        return Regex::new(r"(?i:(?:\b|_)linux(?:\b|_))").map_err(anyhow::Error::new);
-
-        #[cfg(target_os = "freebsd")]
-        return Regex::new(r"(?i:(?:\b|_)freebsd(?:\b|_))").map_err(anyhow::Error::new);
-
-        #[cfg(target_os = "openbsd")]
-        return Regex::new(r"(?i:(?:\b|_)openbsd(?:\b|_))").map_err(anyhow::Error::new);
-
-        #[cfg(target_os = "macos")]
-        return Regex::new(r"(?i:(?:\b|_)(?:darwin|macos)(?:\b|_))").map_err(anyhow::Error::new);
-
-        #[cfg(target_os = "windows")]
-        return Regex::new(r"(?i:(?:\b|_)windows(?:\b|_))").map_err(anyhow::Error::new);
-
-        #[allow(unreachable_code)]
-        Err(anyhow!(
-            "Cannot determine what type of compiled binary to use for this OS"
-        ))
-    }
-
-    fn arch_matcher() -> Result<Regex> {
-        debug!("current CPU architecture = {}", TARGET_ARCH.as_str());
-
-        #[cfg(target_arch = "aarch64")]
-        return Regex::new(r"(?i:(?:\b|_)aarch64(?:\b|_))").map_err(anyhow::Error::new);
-
-        #[cfg(target_arch = "arm")]
-        return Regex::new(r"(?i:(?:\b|_)arm(?:v[0-9]+|64)?(?:\b|_))").map_err(anyhow::Error::new);
-
-        #[cfg(target_arch = "mips")]
-        return Regex::new(r"(?i:(?:\b|_)mips(?:\b|_))").map_err(anyhow::Error::new);
-
-        #[cfg(target_arch = "mips64")]
-        return Regex::new(r"(?i:(?:\b|_)mips64(?:\b|_))").map_err(anyhow::Error::new);
-
-        #[cfg(target_arch = "powerpc")]
-        return Regex::new(r"(?i:(?:\b|_)(?:powerpc32(?:\b|_))").map_err(anyhow::Error::new);
-
-        #[cfg(target_arch = "powerpc64")]
-        return Regex::new(r"(?i:(?:\b|_)(?:powerpc64|ppc64(?:le|be)?)?)(?:\b|_))")
-            .map_err(anyhow::Error::new);
-
-        #[cfg(target_arch = "riscv")]
-        return Regex::new(r"(?i:(?:\b|_)riscv(?:\b|_))").map_err(anyhow::Error::new);
-
-        #[cfg(target_arch = "s390x")]
-        return Regex::new(r"(?i:(?:\b|_)s390x(?:\b|_))").map_err(anyhow::Error::new);
-
-        #[cfg(target_arch = "sparc")]
-        return Regex::new(r"(?i:(?:\b|_)sparc(?:\b|_))").map_err(anyhow::Error::new);
-
-        #[cfg(target_arch = "sparc64")]
-        return Regex::new(r"(?i:(?:\b|_)sparc(?:64)?(?:\b|_))").map_err(anyhow::Error::new);
-
-        #[cfg(target_arch = "x86")]
-        return Regex::new(r"(?i:(?:\b|_)(?:x86|386)(?:\b|_(?!64)))").map_err(anyhow::Error::new);
-
-        #[cfg(target_arch = "x86_64")]
-        return Regex::new(r"(?i:(?:\b|_)(?:x86|386|x86_64|x64|amd64)(?:\b|_))")
-            .map_err(anyhow::Error::new);
-
-        #[allow(unreachable_code)]
-        Err(anyhow!(
-            "Cannot determine what type of compiled binary to use for this CPU architecture"
-        ))
     }
 
     fn extract_binary(&self, downloaded_file: PathBuf) -> Result<()> {
@@ -596,7 +544,7 @@ impl Ubi {
             downloaded_file.to_string_lossy(),
         );
 
-        let mut arch = Self::tar_reader_for(downloaded_file)?;
+        let mut arch = tar_reader_for(downloaded_file)?;
         for entry in arch.entries()? {
             let mut entry = entry?;
             let path = entry.path()?;
@@ -622,28 +570,6 @@ impl Ubi {
             "could not find any files named {} in the downloaded tarball",
             self.exe,
         ))
-    }
-
-    fn tar_reader_for(downloaded_file: PathBuf) -> Result<Archive<Box<dyn Read>>> {
-        let file = open_file(&downloaded_file)?;
-
-        let ext = downloaded_file.extension();
-        match ext {
-            Some(ext) => match ext.to_str() {
-                Some("bz") | Some("tbz") => Ok(Archive::new(Box::new(BzDecoder::new(file)))),
-                Some("gz") | Some("tgz") => Ok(Archive::new(Box::new(GzDecoder::new(file)))),
-                Some("xz") | Some("txz") => Ok(Archive::new(Box::new(XzDecoder::new(file)))),
-                Some(e) => Err(anyhow!(
-                    "don't know how to uncompress a tarball with extension = {}",
-                    e,
-                )),
-                None => Err(anyhow!(
-                    "tarball {:?} has a non-UTF-8 extension",
-                    downloaded_file,
-                )),
-            },
-            None => Ok(Archive::new(Box::new(file))),
-        }
     }
 
     fn ungzip(&self, downloaded_file: PathBuf) -> Result<()> {
@@ -681,6 +607,103 @@ impl Ubi {
             Ok(_) => Ok(()),
             Err(e) => Err(anyhow::Error::new(e)),
         }
+    }
+}
+
+fn os_matcher() -> Result<Regex> {
+    debug!("current OS = {}", TARGET_OS.as_str());
+
+    // These values are those supported by Rust (based on the platforms
+    // crate) and Go (based on
+    // https://gist.github.com/asukakenji/f15ba7e588ac42795f421b48b8aede63).
+    #[cfg(target_os = "linux")]
+    return Regex::new(r"(?i:(?:\b|_)linux(?:\b|_))").map_err(anyhow::Error::new);
+
+    #[cfg(target_os = "freebsd")]
+    return Regex::new(r"(?i:(?:\b|_)freebsd(?:\b|_))").map_err(anyhow::Error::new);
+
+    #[cfg(target_os = "openbsd")]
+    return Regex::new(r"(?i:(?:\b|_)openbsd(?:\b|_))").map_err(anyhow::Error::new);
+
+    #[cfg(target_os = "macos")]
+    return Regex::new(r"(?i:(?:\b|_)(?:darwin|macos)(?:\b|_))").map_err(anyhow::Error::new);
+
+    #[cfg(target_os = "windows")]
+    return Regex::new(r"(?i:(?:\b|_)windows(?:\b|_))").map_err(anyhow::Error::new);
+
+    #[allow(unreachable_code)]
+    Err(anyhow!(
+        "Cannot determine what type of compiled binary to use for this OS"
+    ))
+}
+
+fn arch_matcher() -> Result<Regex> {
+    debug!("current CPU architecture = {}", TARGET_ARCH.as_str());
+
+    #[cfg(target_arch = "aarch64")]
+    return Regex::new(r"(?i:(?:\b|_)aarch64(?:\b|_))").map_err(anyhow::Error::new);
+
+    #[cfg(target_arch = "arm")]
+    return Regex::new(r"(?i:(?:\b|_)arm(?:v[0-9]+|64)?(?:\b|_))").map_err(anyhow::Error::new);
+
+    #[cfg(target_arch = "mips")]
+    return Regex::new(r"(?i:(?:\b|_)mips(?:\b|_))").map_err(anyhow::Error::new);
+
+    #[cfg(target_arch = "mips64")]
+    return Regex::new(r"(?i:(?:\b|_)mips64(?:\b|_))").map_err(anyhow::Error::new);
+
+    #[cfg(target_arch = "powerpc")]
+    return Regex::new(r"(?i:(?:\b|_)(?:powerpc32(?:\b|_))").map_err(anyhow::Error::new);
+
+    #[cfg(target_arch = "powerpc64")]
+    return Regex::new(r"(?i:(?:\b|_)(?:powerpc64|ppc64(?:le|be)?)?)(?:\b|_))")
+        .map_err(anyhow::Error::new);
+
+    #[cfg(target_arch = "riscv")]
+    return Regex::new(r"(?i:(?:\b|_)riscv(?:\b|_))").map_err(anyhow::Error::new);
+
+    #[cfg(target_arch = "s390x")]
+    return Regex::new(r"(?i:(?:\b|_)s390x(?:\b|_))").map_err(anyhow::Error::new);
+
+    #[cfg(target_arch = "sparc")]
+    return Regex::new(r"(?i:(?:\b|_)sparc(?:\b|_))").map_err(anyhow::Error::new);
+
+    #[cfg(target_arch = "sparc64")]
+    return Regex::new(r"(?i:(?:\b|_)sparc(?:64)?(?:\b|_))").map_err(anyhow::Error::new);
+
+    #[cfg(target_arch = "x86")]
+    return Regex::new(r"(?i:(?:\b|_)(?:x86|386)(?:\b|_(?!64)))").map_err(anyhow::Error::new);
+
+    #[cfg(target_arch = "x86_64")]
+    return Regex::new(r"(?i:(?:\b|_)(?:x86|386|x86_64|x64|amd64)(?:\b|_))")
+        .map_err(anyhow::Error::new);
+
+    #[allow(unreachable_code)]
+    Err(anyhow!(
+        "Cannot determine what type of compiled binary to use for this CPU architecture"
+    ))
+}
+
+fn tar_reader_for(downloaded_file: PathBuf) -> Result<Archive<Box<dyn Read>>> {
+    let file = open_file(&downloaded_file)?;
+
+    let ext = downloaded_file.extension();
+    debug!("EXT = {ext:?}");
+    match ext {
+        Some(ext) => match ext.to_str() {
+            Some("bz") | Some("tbz") => Ok(Archive::new(Box::new(BzDecoder::new(file)))),
+            Some("gz") | Some("tgz") => Ok(Archive::new(Box::new(GzDecoder::new(file)))),
+            Some("xz") | Some("txz") => Ok(Archive::new(Box::new(XzDecoder::new(file)))),
+            Some(e) => Err(anyhow!(
+                "don't know how to uncompress a tarball with extension = {}",
+                e,
+            )),
+            None => Err(anyhow!(
+                "tarball {:?} has a non-UTF-8 extension",
+                downloaded_file,
+            )),
+        },
+        None => Ok(Archive::new(Box::new(file))),
     }
 }
 

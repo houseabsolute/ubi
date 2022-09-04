@@ -1,3 +1,10 @@
+## 0.0.14 - 2022-09-04
+
+* Added a `--url` flag as an alternative to `--project`. This bypasses the
+  need for using the GitHub API, so you don't have to worry about the API
+  limits. This is a good choice for use in CI.
+
+
 ## 0.0.13 - 2022-09-01
 
 * Releases are now downloaded using the GitHub REST API instead of trying to

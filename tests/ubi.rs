@@ -73,6 +73,27 @@ fn tests() -> Result<()> {
         make_pathbuf(&["sub", "dir", "precious"]),
     )?;
 
+    #[cfg(target_os = "linux")]
+    {
+        let precious_bin = make_pathbuf(&["bin", "precious"]);
+        let _td =     run_test(
+            ubi.as_ref(),
+            &["--url", "https://github.com/houseabsolute/precious/releases/download/v0.1.7/precious-Linux-x86_64-musl.tar.gz"],
+            make_pathbuf(&["bin", "precious"]),
+        )?;
+        match run_command(precious_bin.as_ref(), &["--version"]) {
+            Ok((code, stdout, _)) => {
+                assert!(code == 0, "exit code is 0");
+                assert!(stdout.is_some(), "got stdout from precious");
+                assert!(
+                    stdout.unwrap().contains("precious 0.1.7"),
+                    "downloaded version 0.1.7"
+                );
+            }
+            Err(e) => return Err(e),
+        }
+    }
+
     run_test(
         ubi.as_ref(),
         &["--project", "BurntSushi/ripgrep", "--exe", "rg"],
