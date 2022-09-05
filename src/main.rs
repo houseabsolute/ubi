@@ -1,19 +1,23 @@
 use anyhow::{anyhow, Context, Error, Result};
 use bzip2::read::BzDecoder;
 use clap::{Arg, ArgGroup, ArgMatches, Command};
-use fern::colors::{Color, ColoredLevelConfig};
-use fern::Dispatch;
+use fern::{
+    colors::{Color, ColoredLevelConfig},
+    Dispatch,
+};
 use flate2::read::GzDecoder;
 use log::{debug, error};
 use octocrab::models::repos::{Asset, Release};
 use platforms::target::{TARGET_ARCH, TARGET_OS};
 use regex::Regex;
 use reqwest::StatusCode;
-use std::env::{self, args_os};
-use std::ffi::OsString;
-use std::fs::{create_dir_all, File};
-use std::io::prelude::*;
-use std::path::{Path, PathBuf};
+use std::{
+    env::{self, args_os},
+    ffi::OsString,
+    fs::{create_dir_all, File},
+    io::prelude::*,
+    path::{Path, PathBuf},
+};
 use tar::Archive;
 use tempfile::{tempdir, TempDir};
 use url::Url;

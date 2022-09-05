@@ -1,8 +1,9 @@
 use anyhow::{anyhow, Context, Result};
-use std::env;
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::process;
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+    process,
+};
 use tempfile::{tempdir, TempDir};
 
 #[cfg(target_family = "unix")]
