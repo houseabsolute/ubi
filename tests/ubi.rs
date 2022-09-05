@@ -165,16 +165,6 @@ fn tests() -> Result<()> {
             ],
             ubi_copy.clone(),
         )?;
-        match run_command(ubi_copy.as_ref(), &["--version"]) {
-            Ok((stdout, _)) => {
-                assert!(stdout.is_some(), "got stdout from ubi");
-                assert!(
-                    stdout.unwrap().contains(env!("CARGO_PKG_VERSION")),
-                    "got the expected stdout",
-                );
-            }
-            Err(e) => return Err(e),
-        }
         let new_stat = fs::metadata(ubi_copy)?;
         // The worst resolution we get is 100 nanoseconds on Windows, per the
         // docs
