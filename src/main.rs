@@ -32,8 +32,8 @@ use std::os::unix::fs::PermissionsExt;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    let app = app();
-    let matches = app.get_matches();
+    let cmd = cmd();
+    let matches = cmd.get_matches();
     let res = init_logger(&matches);
     if let Err(e) = res {
         eprintln!("Error creating logger: {}", e);
@@ -57,7 +57,7 @@ async fn main() {
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-fn app<'a>() -> Command<'a> {
+fn cmd<'a>() -> Command<'a> {
     Command::new("ubi")
         .version(VERSION)
         .author("Dave Rolsky <autarch@urth.org>")
@@ -195,8 +195,8 @@ pub fn init_logger(matches: &ArgMatches) -> Result<(), log::SetLoggerError> {
 fn make_ubi(mut matches: ArgMatches) -> Result<Ubi> {
     validate_args(&matches)?;
     if matches.is_present("self-upgrade") {
-        let app = app();
-        matches = app.try_get_matches_from(self_upgrade_args()?)?;
+        let cmd = cmd();
+        matches = cmd.try_get_matches_from(self_upgrade_args()?)?;
     }
     Ubi::new(&matches)
 }
