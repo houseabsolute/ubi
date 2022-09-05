@@ -13,22 +13,22 @@ use std::os::unix::prelude::*;
 
 #[test]
 fn tests() -> Result<()> {
-    let cargo = make_pathbuf(&["cargo"]);
+    let cargo = make_exe_pathbuf(&["cargo"]);
     run_command(cargo.as_ref(), &["build"])?;
 
     let mut ubi = env::current_dir()?;
     ubi.push("target");
     ubi.push("debug");
-    ubi.push("ubi");
+    ubi.push(if cfg!(windows) { "ubi.exe" } else { "ubi" });
 
     run_test(
         ubi.as_ref(),
         &["--project", "houseabsolute/precious"],
-        make_pathbuf(&["bin", "precious"]),
+        make_exe_pathbuf(&["bin", "precious"]),
     )?;
 
     {
-        let precious_bin = make_pathbuf(&["bin", "precious"]);
+        let precious_bin = make_exe_pathbuf(&["bin", "precious"]);
         let _td = run_test(
             ubi.as_ref(),
             &["--project", "houseabsolute/precious", "--tag", "v0.0.6"],
@@ -49,7 +49,7 @@ fn tests() -> Result<()> {
     run_test(
         ubi.as_ref(),
         &["--project", "https://github.com/houseabsolute/precious"],
-        make_pathbuf(&["bin", "precious"]),
+        make_exe_pathbuf(&["bin", "precious"]),
     )?;
 
     run_test(
@@ -58,10 +58,10 @@ fn tests() -> Result<()> {
             "--project",
             "https://github.com/houseabsolute/precious/releases",
         ],
-        make_pathbuf(&["bin", "precious"]),
+        make_exe_pathbuf(&["bin", "precious"]),
     )?;
 
-    let in_dir = make_pathbuf(&["sub", "dir"]);
+    let in_dir = make_dir_pathbuf(&["sub", "dir"]);
     run_test(
         ubi.as_ref(),
         &[
@@ -70,16 +70,16 @@ fn tests() -> Result<()> {
             "--in",
             &in_dir.to_string_lossy(),
         ],
-        make_pathbuf(&["sub", "dir", "precious"]),
+        make_exe_pathbuf(&["sub", "dir", "precious"]),
     )?;
 
     #[cfg(target_os = "linux")]
     {
-        let precious_bin = make_pathbuf(&["bin", "precious"]);
+        let precious_bin = make_exe_pathbuf(&["bin", "precious"]);
         let _td =     run_test(
             ubi.as_ref(),
             &["--url", "https://github.com/houseabsolute/precious/releases/download/v0.1.7/precious-Linux-x86_64-musl.tar.gz"],
-            make_pathbuf(&["bin", "precious"]),
+            make_exe_pathbuf(&["bin", "precious"]),
         )?;
         match run_command(precious_bin.as_ref(), &["--version"]) {
             Ok((stdout, _)) => {
@@ -96,11 +96,11 @@ fn tests() -> Result<()> {
     run_test(
         ubi.as_ref(),
         &["--project", "BurntSushi/ripgrep", "--exe", "rg"],
-        make_pathbuf(&["bin", "rg"]),
+        make_exe_pathbuf(&["bin", "rg"]),
     )?;
 
     {
-        let rust_analyzer_bin = make_pathbuf(&["bin", "rust-analyzer"]);
+        let rust_analyzer_bin = make_exe_pathbuf(&["bin", "rust-analyzer"]);
         let _td = run_test(
             ubi.as_ref(),
             &["--project", "rust-analyzer/rust-analyzer"],
@@ -121,7 +121,7 @@ fn tests() -> Result<()> {
     }
 
     {
-        let golangci_lint_bin = make_pathbuf(&["bin", "golangci-lint"]);
+        let golangci_lint_bin = make_exe_pathbuf(&["bin", "golangci-lint"]);
         let _td = run_test(
             ubi.as_ref(),
             &["--project", "golangci/golangci-lint"],
@@ -142,7 +142,7 @@ fn tests() -> Result<()> {
     #[cfg(not(target_os = "windows"))]
     {
         let new_ubi_dir = tempdir()?;
-        let ubi_copy = make_pathbuf(&[
+        let ubi_copy = make_exe_pathbuf(&[
             new_ubi_dir
                 .path()
                 .to_str()
@@ -173,7 +173,7 @@ fn tests() -> Result<()> {
     // its releases which uncompresses to an ELF binary.
     #[cfg(target_os = "linux")]
     {
-        let prettycrontab_bin = make_pathbuf(&["bin", "prettycrontab"]);
+        let prettycrontab_bin = make_exe_pathbuf(&["bin", "prettycrontab"]);
         let _td = run_test(
             ubi.as_ref(),
             &["--project", "mfontani/prettycrontab", "--tag", "v0.0.2"],
@@ -193,7 +193,7 @@ fn tests() -> Result<()> {
 
     #[cfg(target_os = "linux")]
     {
-        let delta_bin = make_pathbuf(&["bin", "delta"]);
+        let delta_bin = make_exe_pathbuf(&["bin", "delta"]);
         let _td = run_test(
             ubi.as_ref(),
             &[
@@ -234,7 +234,15 @@ fn tests() -> Result<()> {
     Ok(())
 }
 
-fn make_pathbuf(path: &[&str]) -> PathBuf {
+fn make_exe_pathbuf(path: &[&str]) -> PathBuf {
+    let mut pb = make_dir_pathbuf(path);
+    if cfg!(windows) {
+        pb.set_extension("exe");
+    }
+    pb
+}
+
+fn make_dir_pathbuf(path: &[&str]) -> PathBuf {
     let mut iter = path.iter();
     let mut pb = PathBuf::from(iter.next().unwrap());
     for v in iter {
