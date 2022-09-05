@@ -252,8 +252,9 @@ fn self_upgrade_args() -> Result<Vec<OsString>> {
 }
 
 fn print_err(e: Error) {
-    debug!("{e:#?}");
     error!("{e}");
+    println!();
+    cmd().print_help().unwrap();
 }
 
 #[derive(Debug)]
