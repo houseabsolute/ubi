@@ -9,7 +9,8 @@ use octocrab::models::repos::{Asset, Release};
 use platforms::target::{TARGET_ARCH, TARGET_OS};
 use regex::Regex;
 use reqwest::StatusCode;
-use std::env;
+use std::env::{self, args_os};
+use std::ffi::OsString;
 use std::fs::{create_dir_all, File};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
@@ -27,14 +28,14 @@ use std::os::unix::fs::PermissionsExt;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    let matches = app().get_matches();
+    let app = app();
+    let matches = app.get_matches();
     let res = init_logger(&matches);
     if let Err(e) = res {
         eprintln!("Error creating logger: {}", e);
         std::process::exit(126);
     }
-    let u = Ubi::new(&matches).await;
-    let status = match u {
+    let status = match make_ubi(matches) {
         Ok(u) => match u.run().await {
             Ok(()) => 0,
             Err(e) => {
@@ -48,11 +49,6 @@ async fn main() {
         }
     };
     std::process::exit(status);
-}
-
-fn print_err(e: Error) {
-    debug!("{e:#?}");
-    error!("{e}");
 }
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -90,6 +86,15 @@ fn app<'a>() -> Command<'a> {
                     " so you will never hit the GitHub API limits. This means you",
                     " do not need to set a GITHUB_TOKEN env var except for",
                     " private repos.",
+                )),
+        )
+        .arg(
+            Arg::new("self-upgrade")
+                .long("self-upgrade")
+                .help(concat!(
+                    "Use ubi to upgrade to the latest version of ubi. The",
+                    " --exe, --in, --project, --tag, and --url args will be",
+                    " ignored."
                 )),
         )
         .arg(
@@ -183,6 +188,47 @@ pub fn init_logger(matches: &ArgMatches) -> Result<(), log::SetLoggerError> {
         .apply()
 }
 
+fn make_ubi(mut matches: ArgMatches) -> Result<Ubi> {
+    if matches.is_present("self-upgrade") {
+        let app = app();
+        matches = app.try_get_matches_from(self_upgrade_args()?)?;
+    }
+    Ubi::new(&matches)
+}
+
+fn self_upgrade_args() -> Result<Vec<OsString>> {
+    let mut munged: Vec<OsString> = vec![];
+    let mut iter = args_os();
+    while let Some(a) = iter.next() {
+        if a == "--exe" || a == "--project" || a == "--tag" || a == "--url" {
+            iter.next();
+            continue;
+        }
+        munged.push(a);
+    }
+    munged.append(
+        &mut vec!["--project", "houseabsolute/ubi", "--in"]
+            .into_iter()
+            .map(|a| a.into())
+            .collect(),
+    );
+    let current = env::current_exe()?;
+    munged.push(
+        current
+            .parent()
+            .ok_or_else(|| anyhow!("executable path `{}` has no parent", current.display()))?
+            .as_os_str()
+            .to_owned(),
+    );
+    debug!("munged args for self-upgrade = [{munged:?}]");
+    Ok(munged)
+}
+
+fn print_err(e: Error) {
+    debug!("{e:#?}");
+    error!("{e}");
+}
+
 #[derive(Debug)]
 struct Ubi {
     project_name: String,
@@ -195,7 +241,7 @@ struct Ubi {
 }
 
 impl Ubi {
-    pub async fn new(matches: &ArgMatches) -> Result<Ubi> {
+    pub fn new(matches: &ArgMatches) -> Result<Ubi> {
         let url = match matches.value_of("url") {
             Some(u) => Some(Url::parse(u)?),
             None => None,

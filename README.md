@@ -74,6 +74,8 @@ OPTIONS:
     -p, --project <project>      The project you want to install, like houseabsolute/precious or
                                  https://github.com/houseabsolute/precious.
     -q, --quiet                  Suppresses most output
+        --self-upgrade           Use ubi to upgrade to the latest version of ubi. The --exe, --in,
+                                 --project, --tag, and --url args will be ignored.
     -t, --tag <tag>              The tag to download. Defaults to the latest release.
     -u, --url <url>              The url of the file to download. This can be provided instead of a
                                  project or tag. This will not use the GitHub API, so you will never
@@ -93,6 +95,14 @@ requests.
 
 However, you can also use the `--url` option to bypass the GitHub API by
 providing the download link directly.
+
+## Upgrading `ubi`
+
+You can run `ubi --self-upgrade` to upgrade `ubi` using `ubi`. Note that you
+must have write permissions to the directory containing `ubi` for this to
+work.
+
+This does not work on Windows. See GH #21.
 
 ## Why This Is Useful
 

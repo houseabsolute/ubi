@@ -1,3 +1,8 @@
+## 0.0.15 - 2022-09-05
+
+* Added a `--self-upgrade` flag, which will use `ubi` to upgrade `ubi`. Note
+  that this flag does not work on Windows.
+
 ## 0.0.14 - 2022-09-04
 
 * Added a `--url` flag as an alternative to `--project`. This bypasses the

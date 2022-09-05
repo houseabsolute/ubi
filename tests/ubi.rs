@@ -142,6 +142,55 @@ fn tests() -> Result<()> {
         }
     }
 
+    {
+        let new_ubi_dir = tempdir()?;
+        let ubi_copy = make_pathbuf(&[
+            new_ubi_dir
+                .path()
+                .to_str()
+                .ok_or_else(|| anyhow!("Could not convert path to str"))?,
+            "ubi",
+        ]);
+        fs::copy(ubi.as_path(), ubi_copy.as_path())?;
+        let old_stat = fs::metadata(ubi_copy.as_path())?;
+        let _td = run_test(
+            ubi_copy.as_ref(),
+            &[
+                "--self-upgrade",
+                "--exe",
+                "ignored",
+                "--project",
+                "ignore/ignored",
+                "--tag",
+                "ignored",
+                "--url",
+                "https://ignored/",
+            ],
+            ubi_copy.clone(),
+        )?;
+        match run_command(ubi_copy.as_ref(), &["--version"]) {
+            Ok((code, stdout, _)) => {
+                assert!(code == 0, "exit code is 0");
+                assert!(stdout.is_some(), "got stdout from ubi");
+                assert!(
+                    stdout.unwrap().contains(env!("CARGO_PKG_VERSION")),
+                    "got the expected stdout",
+                );
+            }
+            Err(e) => return Err(e),
+        }
+        let new_stat = fs::metadata(ubi_copy)?;
+        // The worst resolution we get is 100 nanoseconds on Windows, per the
+        // docs
+        // https://doc.rust-lang.org/std/time/struct.SystemTime.html#platform-specific-behavior. I
+        // don't think we will ever have a case where the self-upgrade
+        // operation completes in 100 nanoseconds or less.
+        assert!(
+            old_stat.created()? < new_stat.created()?,
+            "new version of ubi was downloaded"
+        );
+    }
+
     // This project only has a Linux release. It has a single `.xz` file in
     // its releases which uncompresses to an ELF binary.
     #[cfg(target_os = "linux")]
