@@ -29,3 +29,12 @@ tidy_flags = "--in-place"
 ok_exit_codes = 0
 lint_failure_exit_codes = 1
 expect_stderr = true
+
+[commands.prettier]
+type = "both"
+include = "**/*.md"
+cmd = [ "./node_modules/.bin/prettier" ]
+lint_flags = "--check"
+tidy_flags = "--write"
+ok_exit_codes = 0
+lint_failure_exit_codes = 1
