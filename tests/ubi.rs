@@ -139,6 +139,7 @@ fn tests() -> Result<()> {
         }
     }
 
+    #[cfg(not(target_os = "windows"))]
     {
         let new_ubi_dir = tempdir()?;
         let ubi_copy = make_pathbuf(&[
@@ -165,20 +166,21 @@ fn tests() -> Result<()> {
             ],
             ubi_copy.clone(),
         )?;
-        let new_stat = fs::metadata(ubi_copy)?;
-        // The worst resolution we get is 100 nanoseconds on Windows, per the
-        // docs
-        // https://doc.rust-lang.org/std/time/struct.SystemTime.html#platform-specific-behavior. I
-        // don't think we will ever have a case where the self-upgrade
-        // operation completes in 100 nanoseconds or less.
-        let old_created = old_stat.created()?;
-        let new_created = new_stat.created()?;
-        assert!(
-            old_created < new_created,
-            "new version of ubi was downloaded ({:?} < {:?})",
-            old_created,
-            new_created,
-        );
+
+        {
+            let new_stat = fs::metadata(ubi_copy)?;
+            // The "new" version will have an older modified time, since it's the
+            // creation time from the tarball/zip file entry, not the time it's
+            // written to disk after downloading.
+            let old_modified = old_stat.modified()?;
+            let new_modified = new_stat.modified()?;
+            assert!(
+                old_modified > new_modified,
+                "new version of ubi was downloaded ({:?} > {:?})",
+                old_modified,
+                new_modified,
+            );
+        }
     }
 
     // This project only has a Linux release. It has a single `.xz` file in
