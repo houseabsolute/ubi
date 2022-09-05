@@ -151,21 +151,7 @@ fn tests() -> Result<()> {
         ]);
         fs::copy(ubi.as_path(), ubi_copy.as_path())?;
         let old_stat = fs::metadata(ubi_copy.as_path())?;
-        let _td = run_test(
-            ubi_copy.as_ref(),
-            &[
-                "--self-upgrade",
-                "--exe",
-                "ignored",
-                "--project",
-                "ignore/ignored",
-                "--tag",
-                "ignored",
-                "--url",
-                "https://ignored/",
-            ],
-            ubi_copy.clone(),
-        )?;
+        let _td = run_test(ubi_copy.as_ref(), &["--self-upgrade"], ubi_copy.clone())?;
 
         {
             let new_stat = fs::metadata(ubi_copy)?;

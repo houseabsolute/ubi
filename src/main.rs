@@ -193,11 +193,34 @@ pub fn init_logger(matches: &ArgMatches) -> Result<(), log::SetLoggerError> {
 }
 
 fn make_ubi(mut matches: ArgMatches) -> Result<Ubi> {
+    validate_args(&matches)?;
     if matches.is_present("self-upgrade") {
         let app = app();
         matches = app.try_get_matches_from(self_upgrade_args()?)?;
     }
     Ubi::new(&matches)
+}
+
+fn validate_args(matches: &ArgMatches) -> Result<()> {
+    if matches.is_present("url") {
+        for a in &["project", "tag"] {
+            if matches.is_present(a) {
+                return Err(anyhow!("You cannot combine the --url and --{a} options"));
+            }
+        }
+    }
+
+    if matches.is_present("self-upgrade") {
+        for a in &["exe", "in", "project", "tag"] {
+            if matches.is_present(a) {
+                return Err(anyhow!(
+                    "You cannot combine the --self-upgrade and --{a} options"
+                ));
+            }
+        }
+    }
+
+    Ok(())
 }
 
 fn self_upgrade_args() -> Result<Vec<OsString>> {
