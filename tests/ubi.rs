@@ -35,8 +35,7 @@ fn tests() -> Result<()> {
             precious_bin.clone(),
         )?;
         match run_command(precious_bin.as_ref(), &["--version"]) {
-            Ok((code, stdout, _)) => {
-                assert!(code == 0, "exit code is 0");
+            Ok((stdout, _)) => {
                 assert!(stdout.is_some(), "got stdout from precious");
                 assert!(
                     stdout.unwrap().contains("precious 0.0.6"),
@@ -83,8 +82,7 @@ fn tests() -> Result<()> {
             make_pathbuf(&["bin", "precious"]),
         )?;
         match run_command(precious_bin.as_ref(), &["--version"]) {
-            Ok((code, stdout, _)) => {
-                assert!(code == 0, "exit code is 0");
+            Ok((stdout, _)) => {
                 assert!(stdout.is_some(), "got stdout from precious");
                 assert!(
                     stdout.unwrap().contains("precious 0.1.7"),
@@ -109,8 +107,7 @@ fn tests() -> Result<()> {
             rust_analyzer_bin.clone(),
         )?;
         match run_command(rust_analyzer_bin.as_ref(), &["--help"]) {
-            Ok((code, stdout, _)) => {
-                assert!(code == 0, "exit code is 0");
+            Ok((stdout, _)) => {
                 assert!(stdout.is_some(), "got stdout from rust-analyzer");
                 assert!(
                     stdout
@@ -131,8 +128,7 @@ fn tests() -> Result<()> {
             golangci_lint_bin.clone(),
         )?;
         match run_command(golangci_lint_bin.as_ref(), &["--version"]) {
-            Ok((code, stdout, _)) => {
-                assert!(code == 0, "exit code is 0");
+            Ok((stdout, _)) => {
                 assert!(stdout.is_some(), "got stdout from golangci-lint");
                 assert!(
                     stdout.unwrap().contains("golangci-lint has version"),
@@ -170,8 +166,7 @@ fn tests() -> Result<()> {
             ubi_copy.clone(),
         )?;
         match run_command(ubi_copy.as_ref(), &["--version"]) {
-            Ok((code, stdout, _)) => {
-                assert!(code == 0, "exit code is 0");
+            Ok((stdout, _)) => {
                 assert!(stdout.is_some(), "got stdout from ubi");
                 assert!(
                     stdout.unwrap().contains(env!("CARGO_PKG_VERSION")),
@@ -186,9 +181,13 @@ fn tests() -> Result<()> {
         // https://doc.rust-lang.org/std/time/struct.SystemTime.html#platform-specific-behavior. I
         // don't think we will ever have a case where the self-upgrade
         // operation completes in 100 nanoseconds or less.
+        let old_created = old_stat.created()?;
+        let new_created = new_stat.created()?;
         assert!(
-            old_stat.created()? < new_stat.created()?,
-            "new version of ubi was downloaded"
+            old_created < new_created,
+            "new version of ubi was downloaded ({:?} < {:?})",
+            old_created,
+            new_created,
         );
     }
 
@@ -203,8 +202,7 @@ fn tests() -> Result<()> {
             prettycrontab_bin.clone(),
         )?;
         match run_command(prettycrontab_bin.as_ref(), &["-version"]) {
-            Ok((code, stdout, _)) => {
-                assert!(code == 0, "exit code is 0");
+            Ok((stdout, _)) => {
                 assert!(stdout.is_some(), "got stdout from prettycrontab");
                 assert!(
                     stdout.unwrap().contains("v0.0.2"),
@@ -231,8 +229,7 @@ fn tests() -> Result<()> {
             delta_bin.clone(),
         )?;
         match run_command(delta_bin.as_ref(), &["--version"]) {
-            Ok((code, stdout, _)) => {
-                assert!(code == 0, "exit code is 0");
+            Ok((stdout, _)) => {
                 assert!(stdout.is_some(), "got stdout from delta");
                 assert!(
                     stdout.unwrap().contains("delta 0.13.0"),
@@ -245,8 +242,7 @@ fn tests() -> Result<()> {
             &PathBuf::from("file"),
             &[delta_bin.to_string_lossy().as_ref()],
         ) {
-            Ok((code, stdout, _)) => {
-                assert!(code == 0, "exit code is 0");
+            Ok((stdout, _)) => {
                 assert!(stdout.is_some(), "got stdout from file");
                 assert!(
                     stdout.unwrap().contains("statically linked"),
@@ -274,8 +270,7 @@ fn run_test(cmd: &Path, args: &[&str], mut expect: PathBuf) -> Result<TempDir> {
     env::set_current_dir(td.path())?;
 
     match run_command(cmd, args) {
-        Ok((code, stdout, stderr)) => {
-            assert!(code == 0, "exit code is 0");
+        Ok((stdout, stderr)) => {
             assert_eq!(
                 stdout.unwrap_or_default(),
                 String::new(),
@@ -307,7 +302,7 @@ fn run_test(cmd: &Path, args: &[&str], mut expect: PathBuf) -> Result<TempDir> {
     Ok(td)
 }
 
-pub fn run_command(cmd: &Path, args: &[&str]) -> Result<(i32, Option<String>, Option<String>)> {
+pub fn run_command(cmd: &Path, args: &[&str]) -> Result<(Option<String>, Option<String>)> {
     let mut c = process::Command::new(cmd);
     for a in args.iter() {
         c.arg(a);
@@ -320,7 +315,7 @@ fn output_from_command(
     mut c: process::Command,
     cmd: &Path,
     args: &[&str],
-) -> Result<(i32, Option<String>, Option<String>)> {
+) -> Result<(Option<String>, Option<String>)> {
     let cstr = command_string(cmd, args);
     println!("running {}", cstr);
 
@@ -328,14 +323,17 @@ fn output_from_command(
     match output.status.code() {
         Some(code) => match code {
             0 => Ok((
-                code,
                 to_option_string(output.stdout),
                 to_option_string(output.stderr),
             )),
             _ => {
                 let mut msg = format!("ran {} and got non-zero exit code: {}", cstr, code);
+                if !output.stdout.is_empty() {
+                    msg.push_str("\nStdout:\n");
+                    msg.push_str(&String::from_utf8_lossy(&output.stdout));
+                }
                 if !output.stderr.is_empty() {
-                    msg.push('\n');
+                    msg.push_str("\nStderr:\n");
                     msg.push_str(&String::from_utf8_lossy(&output.stderr));
                 }
                 Err(anyhow!(msg))
