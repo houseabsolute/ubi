@@ -104,6 +104,27 @@ work.
 
 This does not work on Windows. See GH #21.
 
+## Best Practices for Using `ubi` in CI
+
+There are a few things you'll want to consider when using `ubi` in CI.
+
+First, there are [the GitHub API rate
+limits](https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting). These
+can be as low as 60 requests per hour per IP when not providing a
+`GITHUB_TOKEN`, so you will almost certainly want to provide this. Note that
+GitHub Actions always provides a `GITHUB_TOKEN` env var in every workflow, and
+in that case the rate limits are per repository.
+
+If you only run `ubi` on one platform, you can avoid hitting the GitHub API
+entirely by using the `--url` parameter. But if you run on multiple platforms
+this can be tedious to maintain and it largely defeats the purpose of using
+`ubi`.
+
+If you are downloading executables from repos you don't control _and_ you
+don't use the `--url` parameter, then you should use the `--tag` parameter to
+specify the release version you want to install. Otherwise `ubi` will always
+download the latest version, which can lead to surprise breakage in CI.
+
 ## Why This Is Useful
 
 With the rise of Go and Rust, it has become increasingly common for very
