@@ -715,7 +715,7 @@ fn arch_matcher() -> Result<Regex> {
     debug!("current CPU architecture = {}", TARGET_ARCH.as_str());
 
     #[cfg(target_arch = "aarch64")]
-    return Regex::new(r"(?i:(?:\b|_)aarch64(?:\b|_))").map_err(anyhow::Error::new);
+    return Regex::new(r"(?i:(?:\b|_)aarch64|arm64(?:\b|_))").map_err(anyhow::Error::new);
 
     #[cfg(target_arch = "arm")]
     return Regex::new(r"(?i:(?:\b|_)arm(?:v[0-9]+|64)?(?:\b|_))").map_err(anyhow::Error::new);

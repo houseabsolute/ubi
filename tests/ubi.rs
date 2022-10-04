@@ -231,6 +231,15 @@ fn tests() -> Result<()> {
         }
     }
 
+    // The omegasort release for macOS on an M1 is named
+    // "omegasort_0.0.5_Darwin_arm64.tar.gz", but macOS reports its
+    // architecture as "aarch64". This was fixed in ubi 0.0.16.
+    run_test(
+        ubi.as_ref(),
+        &["--project", "https://github.com/houseabsolute/omegasort"],
+        make_exe_pathbuf(&["bin", "omegasort"]),
+    )?;
+
     Ok(())
 }
 

@@ -1,3 +1,9 @@
+## 0.0.16 - 2022-10-04
+
+- Fixed matching the "aarch64" architecture for macOS. At least with Go, these
+  binaries end up labeled as "arm64" instead of "aarch64", and `ubi` should
+  treat that as a match. Reported by Ajay Vijayakumar.
+
 ## 0.0.15 - 2022-09-05
 
 - Added a `--self-upgrade` flag, which will use `ubi` to upgrade `ubi`. Note
