@@ -43,6 +43,14 @@ when it hits the GitHub API. This is only necessary if you are hitting the
 GitHub anonymous API usage limits. This is unlikely to happen unless you're
 running the bootstrap script repeatedly for testing.
 
+To install a specific version of `ubi`, set the `TAG` env var:
+
+```
+curl --silent --location \
+    https://raw.githubusercontent.com/houseabsolute/ubi/master/bootstrap/bootstrap-ubi.sh |
+    TAG=~v0.0.15 sh
+```
+
 ### Windows
 
 ```

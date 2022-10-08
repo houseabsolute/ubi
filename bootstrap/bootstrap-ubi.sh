@@ -15,25 +15,27 @@ else
     AUTH="X-Cannot-Be-Empty"
 fi
 
-URI="https://api.github.com/repos/houseabsolute/ubi/releases/latest"
-RELEASES=$(curl --header "$AUTH" --show-error --silent $URI)
-if [ -z "$RELEASES" ]; then
-    >&2 echo "Did not get a response body back from $URI"
-    exit 1
-fi
-
-TAG=$(
-    # From https://gist.github.com/lukechilds/a83e1d7127b78fef38c2914c4ececc3c
-    echo "$RELEASES" |
-        grep '"tag_name":' |
-        sed -E 's/.*"([^"]+)".*/\1/'
-)
-
 if [ -z "$TAG" ]; then
-    >&2 echo "boostrap-ubi.sh: Cannot find a UBI release based on GitHub API response!"
-    >&2 echo ""
-    >&2 echo "$RELEASES"
-    exit 2
+    URI="https://api.github.com/repos/houseabsolute/ubi/releases/latest"
+    RELEASES=$(curl --header "$AUTH" --show-error --silent $URI)
+    if [ -z "$RELEASES" ]; then
+        >&2 echo "Did not get a response body back from $URI"
+        exit 1
+    fi
+
+    TAG=$(
+        # From https://gist.github.com/lukechilds/a83e1d7127b78fef38c2914c4ececc3c
+        echo "$RELEASES" |
+            grep '"tag_name":' |
+            sed -E 's/.*"([^"]+)".*/\1/'
+    )
+
+    if [ -z "$TAG" ]; then
+        >&2 echo "boostrap-ubi.sh: Cannot find a UBI release based on GitHub API response!"
+        >&2 echo ""
+        >&2 echo "$RELEASES"
+        exit 2
+    fi
 fi
 
 if [ $(id -u) -eq 0 ]; then
