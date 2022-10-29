@@ -1,3 +1,8 @@
+## 0.0.17 - 2022-10-29
+
+- Fixed handling of xz-compressed tarballs. These were ignored even though
+  there was code to handle them properly. Reported by Danny Kirkham. GH #24.
+
 ## 0.0.16 - 2022-10-04
 
 - Fixed matching the "aarch64" architecture for macOS. At least with Go, these

@@ -443,8 +443,9 @@ impl Ubi {
         let mut assets: Vec<Asset> = vec![];
         let mut names: Vec<String> = vec![];
 
-        let valid_extensions: &'static [&'static str] =
-            &[".tar.gz", ".tgz", ".tar.bz", ".tbz", ".zip", ".gz"];
+        let valid_extensions: &'static [&'static str] = &[
+            ".tar.gz", ".tgz", ".tar.bz", ".tbz", ".tar.xz", ".txz", ".zip", ".gz",
+        ];
 
         // This could all be done much more simply with the iterator's .find()
         // method, but then there's no place to put all the debugging output.

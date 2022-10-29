@@ -169,6 +169,33 @@ fn tests() -> Result<()> {
         }
     }
 
+    // This project's 22.08.1 release has an xz-compressed tarball.
+    {
+        let hx_bin = make_exe_pathbuf(&["bin", "hx"]);
+        let _td = run_test(
+            ubi.as_ref(),
+            &[
+                "--project",
+                "helix-editor/helix",
+                "--exe",
+                "hx",
+                "--tag",
+                "22.08.1",
+            ],
+            hx_bin.clone(),
+        )?;
+        match run_command(hx_bin.as_ref(), &["--version"]) {
+            Ok((stdout, _)) => {
+                assert!(stdout.is_some(), "got stdout from hx");
+                assert!(
+                    stdout.unwrap().contains("22.08.1"),
+                    "got the expected stdout",
+                );
+            }
+            Err(e) => return Err(e),
+        }
+    }
+
     // This project only has a Linux release. It has a single `.xz` file in
     // its releases which uncompresses to an ELF binary.
     #[cfg(target_os = "linux")]
