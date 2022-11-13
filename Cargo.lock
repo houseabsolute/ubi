@@ -1340,6 +1340,7 @@ dependencies = [
  "reqwest",
  "tar",
  "tempfile",
+ "thiserror",
  "tokio",
  "url",
  "xz",

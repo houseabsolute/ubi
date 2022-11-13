@@ -20,6 +20,7 @@ use std::{
 };
 use tar::Archive;
 use tempfile::{tempdir, TempDir};
+use thiserror::Error;
 use url::Url;
 use xz::read::XzDecoder;
 use zip::ZipArchive;
@@ -29,6 +30,12 @@ use zip_extensions::read::ZipArchiveExtensions;
 use std::fs::{set_permissions, Permissions};
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::PermissionsExt;
+
+#[derive(Debug, Error)]
+enum UbiError {
+    #[error("{0:}")]
+    InvalidArgsError(&'static str),
+}
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -205,7 +212,10 @@ fn validate_args(matches: &ArgMatches) -> Result<()> {
     if matches.is_present("url") {
         for a in &["project", "tag"] {
             if matches.is_present(a) {
-                return Err(anyhow!("You cannot combine the --url and --{a} options"));
+                return Err(UbiError::InvalidArgsError(
+                    "You cannot combine the --url and --{a} options",
+                )
+                .into());
             }
         }
     }
@@ -213,9 +223,10 @@ fn validate_args(matches: &ArgMatches) -> Result<()> {
     if matches.is_present("self-upgrade") {
         for a in &["exe", "in", "project", "tag"] {
             if matches.is_present(a) {
-                return Err(anyhow!(
-                    "You cannot combine the --self-upgrade and --{a} options"
-                ));
+                return Err(UbiError::InvalidArgsError(
+                    "You cannot combine the --self-upgrade and --{a} options",
+                )
+                .into());
             }
         }
     }
@@ -253,8 +264,14 @@ fn self_upgrade_args() -> Result<Vec<OsString>> {
 
 fn print_err(e: Error) {
     error!("{e}");
-    println!();
-    cmd().print_help().unwrap();
+    if let Some(ue) = e.downcast_ref::<UbiError>() {
+        match ue {
+            UbiError::InvalidArgsError(_) => {
+                println!();
+                cmd().print_help().unwrap();
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -301,7 +318,7 @@ impl Ubi {
         } else if let Some(u) = url {
             (u.clone(), format!("--url: {u}"))
         } else {
-            return Err(anyhow!("You must pass a --project or --url."));
+            return Err(UbiError::InvalidArgsError("You must pass a --project or --url.").into());
         };
 
         let parts = parsed.path().split('/').collect::<Vec<_>>();
@@ -362,7 +379,7 @@ impl Ubi {
             }
         };
         create_dir_all(&i)?;
-        i.push(&exe);
+        i.push(exe);
         debug!("install path = {}", i.to_string_lossy());
         Ok(i)
     }

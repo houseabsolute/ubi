@@ -1,3 +1,8 @@
+## 0.0.18
+
+- Most errors no longer print out usage information. Now this is only printed
+  for errors related to invalid CLI arguments. GH #22.
+
 ## 0.0.17 - 2022-10-29
 
 - Fixed handling of xz-compressed tarballs. These were ignored even though
