@@ -685,7 +685,7 @@ impl Ubi {
 
     fn copy_executable(&self, exe_file: PathBuf) -> Result<()> {
         debug!("copying binary to final location");
-        std::fs::copy(&exe_file, &self.install_path)?;
+        std::fs::copy(exe_file, &self.install_path)?;
 
         Ok(())
     }
