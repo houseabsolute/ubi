@@ -50,6 +50,8 @@ jobs:
           command: check
           args: --locked --target=${{ matrix.platform.target }}
       - name: Run cargo test
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         uses: actions-rs/cargo@v1
         with:
           command: test
