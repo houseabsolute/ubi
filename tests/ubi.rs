@@ -1,15 +1,16 @@
 use anyhow::{anyhow, Context, Result};
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::PermissionsExt;
+#[cfg(target_family = "unix")]
+use std::os::unix::prelude::*;
 use std::{
     env, fs,
     path::{Path, PathBuf},
     process,
 };
-use tempfile::{tempdir, TempDir};
-
-#[cfg(target_family = "unix")]
-use std::os::unix::fs::PermissionsExt;
-#[cfg(target_family = "unix")]
-use std::os::unix::prelude::*;
+#[cfg(not(target_os = "windows"))]
+use tempfile::tempdir;
+use tempfile::TempDir;
 
 struct PreservableTempdir {
     td: Option<TempDir>,
