@@ -9,26 +9,25 @@ license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [dependencies]
-anyhow = "1.0.66"
-bzip2 = "0.4.3"
+anyhow = "1.0.68"
+bzip2 = "0.4.4"
 clap = "3.2.23"
 fern = { version = "0.6.1", features = ["colored"] }
-flate2 = "1.0.24"
+flate2 = "1.0.25"
 itertools = "0.10.5"
 log = "0.4.17"
-octocrab = { version = "0.17.0", default-features = false, features = ["rustls"] }
+octocrab = { version = "0.18.1", default-features = false, features = ["rustls"] }
 platforms = "2.0.0"
-regex = "1.7.0"
-reqwest = { version = "0.11.12", default-features = false, features = ["gzip", "rustls-tls"] }
+regex = "1.7.1"
+reqwest = { version = "0.11.14", default-features = false, features = ["gzip", "rustls-tls"] }
 strum = { version = "0.24.1", features = ["derive"] }
 tar = "0.4.38"
 tempfile = "3.3.0"
-thiserror = "1.0.37"
-tokio = { version = "1.21.2", default-features = false, features = ["macros", "rt"] }
+thiserror = "1.0.38"
+tokio = { version = "1.24.2", default-features = false, features = ["macros", "rt"] }
 url = "2.2.2"
 xz = "0.1.0"
-zip = "0.5"
-zip-extensions = "0.6.1"
+zip = "0.6.3"
 
 [workspace.metadata.release]
 allow-branch = ["master"]

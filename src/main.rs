@@ -26,7 +26,6 @@ use thiserror::Error;
 use url::Url;
 use xz::read::XzDecoder;
 use zip::ZipArchive;
-use zip_extensions::read::ZipArchiveExtensions;
 
 #[cfg(target_family = "unix")]
 use std::fs::{set_permissions, Permissions};
@@ -637,30 +636,26 @@ impl Ubi {
         debug!("extracting binary from zip file");
 
         let mut zip = ZipArchive::new(open_file(&downloaded_file)?)?;
-        for i in 0..zip.len() {
-            let path = PathBuf::from(zip.by_index(i).unwrap().name());
-            if let Some(os_name) = path.file_name() {
-                if let Some(n) = os_name.to_str() {
-                    if n == self.exe {
-                        debug!(
-                            "extracting zip file member to {}",
-                            self.install_path.to_string_lossy(),
-                        );
-                        let res = zip.extract_file(i, &self.install_path, true);
-                        return match res {
-                            Ok(_) => Ok(()),
-                            Err(e) => Err(anyhow::Error::new(e)),
-                        };
-                    }
-                }
+        let zf = zip.by_name(&self.exe);
+        match zf {
+            Ok(mut zf) => {
+                let mut buffer: Vec<u8> = Vec::with_capacity(zf.size() as usize);
+                zf.read_to_end(&mut buffer)?;
+                let mut file = File::create(&self.install_path)?;
+                file.set_len(0)?;
+                file.write_all(&buffer).map_err(|e| e.into())
+            }
+            Err(e) => {
+                debug!(
+                    "could not find any entries named {} - got error from zip.by_name: {}",
+                    self.exe, e,
+                );
+                Err(anyhow!(
+                    "could not find any files named {} in the downloaded zip file",
+                    self.exe,
+                ))
             }
         }
-
-        debug!("could not find any entries named {}", self.exe);
-        Err(anyhow!(
-            "could not find any files named {} in the downloaded zip file",
-            self.exe,
-        ))
     }
 
     fn extract_tarball(&self, downloaded_file: PathBuf) -> Result<()> {
