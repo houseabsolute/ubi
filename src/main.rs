@@ -6,6 +6,7 @@ use fern::{
     Dispatch,
 };
 use flate2::read::GzDecoder;
+use itertools::Itertools;
 use log::{debug, error};
 use octocrab::models::repos::{Asset, Release};
 use platforms::target::{TARGET_ARCH, TARGET_OS};
@@ -18,6 +19,7 @@ use std::{
     io::prelude::*,
     path::{Path, PathBuf},
 };
+use strum::{EnumIter, IntoEnumIterator};
 use tar::Archive;
 use tempfile::{tempdir, TempDir};
 use thiserror::Error;
@@ -274,6 +276,45 @@ fn print_err(e: Error) {
     }
 }
 
+#[derive(Debug, EnumIter)]
+enum Extension {
+    Gz,
+    TarBz,
+    TarGz,
+    TarXz,
+    Tbz,
+    Tgz,
+    Txz,
+    Xz,
+    Zip,
+}
+
+impl Extension {
+    pub(crate) fn extension(&self) -> &'static str {
+        match self {
+            Extension::Gz => ".gz",
+            Extension::TarBz => ".tar.bz",
+            Extension::TarGz => ".tar.gz",
+            Extension::TarXz => ".tar.xz",
+            Extension::Tbz => ".tbz",
+            Extension::Tgz => ".tgz",
+            Extension::Txz => ".txz",
+            Extension::Xz => ".xz",
+            Extension::Zip => ".zip",
+        }
+    }
+
+    pub(crate) fn from_path<S: AsRef<str>>(path: S) -> Option<Extension> {
+        let path = path.as_ref();
+        // We need to try the longest extension first so that ".tar.gz"
+        // matches before ".gz" and so on for other compression formats.
+        Extension::iter()
+            .sorted_by(|a, b| Ord::cmp(&a.extension().len(), &b.extension().len()))
+            .rev()
+            .find(|e| path.ends_with(e.extension()))
+    }
+}
+
 #[derive(Debug)]
 struct Ubi {
     project_name: String,
@@ -460,10 +501,6 @@ impl Ubi {
         let mut assets: Vec<Asset> = vec![];
         let mut names: Vec<String> = vec![];
 
-        let valid_extensions: &'static [&'static str] = &[
-            ".gz", ".tar.bz", ".tar.gz", ".tar.xz", ".tbz", ".tgz", ".txz", ".xz", ".zip",
-        ];
-
         // This could all be done much more simply with the iterator's .find()
         // method, but then there's no place to put all the debugging output.
         for asset in release_info.assets {
@@ -471,9 +508,7 @@ impl Ubi {
 
             debug!("matching against asset name = {}", asset.name);
 
-            if asset.name.contains('.')
-                && !valid_extensions.iter().any(|&v| asset.name.ends_with(v))
-            {
+            if asset.name.contains('.') && Extension::from_path(&asset.name).is_none() {
                 debug!("it appears to have an invalid extension");
                 continue;
             }
@@ -581,22 +616,17 @@ impl Ubi {
                 )
             })
             .to_string_lossy();
-        if filename.ends_with(".tar.bz")
-            || filename.ends_with(".tbz")
-            || filename.ends_with(".tar.gz")
-            || filename.ends_with(".tgz")
-            || filename.ends_with(".tar.xz")
-            || filename.ends_with(".txz")
-        {
-            self.extract_tarball(downloaded_file)
-        } else if filename.ends_with(".zip") {
-            self.extract_zip(downloaded_file)
-        } else if filename.ends_with(".gz") {
-            self.ungzip(downloaded_file)
-        } else if filename.ends_with(".xz") {
-            self.unxz(downloaded_file)
-        } else {
-            self.copy_executable(downloaded_file)
+        match Extension::from_path(filename) {
+            Some(Extension::TarBz)
+            | Some(Extension::TarGz)
+            | Some(Extension::TarXz)
+            | Some(Extension::Tbz)
+            | Some(Extension::Tgz)
+            | Some(Extension::Txz) => self.extract_tarball(downloaded_file),
+            Some(Extension::Gz) => self.ungzip(downloaded_file),
+            Some(Extension::Xz) => self.unxz(downloaded_file),
+            Some(Extension::Zip) => self.extract_zip(downloaded_file),
+            None => self.copy_executable(downloaded_file),
         }
     }
 

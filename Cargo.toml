@@ -14,11 +14,13 @@ bzip2 = "0.4.3"
 clap = "3.2.23"
 fern = { version = "0.6.1", features = ["colored"] }
 flate2 = "1.0.24"
+itertools = "0.10.5"
 log = "0.4.17"
 octocrab = { version = "0.17.0", default-features = false, features = ["rustls"] }
 platforms = "2.0.0"
 regex = "1.7.0"
 reqwest = { version = "0.11.12", default-features = false, features = ["gzip", "rustls-tls"] }
+strum = { version = "0.24.1", features = ["derive"] }
 tar = "0.4.38"
 tempfile = "3.3.0"
 thiserror = "1.0.37"

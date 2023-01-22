@@ -11,6 +11,37 @@ use std::os::unix::fs::PermissionsExt;
 #[cfg(target_family = "unix")]
 use std::os::unix::prelude::*;
 
+struct PreservableTempdir {
+    td: Option<TempDir>,
+    preserved: Option<PathBuf>,
+}
+
+impl PreservableTempdir {
+    fn new() -> Result<Self> {
+        let orig_td = TempDir::new()?;
+        match env::var("UBI_TESTS_PRESERVE_TEMPDIR") {
+            Ok(v) if !(v.is_empty() || v == "0") => {
+                println!("Saving tempdir: {}", orig_td.path().display());
+                Ok(PreservableTempdir {
+                    td: None,
+                    preserved: Some(orig_td.into_path()),
+                })
+            }
+            _ => Ok(PreservableTempdir {
+                td: Some(orig_td),
+                preserved: None,
+            }),
+        }
+    }
+
+    fn path(&self) -> &Path {
+        match &self.td {
+            Some(td) => td.path(),
+            None => self.preserved.as_ref().unwrap(),
+        }
+    }
+}
+
 #[test]
 fn tests() -> Result<()> {
     let cargo = make_exe_pathbuf(&["cargo"]);
@@ -21,7 +52,10 @@ fn tests() -> Result<()> {
     ubi.push("debug");
     ubi.push(if cfg!(windows) { "ubi.exe" } else { "ubi" });
 
+    let td = PreservableTempdir::new()?;
+
     run_test(
+        td.path(),
         ubi.as_ref(),
         &["--project", "houseabsolute/precious"],
         make_exe_pathbuf(&["bin", "precious"]),
@@ -29,7 +63,8 @@ fn tests() -> Result<()> {
 
     {
         let precious_bin = make_exe_pathbuf(&["bin", "precious"]);
-        let _td = run_test(
+        run_test(
+            td.path(),
             ubi.as_ref(),
             &["--project", "houseabsolute/precious", "--tag", "v0.0.6"],
             precious_bin.clone(),
@@ -47,12 +82,14 @@ fn tests() -> Result<()> {
     }
 
     run_test(
+        td.path(),
         ubi.as_ref(),
         &["--project", "https://github.com/houseabsolute/precious"],
         make_exe_pathbuf(&["bin", "precious"]),
     )?;
 
     run_test(
+        td.path(),
         ubi.as_ref(),
         &[
             "--project",
@@ -63,6 +100,7 @@ fn tests() -> Result<()> {
 
     let in_dir = make_dir_pathbuf(&["sub", "dir"]);
     run_test(
+        td.path(),
         ubi.as_ref(),
         &[
             "--project",
@@ -76,7 +114,7 @@ fn tests() -> Result<()> {
     #[cfg(target_os = "linux")]
     {
         let precious_bin = make_exe_pathbuf(&["bin", "precious"]);
-        let _td =     run_test(
+        run_test(td.path(),
             ubi.as_ref(),
             &["--url", "https://github.com/houseabsolute/precious/releases/download/v0.1.7/precious-Linux-x86_64-musl.tar.gz"],
             make_exe_pathbuf(&["bin", "precious"]),
@@ -94,6 +132,7 @@ fn tests() -> Result<()> {
     }
 
     run_test(
+        td.path(),
         ubi.as_ref(),
         &["--project", "BurntSushi/ripgrep", "--exe", "rg"],
         make_exe_pathbuf(&["bin", "rg"]),
@@ -101,7 +140,8 @@ fn tests() -> Result<()> {
 
     {
         let rust_analyzer_bin = make_exe_pathbuf(&["bin", "rust-analyzer"]);
-        let _td = run_test(
+        run_test(
+            td.path(),
             ubi.as_ref(),
             &["--project", "rust-analyzer/rust-analyzer"],
             rust_analyzer_bin.clone(),
@@ -122,7 +162,8 @@ fn tests() -> Result<()> {
 
     {
         let golangci_lint_bin = make_exe_pathbuf(&["bin", "golangci-lint"]);
-        let _td = run_test(
+        run_test(
+            td.path(),
             ubi.as_ref(),
             &["--project", "golangci/golangci-lint"],
             golangci_lint_bin.clone(),
@@ -151,7 +192,12 @@ fn tests() -> Result<()> {
         ]);
         fs::copy(ubi.as_path(), ubi_copy.as_path())?;
         let old_stat = fs::metadata(ubi_copy.as_path())?;
-        let _td = run_test(ubi_copy.as_ref(), &["--self-upgrade"], ubi_copy.clone())?;
+        run_test(
+            td.path(),
+            ubi_copy.as_ref(),
+            &["--self-upgrade"],
+            ubi_copy.clone(),
+        )?;
 
         {
             let new_stat = fs::metadata(ubi_copy)?;
@@ -172,7 +218,8 @@ fn tests() -> Result<()> {
     // This project's 22.08.1 release has an xz-compressed tarball.
     {
         let hx_bin = make_exe_pathbuf(&["bin", "hx"]);
-        let _td = run_test(
+        run_test(
+            td.path(),
             ubi.as_ref(),
             &[
                 "--project",
@@ -201,7 +248,8 @@ fn tests() -> Result<()> {
     #[cfg(target_os = "linux")]
     {
         let prettycrontab_bin = make_exe_pathbuf(&["bin", "prettycrontab"]);
-        let _td = run_test(
+        run_test(
+            td.path(),
             ubi.as_ref(),
             &["--project", "mfontani/prettycrontab", "--tag", "v0.0.2"],
             prettycrontab_bin.clone(),
@@ -223,7 +271,8 @@ fn tests() -> Result<()> {
     #[cfg(target_os = "linux")]
     {
         let tstdin_bin = make_exe_pathbuf(&["bin", "tstdin"]);
-        let _td = run_test(
+        run_test(
+            td.path(),
             ubi.as_ref(),
             &["--project", "mfontani/tstdin", "--tag", "v0.2.3"],
             tstdin_bin.clone(),
@@ -243,7 +292,8 @@ fn tests() -> Result<()> {
     #[cfg(target_os = "linux")]
     {
         let delta_bin = make_exe_pathbuf(&["bin", "delta"]);
-        let _td = run_test(
+        run_test(
+            td.path(),
             ubi.as_ref(),
             &[
                 "--project",
@@ -284,6 +334,7 @@ fn tests() -> Result<()> {
     // "omegasort_0.0.5_Darwin_arm64.tar.gz", but macOS reports its
     // architecture as "aarch64". This was fixed in ubi 0.0.16.
     run_test(
+        td.path(),
         ubi.as_ref(),
         &["--project", "https://github.com/houseabsolute/omegasort"],
         make_exe_pathbuf(&["bin", "omegasort"]),
@@ -309,22 +360,39 @@ fn make_dir_pathbuf(path: &[&str]) -> PathBuf {
     pb
 }
 
-fn run_test(cmd: &Path, args: &[&str], mut expect: PathBuf) -> Result<TempDir> {
-    let td = tempdir()?;
-    env::set_current_dir(td.path())?;
+fn run_test(td: &Path, cmd: &Path, args: &[&str], mut expect: PathBuf) -> Result<()> {
+    for entry in fs::read_dir(td)? {
+        let entry = entry?;
+        if entry.metadata()?.is_dir() {
+            fs::remove_dir_all(entry.path())?;
+        } else {
+            fs::remove_file(entry.path())?;
+        }
+    }
+    env::set_current_dir(td)?;
 
-    match run_command(cmd, args) {
+    let debug = matches!(env::var("UBI_TESTS_DEBUG"), Ok(v) if !(v.is_empty() || v == "0"));
+    let mut args = args.to_vec();
+    if debug {
+        args.push("--debug");
+    }
+
+    match run_command(cmd, &args) {
         Ok((stdout, stderr)) => {
             assert_eq!(
                 stdout.unwrap_or_default(),
                 String::new(),
                 "no output to stdout",
             );
-            assert_eq!(
-                stderr.unwrap_or_default(),
-                String::new(),
-                "no output to stderr",
-            );
+            if debug {
+                print!("{}", stderr.unwrap());
+            } else {
+                assert_eq!(
+                    stderr.unwrap_or_default(),
+                    String::new(),
+                    "no output to stderr",
+                );
+            }
         }
         Err(e) => return Err(e),
     }
@@ -343,7 +411,7 @@ fn run_test(cmd: &Path, args: &[&str], mut expect: PathBuf) -> Result<TempDir> {
         "downloaded file is executable",
     );
 
-    Ok(td)
+    Ok(())
 }
 
 pub fn run_command(cmd: &Path, args: &[&str]) -> Result<(Option<String>, Option<String>)> {
