@@ -636,26 +636,22 @@ impl Ubi {
         debug!("extracting binary from zip file");
 
         let mut zip = ZipArchive::new(open_file(&downloaded_file)?)?;
-        let zf = zip.by_name(&self.exe);
-        match zf {
-            Ok(mut zf) => {
+        for i in 0..zip.len() {
+            let mut zf = zip.by_index(i)?;
+            let path = PathBuf::from(zf.name());
+            if path.ends_with(&self.exe) {
                 let mut buffer: Vec<u8> = Vec::with_capacity(zf.size() as usize);
                 zf.read_to_end(&mut buffer)?;
                 let mut file = File::create(&self.install_path)?;
-                file.set_len(0)?;
-                file.write_all(&buffer).map_err(|e| e.into())
-            }
-            Err(e) => {
-                debug!(
-                    "could not find any entries named {} - got error from zip.by_name: {}",
-                    self.exe, e,
-                );
-                Err(anyhow!(
-                    "could not find any files named {} in the downloaded zip file",
-                    self.exe,
-                ))
+                return file.write_all(&buffer).map_err(|e| e.into());
             }
         }
+
+        debug!("could not find any entries named {}", self.exe);
+        Err(anyhow!(
+            "could not find any files named {} in the downloaded zip file",
+            self.exe,
+        ))
     }
 
     fn extract_tarball(&self, downloaded_file: PathBuf) -> Result<()> {
