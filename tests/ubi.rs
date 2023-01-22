@@ -218,6 +218,28 @@ fn tests() -> Result<()> {
         }
     }
 
+    // This project has multiple releases, which are binaries.
+    // The darwin and linux executables are xz'ed.
+    #[cfg(target_os = "linux")]
+    {
+        let tstdin_bin = make_exe_pathbuf(&["bin", "tstdin"]);
+        let _td = run_test(
+            ubi.as_ref(),
+            &["--project", "mfontani/tstdin", "--tag", "v0.2.3"],
+            tstdin_bin.clone(),
+        )?;
+        match run_command(tstdin_bin.as_ref(), &["-version"]) {
+            Ok((stdout, _)) => {
+                assert!(stdout.is_some(), "got stdout from tstdin");
+                assert!(
+                    stdout.unwrap().contains("v0.2.3"),
+                    "got the expected stdout",
+                );
+            }
+            Err(e) => return Err(e),
+        }
+    }
+
     #[cfg(target_os = "linux")]
     {
         let delta_bin = make_exe_pathbuf(&["bin", "delta"]);

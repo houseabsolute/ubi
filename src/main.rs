@@ -461,7 +461,7 @@ impl Ubi {
         let mut names: Vec<String> = vec![];
 
         let valid_extensions: &'static [&'static str] = &[
-            ".tar.gz", ".tgz", ".tar.bz", ".tbz", ".tar.xz", ".txz", ".zip", ".gz",
+            ".tar.gz", ".tgz", ".tar.bz", ".tbz", ".tar.xz", ".txz", ".zip", ".gz", ".xz",
         ];
 
         // This could all be done much more simply with the iterator's .find()
