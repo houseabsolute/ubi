@@ -278,6 +278,7 @@ fn print_err(e: Error) {
 
 #[derive(Debug, EnumIter)]
 enum Extension {
+    Bz,
     Gz,
     TarBz,
     TarGz,
@@ -292,6 +293,7 @@ enum Extension {
 impl Extension {
     pub(crate) fn extension(&self) -> &'static str {
         match self {
+            Extension::Bz => ".bz",
             Extension::Gz => ".gz",
             Extension::TarBz => ".tar.bz",
             Extension::TarGz => ".tar.gz",
@@ -623,6 +625,7 @@ impl Ubi {
             | Some(Extension::Tbz)
             | Some(Extension::Tgz)
             | Some(Extension::Txz) => self.extract_tarball(downloaded_file),
+            Some(Extension::Bz) => self.unbzip(downloaded_file),
             Some(Extension::Gz) => self.ungzip(downloaded_file),
             Some(Extension::Xz) => self.unxz(downloaded_file),
             Some(Extension::Zip) => self.extract_zip(downloaded_file),
@@ -692,6 +695,12 @@ impl Ubi {
             "could not find any files named {} in the downloaded tarball",
             self.exe,
         ))
+    }
+
+    fn unbzip(&self, downloaded_file: PathBuf) -> Result<()> {
+        debug!("uncompressing binary from bzip file");
+        let reader = BzDecoder::new(open_file(&downloaded_file)?);
+        self.write_to_install_path(reader)
     }
 
     fn ungzip(&self, downloaded_file: PathBuf) -> Result<()> {

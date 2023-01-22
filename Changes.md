@@ -6,6 +6,8 @@
 - Really fix handling of bare xz-compressed binaries. Based on PR #27 from
   Marco Fontani.
 
+- Add support for bare bz-compressed binaries.
+
 ## 0.0.17 - 2022-10-29
 
 - Fixed handling of xz-compressed tarballs. These were ignored even though
