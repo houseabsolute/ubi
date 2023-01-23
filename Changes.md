@@ -1,4 +1,4 @@
-## 0.0.18
+## 0.0.18 - 2023-01-22
 
 - Most errors no longer print out usage information. Now this is only printed
   for errors related to invalid CLI arguments. GH #22.
