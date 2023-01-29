@@ -12,12 +12,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Cache cargo & target directories
-        uses: Swatinem/rust-cache@v1
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+      - name: Cache Cargo home
+        uses: FrancisRussell/ferrous-actions@v0.1.0-beta.2
         with:
-          profile: default
+          command: cache
+      - name: Install Rust stable
+        uses: FrancisRussell/ferrous-actions@v0.1.0-beta.2
+        with:
+          command: install-rustup
           toolchain: stable
           override: true
       - name: Configure Git

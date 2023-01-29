@@ -30,14 +30,14 @@ jobs:
           - nightly
     steps:
       - uses: actions/checkout@v2
-      - name: Cache cargo & target directories
-        uses: Swatinem/rust-cache@v1
+      - name: Cache Cargo home
+        uses: FrancisRussell/ferrous-actions@v0.1.0-beta.2
         with:
-          key: "v2"
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+          command: cache
+      - name: Install Rust ${{ matrix.toolchain }}
+        uses: FrancisRussell/ferrous-actions@v0.1.0-beta.2
         with:
-          profile: default
+          command: install-rustup
           toolchain: ${{ matrix.toolchain }}
           override: true
       - name: Configure Git
@@ -45,16 +45,16 @@ jobs:
           git config --global user.email "jdoe@example.com"
           git config --global user.name "J. Doe"
       - name: Run cargo check
-        uses: actions-rs/cargo@v1
+        uses: FrancisRussell/ferrous-actions@v0.1.0-beta.2
         with:
-          command: check
+          command: cargo check
           args: --locked --target=${{ matrix.platform.target }}
       - name: Run cargo test
+        uses: FrancisRussell/ferrous-actions@v0.1.0-beta.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        uses: actions-rs/cargo@v1
         with:
-          command: test
+          command: cargo test
           args: --locked --target=${{ matrix.platform.target }}
 
   # Copied from https://github.com/urbica/martin/blob/master/.github/workflows/ci.yml
@@ -105,18 +105,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+      - name: Install Rust stable
+        uses: FrancisRussell/ferrous-actions@v0.1.0-beta.2
         with:
-          profile: minimal
+          command: install-rustup
           toolchain: stable
           override: true
           target: ${{ matrix.platform.target }}
-      - name: Build binary
-        uses: actions-rs/cargo@v1
+      - name: Run cargo build
+        uses: FrancisRussell/ferrous-actions@v0.1.0-beta.2
         with:
-          use-cross: ${{ matrix.platform.cross }}
-          command: build
+          command: cargo build
           args: --locked --release --target ${{ matrix.platform.target }}
       - name: Package as archive
         shell: bash
