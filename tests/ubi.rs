@@ -209,9 +209,7 @@ fn tests() -> Result<()> {
             let new_modified = new_stat.modified()?;
             assert!(
                 old_modified > new_modified,
-                "new version of ubi was downloaded ({:?} > {:?})",
-                old_modified,
-                new_modified,
+                "new version of ubi was downloaded ({old_modified:?} > {new_modified:?})",
             );
         }
     }
@@ -404,7 +402,7 @@ fn run_test(td: &Path, cmd: &Path, args: &[&str], mut expect: PathBuf) -> Result
 
     let expect_str = expect.to_string_lossy().into_owned();
 
-    let meta = fs::metadata(expect).context(format!("getting fs metadata for {}", expect_str))?;
+    let meta = fs::metadata(expect).context(format!("getting fs metadata for {expect_str}"))?;
     assert!(meta.is_file(), "downloaded file into expected location",);
     #[cfg(target_family = "unix")]
     assert!(
@@ -430,7 +428,7 @@ fn output_from_command(
     args: &[&str],
 ) -> Result<(Option<String>, Option<String>)> {
     let cstr = command_string(cmd, args);
-    println!("running {}", cstr);
+    println!("running {cstr}");
 
     let output = c.output()?;
     match output.status.code() {
@@ -440,7 +438,7 @@ fn output_from_command(
                 to_option_string(output.stderr),
             )),
             _ => {
-                let mut msg = format!("ran {} and got non-zero exit code: {}", cstr, code);
+                let mut msg = format!("ran {cstr} and got non-zero exit code: {code}");
                 if !output.stdout.is_empty() {
                     msg.push_str("\nStdout:\n");
                     msg.push_str(&String::from_utf8_lossy(&output.stdout));

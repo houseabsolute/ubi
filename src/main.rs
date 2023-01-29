@@ -44,7 +44,7 @@ async fn main() {
     let matches = cmd.get_matches();
     let res = init_logger(&matches);
     if let Err(e) = res {
-        eprintln!("Error creating logger: {}", e);
+        eprintln!("Error creating logger: {e}");
         std::process::exit(126);
     }
     let status = match make_ubi(matches) {
