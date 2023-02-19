@@ -1,4 +1,4 @@
-## 0.0.19
+## 0.0.19 - 2023-02-18
 
 - Fixed handling of bare executables on Windows. It would reject these because
   it wasn't expecting to download a file with a `.exe` extension.
