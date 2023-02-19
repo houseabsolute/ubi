@@ -54,11 +54,7 @@ curl --silent --location \
 ### Windows
 
 ```
-powershell \
-    -exec bypass \
-    -c "Invoke-WebRequest \
-    -URI 'https://raw.githubusercontent.com/houseabsolute/ubi/master/bootstrap/bootstrap-ubi.ps1' \
-    -UseBasicParsing | Invoke-Expression"
+powershell -exec bypass -c "Invoke-WebRequest -URI 'https://raw.githubusercontent.com/houseabsolute/ubi/master/bootstrap/bootstrap-ubi.ps1' -UseBasicParsing | Invoke-Expression"
 ```
 
 You can run this from a command or Powershell command line. This will install
