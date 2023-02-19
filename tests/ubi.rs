@@ -427,6 +427,10 @@ pub fn run_command(cmd: &Path, args: &[&str]) -> Result<(Option<String>, Option<
     for a in args.iter() {
         c.arg(a);
     }
+    c.env(
+        "GITHUB_TOKEN",
+        env::var("GITHUB_TOKEN").as_deref().unwrap_or(""),
+    );
 
     output_from_command(c, cmd, args)
 }
