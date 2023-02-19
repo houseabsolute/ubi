@@ -339,6 +339,15 @@ fn tests() -> Result<()> {
         make_exe_pathbuf(&["bin", "omegasort"]),
     )?;
 
+    // This is a bare binary. The Windows release has a filename ending in
+    // ".exe" which ubi initially rejected.
+    run_test(
+        td.path(),
+        ubi.as_ref(),
+        &["--project", "tailwindlabs/tailwindcss", "--tag", "v3.2.7"],
+        make_exe_pathbuf(&["bin", "tailwindcss"]),
+    )?;
+
     Ok(())
 }
 

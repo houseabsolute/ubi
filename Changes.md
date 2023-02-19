@@ -1,3 +1,8 @@
+## 0.0.19
+
+- Fixed handling of bare executables on Windows. It would reject these because
+  it wasn't expecting to download a file with a `.exe` extension.
+
 ## 0.0.18 - 2023-01-22
 
 - Most errors no longer print out usage information. Now this is only printed

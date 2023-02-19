@@ -278,6 +278,7 @@ fn print_err(e: Error) {
 #[derive(Debug, EnumIter)]
 enum Extension {
     Bz,
+    Exe,
     Gz,
     TarBz,
     TarGz,
@@ -293,6 +294,7 @@ impl Extension {
     pub(crate) fn extension(&self) -> &'static str {
         match self {
             Extension::Bz => ".bz",
+            Extension::Exe => ".exe",
             Extension::Gz => ".gz",
             Extension::TarBz => ".tar.bz",
             Extension::TarGz => ".tar.gz",
@@ -628,7 +630,7 @@ impl Ubi {
             Some(Extension::Gz) => self.ungzip(downloaded_file),
             Some(Extension::Xz) => self.unxz(downloaded_file),
             Some(Extension::Zip) => self.extract_zip(downloaded_file),
-            None => self.copy_executable(downloaded_file),
+            Some(Extension::Exe) | None => self.copy_executable(downloaded_file),
         }
     }
 
