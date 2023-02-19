@@ -4,6 +4,7 @@ on: [push, pull_request]
 
 env:
   CRATE_NAME: precious
+  GITHUB_TOKEN: ${{ github.token }}
   RUST_BACKTRACE: 1
 
 jobs:
@@ -25,8 +26,6 @@ jobs:
           git config --global user.email "jdoe@example.com"
           git config --global user.name "J. Doe"
       - name: Run install-dev-tools.sh
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
           mkdir $HOME/bin
