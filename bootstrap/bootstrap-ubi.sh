@@ -55,6 +55,7 @@ cd "$TARGET"
 
 KERNEL=$(uname -s)
 ABI=""
+EXT="tar.gz"
 case "$KERNEL" in
     Linux)
         PLATFORM="Linux"
@@ -65,6 +66,7 @@ case "$KERNEL" in
         ;;
     MINGW*)
         PLATFORM="Windows"
+        EXT="zip"
         ;;
     *)
         echo "boostrap-ubi.sh: Cannot determine what binary to download for your kernel: $KERNEL"
@@ -88,7 +90,7 @@ case "$ARCH" in
         exit 4
 esac
 
-FILENAME="ubi-$PLATFORM-$CPU$ABI.tar.gz"
+FILENAME="ubi-$PLATFORM-$CPU$ABI.$EXT"
 URL="https://github.com/houseabsolute/ubi/releases/download/$TAG/$FILENAME"
 
 TEMPDIR=$( mktemp -d )
@@ -105,7 +107,11 @@ elif [ "$STATUS" != "200" ]; then
     exit 6
 fi
 
-tar -xzf "$LOCAL_FILE" ubi
+if [ "$EXT" = "tar.gz" ]; then
+    tar -xzf "$LOCAL_FILE" ubi
+else
+    unzip "$LOCAL_FILE"
+fi
 
 rm -rf -- "$TEMPDIR"
 
