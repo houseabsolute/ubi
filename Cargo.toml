@@ -6,7 +6,7 @@ description = "The Universal Binary Installer"
 repository = "https://github.com/houseabsolute/ubi"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 anyhow = "1.0.68"
