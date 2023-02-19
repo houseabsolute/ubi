@@ -63,6 +63,9 @@ case "$KERNEL" in
     Darwin)
         PLATFORM="Darwin"
         ;;
+    MINGW*)
+        PLATFORM="Windows"
+        ;;
     *)
         echo "boostrap-ubi.sh: Cannot determine what binary to download for your kernel: $KERNEL"
         exit 3
