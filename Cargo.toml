@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0.68"
+anyhow = "1.0.69"
 bzip2 = "0.4.4"
 clap = "3.2.23"
 fern = { version = "0.6.1", features = ["colored"] }
@@ -22,12 +22,12 @@ regex = "1.7.1"
 reqwest = { version = "0.11.14", default-features = false, features = ["gzip", "rustls-tls"] }
 strum = { version = "0.24.1", features = ["derive"] }
 tar = "0.4.38"
-tempfile = "3.3.0"
+tempfile = "3.4.0"
 thiserror = "1.0.38"
-tokio = { version = "1.24.2", default-features = false, features = ["macros", "rt"] }
+tokio = { version = "1.25.0", default-features = false, features = ["macros", "rt"] }
 url = "2.2.2"
 xz = "0.1.0"
-zip = "0.6.3"
+zip = "0.6.4"
 
 [workspace.metadata.release]
 allow-branch = ["master"]
