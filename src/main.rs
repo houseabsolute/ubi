@@ -8,10 +8,13 @@ use fern::{
 use flate2::read::GzDecoder;
 use itertools::Itertools;
 use log::{debug, error};
-use octocrab::models::repos::{Asset, Release};
 use platforms::target::{TARGET_ARCH, TARGET_OS};
 use regex::Regex;
-use reqwest::StatusCode;
+use reqwest::{
+    header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION, USER_AGENT},
+    Client, StatusCode,
+};
+use serde::Deserialize;
 use std::{
     env::{self, args_os},
     ffi::OsString,
@@ -318,6 +321,19 @@ impl Extension {
     }
 }
 
+const GITHUB_API_BASE: &str = "https://api.github.com";
+
+#[derive(Debug, Deserialize)]
+struct Release {
+    assets: Vec<Asset>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Asset {
+    name: String,
+    url: Url,
+}
+
 #[derive(Debug)]
 struct Ubi {
     project_name: String,
@@ -444,16 +460,12 @@ impl Ubi {
         let (asset_url, asset_name) = self.asset().await?;
         debug!("downloading asset from {}", asset_url);
 
-        let client = reqwest::Client::builder().gzip(true).build()?;
-        let mut req = client
-            .request(reqwest::Method::GET, asset_url.clone())
-            .header("User-Agent", format!("ubi version {VERSION}"))
-            .header("Accept", "application/octet-stream");
-
-        if let Some(t) = &self.github_token {
-            req = req.bearer_auth(t);
-        }
-        let mut res = client.execute(req.build()?).await?;
+        let client = self.reqwest_client()?;
+        let req = client
+            .get(asset_url.clone())
+            .header(ACCEPT, HeaderValue::from_str("application/octet-stream")?)
+            .build()?;
+        let mut res = client.execute(req).await?;
         if res.status() != StatusCode::OK {
             let mut msg = format!("error requesting {}: {}", asset_url, res.status());
             if let Ok(t) = res.text().await {
@@ -544,30 +556,45 @@ impl Ubi {
 
     async fn release_info(&self) -> Result<Release> {
         let mut parts = self.project_name.split('/');
-        let o = parts.next().unwrap();
-        let p = parts.next().unwrap();
+        let owner = parts.next().unwrap();
+        let repo = parts.next().unwrap();
 
-        let octocrab = match &self.github_token {
-            Some(t) => {
-                debug!("adding GitHub token to GitHub requests");
-                octocrab::Octocrab::builder()
-                    .personal_token(t.to_string())
-                    .build()?
-            }
-            None => octocrab::Octocrab::builder().build()?,
+        let url = match &self.tag {
+            Some(tag) => format!("{GITHUB_API_BASE}/repos/{owner}/{repo}/releases/tags/{tag}"),
+            None => format!("{GITHUB_API_BASE}/repos/{owner}/{repo}/releases/latest"),
         };
+        let client = self.reqwest_client()?;
+        let req = client
+            .get(url)
+            .header(ACCEPT, HeaderValue::from_str("application/json")?)
+            .build()?;
+        let res = client.execute(req).await?;
 
-        let res = match &self.tag {
-            Some(t) => octocrab.repos(o, p).releases().get_by_tag(t).await,
-            None => octocrab.repos(o, p).releases().get_latest().await,
-        };
-        match res {
-            Ok(r) => {
-                debug!("tag = {}", r.tag_name);
-                Ok(r)
-            }
-            Err(e) => Err(anyhow::Error::new(e)),
+        if let Err(e) = res.error_for_status_ref() {
+            return Err(anyhow::Error::new(e));
         }
+
+        Ok(res.json::<Release>().await?)
+    }
+
+    fn reqwest_client(&self) -> Result<Client> {
+        let builder = Client::builder().gzip(true);
+
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            USER_AGENT,
+            HeaderValue::from_str(&format!("ubi version {VERSION}"))?,
+        );
+
+        if let Some(token) = &self.github_token {
+            debug!("adding GitHub token to GitHub requests");
+            let bearer = format!("Bearer {token}");
+            let mut auth_val = HeaderValue::from_str(&bearer)?;
+            auth_val.set_sensitive(true);
+            headers.insert(AUTHORIZATION, auth_val);
+        }
+
+        Ok(builder.default_headers(headers).build()?)
     }
 
     fn pick_asset(&self, mut assets: Vec<Asset>) -> Result<Asset> {
