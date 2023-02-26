@@ -81,6 +81,18 @@ jobs:
             bin: ubi
             name: ubi-Linux-arm-musl.tar.gz
             cross: true
+          - os_name: Linux-ppc64
+            os: ubuntu-20.04
+            target: powerpc64-unknown-linux-gnu
+            bin: ubi
+            name: ubi-Linux-powerpc64.tar.gz
+            cross: true
+          - os_name: Linux-s390x
+            os: ubuntu-20.04
+            target: s390x-unknown-linux-gnu
+            bin: ubi
+            name: ubi-Linux-s390x.tar.gz
+            cross: true
           - os_name: Windows
             os: windows-latest
             target: x86_64-pc-windows-msvc
