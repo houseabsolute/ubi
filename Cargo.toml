@@ -17,9 +17,10 @@ flate2 = "1.0.25"
 itertools = "0.10.5"
 log = "0.4.17"
 openssl = { version = "0.10.45", features = ["vendored"] }
-platforms = "2.0.0"
+platforms = "3.0.2"
 regex = "1.7.1"
 reqwest = { version = "0.11.14", default-features = false, features = ["gzip", "json", "default-tls"] }
+result = "1.0.0"
 serde = { version = "1.0.152", features = ["derive"] }
 strum = { version = "0.24.1", features = ["derive"] }
 tar = "0.4.38"
@@ -32,3 +33,6 @@ zip = "0.6.4"
 
 [workspace.metadata.release]
 allow-branch = ["master"]
+
+[dev-dependencies]
+mockito = "0.32.3"
