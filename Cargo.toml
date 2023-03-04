@@ -26,7 +26,7 @@ strum = { version = "0.24.1", features = ["derive"] }
 tar = "0.4.38"
 tempfile = "3.4.0"
 thiserror = "1.0.38"
-tokio = { version = "1.25.0", default-features = false, features = ["macros", "rt"] }
+tokio = { version = "1.26.0", default-features = false, features = ["macros", "rt"] }
 url = { version = "2.3.1", features = ["serde"] }
 xz = "0.1.0"
 zip = "0.6.4"
@@ -35,4 +35,4 @@ zip = "0.6.4"
 allow-branch = ["master"]
 
 [dev-dependencies]
-mockito = "0.32.3"
+mockito = "0.32.4"
