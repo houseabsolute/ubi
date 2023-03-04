@@ -1,3 +1,46 @@
+## 0.0.20
+
+- This release includes a number of changes to support building on many more
+  platforms.
+  - The full list of architectures that binaries are released for is:
+    - FreeBSD x86-64 **new**
+    - Linux x86-64
+    - Linux aarch64 (aka arm64)
+    - Linux arm (32-bit)
+    - Linux i586 (x86 32-bit) **new**
+    - Linux mips (32-bit) **new**
+    - Linux mipsel (32-bit little-endian) **new**
+    - Linux mips64 **new**
+    - Linux mips64el (little-endian) **new**
+    - Linux PowerPC (32-bit) **new**
+    - Linux PowerPC64 **new**
+    - Linux PowerPC64le (little-endian) **new**
+    - Linux riscv64 **new**
+    - Linux s390x **new**
+    - NetBSD x86-64 **new**
+    - Windows x86-64
+    - Windows i686 (32-bit) **new**
+    - Windows aarch64 (aka arm64) **new**
+    - macOS x86-64
+    - macOS aarch64 (aka arm64)
+  - The code supports some other OS and CPU architectures internally, but I do
+    not have any way to build these:
+    - Fuchsia x86-64 and aarch64 - not supported by `cross`.
+    - Illumos x86-64 - OpenSSL build fails with odd error about `granlib`
+      executable.
+    - Linux Sparc64 - not supported by OpenSSL.
+    - Solaris x86-64 - supported by `cross` but building the
+      [`mio`](https://lib.rs/crates/mio) crate fails.
+    - Solaris Sparc - not supported by OpenSSL.
+  - In order to do this, `ubi` now uses the
+    [`openssl`](https://lib.rs/crates/openssl) crate under the hood instead of
+    [`rustls`](https://lib.rs/crates/rustls). That's because `rustls` depends
+    on [`ring`](https://lib.rs/crates/ring), which does not support nearly as
+    many CPU architectures as OpenSSL. The `vendored` feature for the
+    `openssl` crate is enabled, which causes it to compile and statically link
+    a copy of OpenSSL into the resulting binary. This makes the resulting
+    binary more portable at the cost of not using the system OpenSSL.
+
 ## 0.0.19 - 2023-02-18
 
 - Fixed handling of bare executables on Windows. It would reject these because
