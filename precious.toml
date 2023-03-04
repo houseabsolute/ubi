@@ -31,10 +31,11 @@ lint_failure_exit_codes = 1
 expect_stderr = true
 
 [commands.prettier]
-type = "both"
+type    = "both"
 include = [ "**/*.md", "**/*.yml" ]
-cmd = [ "./node_modules/.bin/prettier", "--no-config" ]
+cmd     = [ "./node_modules/.bin/prettier", "--no-config" ]
 lint_flags = "--check"
 tidy_flags = "--write"
 ok_exit_codes = 0
 lint_failure_exit_codes = 1
+ignore_stderr = [ "Code style issues" ]
