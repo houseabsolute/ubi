@@ -281,6 +281,9 @@ jobs:
           name: ubi-${{ matrix.platform.os_name }}
           path: "ubi*"
         if: github.ref == 'refs/tags/test-release'
+      - name: Generate SHA-256
+        if: matrix.platform.os == 'macOS-latest'
+        run: shasum -a 256 ${{ matrix.platform.name }}
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v1
         with:
