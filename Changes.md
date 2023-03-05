@@ -1,4 +1,4 @@
-## 0.0.20
+## 0.0.20 - 2023-03-04
 
 - This release includes a number of changes to support building on many more
   platforms.
