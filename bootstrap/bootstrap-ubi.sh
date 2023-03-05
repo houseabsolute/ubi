@@ -47,7 +47,7 @@ fi
 TARGET="${TARGET:=$DEFAULT_TARGET}"
 
 if [ ! -d "$TARGET" ]; then
-    2>& echo "boostrap-ubi.sh: The install target directory, $TARGET, does not exist"
+    >&2 echo "boostrap-ubi.sh: The install target directory, $TARGET, does not exist"
     exit 3
 fi
 
