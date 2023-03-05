@@ -47,7 +47,6 @@ jobs:
       - name: Run cargo test
         run: cargo test --locked --target=${{ matrix.platform.target }}
 
-  # Copied from https://github.com/urbica/martin/blob/master/.github/workflows/ci.yml
   release:
     name: Release - ${{ matrix.platform.os_name }}
     if: startsWith( github.ref, 'refs/tags/v' ) || github.ref == 'refs/tags/test-release'
