@@ -233,7 +233,6 @@ jobs:
         run: sudo apt-get update --yes && sudo apt-get install --yes musl-tools
         if: contains(matrix.platform.os, 'ubuntu') && !matrix.platform.cross
       - name: Install cross if cross-compiling (*nix)
-        id: cross-nix
         shell: bash
         run: |
           set -e
@@ -243,7 +242,6 @@ jobs:
           "$HOME/bin/ubi" --project cross-rs/cross --matching musl --in .
         if: matrix.platform.cross && !contains(matrix.platform.os, 'windows')
       - name: Install cross if cross-compiling (Windows)
-        id: cross-windows
         shell: powershell
         run: |
           .\bootstrap\bootstrap-ubi.ps1
