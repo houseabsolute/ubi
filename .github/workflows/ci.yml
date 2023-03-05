@@ -64,207 +64,134 @@ jobs:
             target: x86_64-unknown-freebsd
             bin: ubi
             name: ubi-FreeBSD-x86_64.tar.gz
-            cross: true
-            cargo_command: ./cross
 
           - os_name: Linux-x86_64
             os: ubuntu-20.04
             target: x86_64-unknown-linux-musl
             bin: ubi
             name: ubi-Linux-x86_64-musl.tar.gz
-            cross: false
-            cargo_command: cargo
 
           - os_name: Linux-aarch64
             os: ubuntu-20.04
             target: aarch64-unknown-linux-musl
             bin: ubi
             name: ubi-Linux-aarch64-musl.tar.gz
-            cross: true
-            cargo_command: ./cross
 
           - os_name: Linux-arm
             os: ubuntu-20.04
             target: arm-unknown-linux-musleabi
             bin: ubi
             name: ubi-Linux-arm-musl.tar.gz
-            cross: true
-            cargo_command: ./cross
 
           - os_name: Linux-i586
             os: ubuntu-20.04
             target: i586-unknown-linux-musl
             bin: ubi
             name: ubi-Linux-i586-musl.tar.gz
-            cross: false
-            cargo_command: cargo
 
           - os_name: Linux-mips
             os: ubuntu-20.04
             target: mips-unknown-linux-musl
             bin: ubi
             name: ubi-Linux-mips.tar.gz
-            cross: true
-            cargo_command: ./cross
 
           - os_name: Linux-mipsel
             os: ubuntu-20.04
             target: mipsel-unknown-linux-musl
             bin: ubi
             name: ubi-Linux-mipsel.tar.gz
-            cross: true
-            cargo_command: ./cross
 
           - os_name: Linux-mips64
             os: ubuntu-20.04
             target: mips64-unknown-linux-muslabi64
             bin: ubi
             name: ubi-Linux-mips64.tar.gz
-            cross: true
-            cargo_command: ./cross
 
           - os_name: Linux-mips64el
             os: ubuntu-20.04
             target: mips64el-unknown-linux-muslabi64
             bin: ubi
             name: ubi-Linux-mips64el.tar.gz
-            cross: true
-            cargo_command: ./cross
 
           - os_name: Linux-powerpc
             os: ubuntu-20.04
             target: powerpc-unknown-linux-gnu
             bin: ubi
             name: ubi-Linux-powerpc-gnu.tar.gz
-            cross: true
-            cargo_command: ./cross
 
           - os_name: Linux-powerpc64
             os: ubuntu-20.04
             target: powerpc64-unknown-linux-gnu
             bin: ubi
             name: ubi-Linux-powerpc64-gnu.tar.gz
-            cross: true
-            cargo_command: ./cross
 
           - os_name: Linux-powerpc64le
             os: ubuntu-20.04
             target: powerpc64le-unknown-linux-gnu
             bin: ubi
             name: ubi-Linux-powerpc64le.tar.gz
-            cross: true
-            cargo_command: ./cross
 
           - os_name: Linux-riscv64
             os: ubuntu-20.04
             target: riscv64gc-unknown-linux-gnu
             bin: ubi
             name: ubi-Linux-riscv64gc-gnu.tar.gz
-            cross: true
-            cargo_command: ./cross
 
           - os_name: Linux-s390x
             os: ubuntu-20.04
             target: s390x-unknown-linux-gnu
             bin: ubi
             name: ubi-Linux-s390x-gnu.tar.gz
-            cross: true
-            cargo_command: ./cross
 
           - os_name: NetBSD-x86_64
             os: ubuntu-20.04
             target: x86_64-unknown-netbsd
             bin: ubi
             name: ubi-NetBSD-x86_64.tar.gz
-            cross: true
-            cargo_command: ./cross
 
           - os_name: Windows-aarch64
             os: windows-latest
             target: aarch64-pc-windows-msvc
             bin: ubi.exe
             name: ubi-Windows-aarch64.zip
-            cross: false
-            cargo_command: cargo
 
           - os_name: Windows-i686
             os: windows-latest
             target: i686-pc-windows-msvc
             bin: ubi.exe
             name: ubi-Windows-i686.zip
-            cross: false
-            cargo_command: cargo
 
           - os_name: Windows-x86_64
             os: windows-latest
             target: x86_64-pc-windows-msvc
             bin: ubi.exe
             name: ubi-Windows-x86_64.zip
-            cross: false
-            cargo_command: cargo
 
           - os_name: macOS-x86_64
             os: macOS-latest
             target: x86_64-apple-darwin
             bin: ubi
             name: ubi-Darwin-x86_64.tar.gz
-            cross: false
-            cargo_command: cargo
 
           - os_name: macOS-aarch64
             os: macOS-latest
             target: aarch64-apple-darwin
             bin: ubi
             name: ubi-Darwin-aarch64.tar.gz
-            cross: false
-            cargo_command: cargo
 
     runs-on: ${{ matrix.platform.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Install toolchain if not cross-compiling
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.platform.target }}
-        if: ${{ !matrix.platform.cross }}
       - name: Install musl-tools on Linux
         run: sudo apt-get update --yes && sudo apt-get install --yes musl-tools
         if: contains(matrix.platform.os, 'ubuntu') && !matrix.platform.cross
-      - name: Install cross if cross-compiling (*nix)
-        shell: bash
-        run: |
-          set -e
-          export TARGET="$HOME/bin"
-          mkdir -p "$TARGET"
-          ./bootstrap/bootstrap-ubi.sh
-          "$HOME/bin/ubi" --project cross-rs/cross --matching musl --in .
-        if: matrix.platform.cross && !contains(matrix.platform.os, 'windows')
-      - name: Install cross if cross-compiling (Windows)
-        shell: powershell
-        run: |
-          .\bootstrap\bootstrap-ubi.ps1
-          .\ubi --project cross-rs/cross --in .
-        if: matrix.platform.cross && contains(matrix.platform.os, 'windows')
-      - name: Build binary (*nix)
-        shell: bash
-        run: |
-          ${{ matrix.platform.cargo_command }} build --locked --release --target ${{ matrix.platform.target }}
-        if: ${{ !contains(matrix.platform.os, 'windows') }}
-      - name: Build binary (Windows)
-        # We have to use the platform's native shell. If we use bash on
-        # Windows then OpenSSL complains that the Perl it finds doesn't use
-        # the platform's native paths and refuses to build.
-        shell: powershell
-        run: |
-          & ${{ matrix.platform.cargo_command }} build --locked --release --target ${{ matrix.platform.target }}
-        if: contains(matrix.platform.os, 'windows')
-      - name: Strip binary
-        shell: bash
-        run: |
-          strip target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}
-        # strip doesn't work with cross-arch binaries on Linux or Windows.
-        if: ${{ !(matrix.platform.cross || matrix.platform.target == 'aarch64-pc-windows-msvc') }}
+      - name: Build binary
+        uses: houseabsolute/actions-rust-cross@v0
+        with:
+          target: ${{ matrix.platform.target }}
+          args: "--locked --release"
+          strip: true
       - name: Package as archive
         shell: bash
         run: |
