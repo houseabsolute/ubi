@@ -119,9 +119,20 @@ There are a few things you'll want to consider when using `ubi` in CI.
 First, there are [the GitHub API rate
 limits](https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting). These
 can be as low as 60 requests per hour per IP when not providing a
-`GITHUB_TOKEN`, so you will almost certainly want to provide this. Note that
-GitHub Actions always provides a `GITHUB_TOKEN` env var in every workflow, and
-in that case the rate limits are per repository.
+`GITHUB_TOKEN`, so you will almost certainly want to provide this. When
+running in GitHub Actions you can use the `${{ secrets.GITHUB_TOKEN }}` syntax
+to set this env var, and in that case the rate limits are per repository.
+
+```yaml
+- name: Install UBI
+  shell: bash
+  run: |
+    curl --silent --location \
+        https://raw.githubusercontent.com/houseabsolute/ubi/master/bootstrap/bootstrap-ubi.sh |
+        sh
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
 
 If you only run `ubi` on one platform, you can avoid hitting the GitHub API
 entirely by using the `--url` parameter. But if you run on multiple platforms
