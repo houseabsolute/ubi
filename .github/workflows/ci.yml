@@ -1,4 +1,4 @@
-name: Integration tests and release
+name: Tests and release
 
 on: [push, pull_request]
 
