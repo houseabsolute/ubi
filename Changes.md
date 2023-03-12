@@ -1,4 +1,4 @@
-## 0.0.21
+## 0.0.21 - 2023-03-12
 
 - Improved matching of OS and CPU architecture names in release asset
   names. This release should do a better job with more projects.
