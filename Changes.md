@@ -1,3 +1,8 @@
+## 0.0.21
+
+- Improved matching of OS and CPU architecture names in release asset
+  names. This release should do a better job with more projects.
+
 ## 0.0.20 - 2023-03-04
 
 - This release includes a number of changes to support building on many more

@@ -571,51 +571,372 @@ impl<'a> Ubi<'a> {
             //OS::Haiku => Regex::new(r"(?i:(?:\b|_)haiku(?:\b|_))"),
             OS::IllumOS => Regex::new(r"(?i:(?:\b|_)illumos(?:\b|_))"),
             OS::Linux => Regex::new(r"(?i:(?:\b|_)linux(?:\b|_))"),
-            OS::MacOS => Regex::new(r"(?i:(?:\b|_)(?:darwin|macos)(?:\b|_))"),
+            OS::MacOS => Regex::new(r"(?i:(?:\b|_)(?:darwin|macos|osx)(?:\b|_))"),
             OS::NetBSD => Regex::new(r"(?i:(?:\b|_)netbsd(?:\b|_))"),
             //OS::OpenBSD => Regex::new(r"(?i:(?:\b|_)openbsd(?:\b|_))"),
             OS::Solaris => Regex::new(r"(?i:(?:\b|_)solaris(?:\b|_))"),
             //OS::VxWorks => Regex::new(r"(?i:(?:\b|_)vxworks(?:\b|_))"),
-            OS::Windows => Regex::new(r"(?i:(?:\b|_)windows(?:\b|_))"),
+            OS::Windows => Regex::new(r"(?i:(?:\b|_)win(?:32|64|dows)?(?:\b|_))"),
             _ => unreachable!(
                 "Cannot determine what type of compiled binary to use for this platform"
             ),
         }
-        .map_err(anyhow::Error::new)
+        .map_err(|e| e.into())
     }
 
     fn arch_matcher(&self) -> Result<Regex> {
         debug!("current CPU architecture = {}", self.platform.target_arch);
 
         match (self.platform.target_arch, self.platform.target_endian) {
-            (Arch::AArch64, _) => Regex::new(r"(?i:(?:\b|_)(?:aarch64|arm64)(?:\b|_))"),
-            (Arch::Arm, _) => Regex::new(r"(?i:(?:\b|_)arm(?:v[0-7])?(?:\b|_))"),
-            (Arch::Mips, Endian::Little) => Regex::new(r"(?i:(?:\b|_)mips(?:el|le)(?:\b|_))"),
-            (Arch::Mips, Endian::Big) => Regex::new(r"(?i:(?:\b|_)mips(?:\b|_))"),
-            (Arch::Mips64, Endian::Little) => Regex::new(r"(?i:(?:\b|_)mips64(?:el|le)(?:\b|_))"),
-            (Arch::Mips64, Endian::Big) => Regex::new(r"(?i:(?:\b|_)mips64(?:\b|_))"),
-            (Arch::PowerPc, _) => Regex::new(r"(?i:(?:\b|_)(?:powerpc|ppc)(?:\b|_))"),
-            (Arch::PowerPc64, Endian::Big) => {
-                Regex::new(r"(?i:(?:\b|_)(?:powerpc64|ppc64)(?:be)?(?:\b|_))")
-            }
-            (Arch::PowerPc64, Endian::Little) => {
-                Regex::new(r"(?i:(?:\b|_)(?:powerpc64|ppc64)le(?:\b|_))")
-            }
+            (Arch::AArch64, _) => aarch64_re(),
+            (Arch::Arm, _) => arm_re(),
+            (Arch::Mips, Endian::Little) => mipsle_re(),
+            (Arch::Mips, Endian::Big) => mips_re(),
+            (Arch::Mips64, Endian::Little) => mips64le_re(),
+            (Arch::Mips64, Endian::Big) => mips64_re(),
+            (Arch::PowerPc, _) => ppc32_re(),
+            (Arch::PowerPc64, Endian::Big) => ppc64_re(),
+            (Arch::PowerPc64, Endian::Little) => ppc64le_re(),
             //(Arch::Riscv32, _) => Regex::new(r"(?i:(?:\b|_)riscv(?:32)?(?:\b|_))"),
-            (Arch::Riscv64, _) => Regex::new(r"(?i:(?:\b|_)riscv(?:64)?(?:\b|_))"),
-            (Arch::S390X, _) => Regex::new(r"(?i:(?:\b|_)s390x(?:\b|_))"),
+            (Arch::Riscv64, _) => riscv64_re(),
+            (Arch::S390X, _) => s390x_re(),
             // Sparc is not supported by Go. 32-bit Sparc is not supported
             // by Rust, AFAICT.
             //(Arch::Sparc, _) => Regex::new(r"(?i:(?:\b|_)sparc(?:\b|_))"),
-            (Arch::Sparc64, _) => Regex::new(r"(?i:(?:\b|_)sparc(?:64)?(?:\b|_))"),
-            (Arch::X86, _) => Regex::new(r"(?i:(?:\b|_)(?:386|i586|i686)(?:\b|_))"),
-            (Arch::X86_64, _) => Regex::new(r"(?i:(?:\b|_)(?:x86|386|x86_64|x64|amd64)(?:\b|_))"),
+            (Arch::Sparc64, _) => sparc64_re(),
+            (Arch::X86, _) => x86_32_re(),
+            (Arch::X86_64, _) => x86_64_re(),
             _ => unreachable!(
                 "Cannot determine what type of compiled binary to use for this CPU architecture"
             ),
         }
-        .map_err(anyhow::Error::new)
     }
+}
+
+fn aarch64_re() -> Result<Regex> {
+    Regex::new(
+        r#"(?ix)
+        (?:
+            \b
+            |
+            _
+        )
+        (?:
+            aarch_?64
+            |
+            arm_?64
+        )
+        (?:
+            \b
+            |
+            _
+        )
+"#,
+    )
+    .map_err(|e| e.into())
+}
+
+fn arm_re() -> Result<Regex> {
+    Regex::new(
+        r#"(?ix)
+        (?:
+            \b
+            |
+            _
+        )
+        arm(?:v[0-7])?
+        (?:
+            \b
+            |
+            _
+        )
+"#,
+    )
+    .map_err(|e| e.into())
+}
+
+fn mipsle_re() -> Result<Regex> {
+    Regex::new(
+        r#"(?ix)
+        (?:
+            \b
+            |
+            _
+        )
+        mips(?:el|le)
+        (?:
+            \b
+            |
+            _
+        )
+"#,
+    )
+    .map_err(|e| e.into())
+}
+
+fn mips_re() -> Result<Regex> {
+    Regex::new(
+        r#"(?ix)
+        (?:
+            \b
+            |
+            _
+        )
+        mips
+        (?:
+            \b
+            |
+            _
+        )
+"#,
+    )
+    .map_err(|e| e.into())
+}
+
+fn mips64le_re() -> Result<Regex> {
+    Regex::new(
+        r#"(?ix)
+        (?:
+            \b
+            |
+            _
+        )
+        mips_?64(?:el|le)
+        (?:
+            \b
+            |
+            _
+        )
+"#,
+    )
+    .map_err(|e| e.into())
+}
+
+fn mips64_re() -> Result<Regex> {
+    Regex::new(
+        r#"(?ix)
+        (?:
+            \b
+            |
+            _
+        )
+        mips_?64
+        (?:
+            \b
+            |
+            _
+        )
+"#,
+    )
+    .map_err(|e| e.into())
+}
+
+fn ppc32_re() -> Result<Regex> {
+    Regex::new(
+        r#"(?ix)
+        (?:
+            \b
+            |
+            _
+        )
+        (?:
+            powerpc
+            |
+            ppc
+        )
+        (?:
+            \b
+            |
+            _
+        )
+"#,
+    )
+    .map_err(|e| e.into())
+}
+
+fn ppc64_re() -> Result<Regex> {
+    Regex::new(
+        r#"(?ix)
+        (?:
+            \b
+            |
+            _
+        )
+        (?:
+             (?:
+                 powerpc64
+                 |
+                 ppc64
+             )
+             (?:be)?
+             |
+             (?:
+                 powerpc
+                 |
+                 ppc
+             )
+             (?:be)?
+             _?64
+        )
+        (?:
+            \b
+            |
+            _
+        )
+"#,
+    )
+    .map_err(|e| e.into())
+}
+
+fn ppc64le_re() -> Result<Regex> {
+    Regex::new(
+        r#"(?ix)
+        (?:
+            \b
+            |
+            _
+        )
+        (?:
+             (?:
+                 powerpc64
+                 |
+                 ppc64
+             )
+             le
+             |
+             (?:
+                 powerpc
+                 |
+                 ppc
+             )
+             le
+             _?64
+        )
+        (?:
+            \b
+            |
+            _
+        )
+"#,
+    )
+    .map_err(|e| e.into())
+}
+
+fn riscv64_re() -> Result<Regex> {
+    Regex::new(
+        r#"(?ix)
+        (?:
+            \b
+            |
+            _
+        )
+        riscv(_?64)?
+        (?:
+            \b
+            |
+            _
+        )
+"#,
+    )
+    .map_err(|e| e.into())
+}
+
+fn s390x_re() -> Result<Regex> {
+    Regex::new(
+        r#"(?ix)
+        (?:
+            \b
+            |
+            _
+        )
+        s390x?(?:_?64)?
+        (?:
+            \b
+            |
+            _
+        )
+"#,
+    )
+    .map_err(|e| e.into())
+}
+
+fn sparc64_re() -> Result<Regex> {
+    Regex::new(
+        r#"(?ix)
+        (?:
+            \b
+            |
+            _
+        )
+        sparc(?:_?64)?
+        (?:
+            \b
+            |
+            _
+        )
+"#,
+    )
+    .map_err(|e| e.into())
+}
+
+fn x86_32_re() -> Result<Regex> {
+    Regex::new(
+        r#"(?ix)
+        (?:
+            \b
+            |
+            _
+        )
+        (?:
+            386 | i586 | i686
+            |
+            x86[_-]32
+            |
+            # This is gross but the OS matcher will reject this on non-Windows
+            # platforms.
+            win32
+        )
+        (?:
+            \b
+            |
+            _
+        )
+"#,
+    )
+    .map_err(|e| e.into())
+}
+
+fn x86_64_re() -> Result<Regex> {
+    Regex::new(
+        r#"(?ix)
+        (?:
+            \b
+            |
+            _
+        )
+        (?:
+            386 | i586 | i686
+            |
+            x86[_-]32
+            |
+            x86[_-]64
+            |
+            x64
+            |
+            amd64
+            |
+            # This is gross but the OS matcher will reject this on non-Windows
+            # platforms.
+            win64
+        )
+        (?:
+            \b
+            |
+            _
+        )
+"#,
+    )
+    .map_err(|e| e.into())
 }
 
 fn tar_reader_for(downloaded_file: PathBuf) -> Result<Archive<Box<dyn Read>>> {
@@ -664,7 +985,7 @@ mod test {
     use reqwest::header::ACCEPT;
 
     #[test]
-    fn test_parse_project_name() -> Result<()> {
+    fn parse_project_name() -> Result<()> {
         let org_and_repo = "some-owner/some-repo";
 
         let projects = &[
@@ -744,8 +1065,8 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_asset_picking() -> Result<()> {
-        init_logger(log::LevelFilter::Debug)?;
+    async fn asset_picking() -> Result<()> {
+        //init_logger(log::LevelFilter::Debug)?;
 
         struct Test {
             platforms: &'static [&'static str],
@@ -913,7 +1234,6 @@ mod test {
             for p in t.platforms {
                 let req = PlatformReq::from_str(p)
                     .unwrap_or_else(|e| panic!("could not create PlatformReq for {}: {e}", p));
-                debug!("platform = {p}");
                 let platform = req.matching_platforms().next().unwrap();
 
                 if let Some(expect_ubi) = t.expect_ubi {
@@ -1205,6 +1525,158 @@ mod test {
     {
       "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376693",
       "name": "omegasort_0.0.7_Windows_x86_64.tar.gz"
+    }
+  ]
+}
+"#;
+
+    #[tokio::test]
+    // The protobuf repo has some odd release naming. This tests that the
+    // matcher handles it.
+    async fn matching_unusual_names() -> Result<()> {
+        //init_logger(log::LevelFilter::Debug)?;
+
+        struct Test {
+            platforms: &'static [&'static str],
+            expect: &'static str,
+        }
+        let tests: &[Test] = &[
+            Test {
+                platforms: &["aarch64-apple-darwin"],
+                expect: "protoc-22.2-osx-aarch_64.zip",
+            },
+            Test {
+                platforms: &["x86_64-apple-darwin"],
+                expect: "protoc-22.2-osx-x86_64.zip",
+            },
+            Test {
+                platforms: &["aarch64-unknown-linux-gnu", "aarch64-unknown-linux-musl"],
+                expect: "protoc-22.2-linux-aarch_64.zip",
+            },
+            Test {
+                platforms: &[
+                    "i586-unknown-linux-gnu",
+                    "i586-unknown-linux-musl",
+                    "i686-unknown-linux-gnu",
+                    "i686-unknown-linux-musl",
+                ],
+                expect: "protoc-22.2-linux-x86_32.zip",
+            },
+            Test {
+                platforms: &["powerpc64le-unknown-linux-gnu"],
+                expect: "protoc-22.2-linux-ppcle_64.zip",
+            },
+            Test {
+                platforms: &["s390x-unknown-linux-gnu"],
+                expect: "protoc-22.2-linux-s390_64.zip",
+            },
+            Test {
+                platforms: &["x86_64-unknown-linux-musl"],
+                expect: "protoc-22.2-linux-x86_64.zip",
+            },
+            Test {
+                platforms: &["x86_64-pc-windows-gnu", "x86_64-pc-windows-msvc"],
+                expect: "protoc-22.2-win64.zip",
+            },
+            Test {
+                platforms: &[
+                    "i586-pc-windows-msvc",
+                    "i686-pc-windows-gnu",
+                    "i686-pc-windows-msvc",
+                ],
+                expect: "protoc-22.2-win32.zip",
+            },
+        ];
+
+        let mut server = Server::new_async().await;
+        let m1 = server
+            .mock("GET", "/repos/protocolbuffers/protobuf/releases/latest")
+            .match_header(ACCEPT.as_str(), "application/json")
+            .with_status(reqwest::StatusCode::OK.as_u16() as usize)
+            .with_body(PROTOBUF_LATEST_RESPONSE)
+            .expect_at_least(tests.len())
+            .create_async()
+            .await;
+
+        for t in tests {
+            for p in t.platforms {
+                let req = PlatformReq::from_str(p)
+                    .unwrap_or_else(|e| panic!("could not create PlatformReq for {}: {e}", p));
+                let platform = req.matching_platforms().next().unwrap();
+                let ubi = Ubi::new(
+                    Some("protocolbuffers/protobuf"),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    platform,
+                    Some(server.url()),
+                )?;
+                let asset = ubi.asset().await?;
+                assert_eq!(
+                    asset.1, t.expect,
+                    "picked {} as protobuf asset name",
+                    t.expect
+                );
+            }
+        }
+
+        m1.assert_async().await;
+
+        Ok(())
+    }
+
+    const PROTOBUF_LATEST_RESPONSE: &str = r#"
+{
+  "assets": [
+    {
+      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875803",
+      "name": "protobuf-22.2.tar.gz"
+    },
+    {
+      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875802",
+      "name": "protobuf-22.2.zip"
+    },
+    {
+      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875801",
+      "name": "protoc-22.2-linux-aarch_64.zip"
+    },
+    {
+      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875800",
+      "name": "protoc-22.2-linux-ppcle_64.zip"
+    },
+    {
+      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875799",
+      "name": "protoc-22.2-linux-s390_64.zip"
+    },
+    {
+      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875810",
+      "name": "protoc-22.2-linux-x86_32.zip"
+    },
+    {
+      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875811",
+      "name": "protoc-22.2-linux-x86_64.zip"
+    },
+    {
+      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875812",
+      "name": "protoc-22.2-osx-aarch_64.zip"
+    },
+    {
+      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875813",
+      "name": "protoc-22.2-osx-universal_binary.zip"
+    },
+    {
+      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875814",
+      "name": "protoc-22.2-osx-x86_64.zip"
+    },
+    {
+      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875815",
+      "name": "protoc-22.2-win32.zip"
+    },
+    {
+      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875816",
+      "name": "protoc-22.2-win64.zip"
     }
   ]
 }
