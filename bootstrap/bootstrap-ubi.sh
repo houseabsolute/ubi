@@ -10,6 +10,8 @@ set -e
 # command later. But that means we have to have _something_ to put after
 # `--header`, even if it's nonsense.
 if [ -n "$GITHUB_TOKEN" ]; then
+    echo ""
+    echo "Setting Authorization header with GitHub token"
     AUTH="Authorization:token $GITHUB_TOKEN"
 else
     AUTH="X-Cannot-Be-Empty"
