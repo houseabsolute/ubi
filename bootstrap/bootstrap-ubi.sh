@@ -9,11 +9,12 @@ set -e
 # shell, and curl is confused. So we need to hardcode the `--header` in the
 # command later. But that means we have to have _something_ to put after
 # `--header`, even if it's nonsense.
+echo ""
 if [ -n "$GITHUB_TOKEN" ]; then
-    echo ""
-    echo "Setting Authorization header with GitHub token"
+    echo "Setting Authorization header using GITHUB_TOKEN env var"
     AUTH="Authorization:token $GITHUB_TOKEN"
 else
+    echo "GITHUB_TOKEN env var is not set"
     AUTH="X-Cannot-Be-Empty"
 fi
 
