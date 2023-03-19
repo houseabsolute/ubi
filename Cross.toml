@@ -1,0 +1,4 @@
+[build.env]
+passthrough = [
+    "GITHUB_TOKEN",
+]
