@@ -431,6 +431,9 @@ pub fn run_command(cmd: &Path, args: &[&str]) -> Result<(Option<String>, Option<
         "GITHUB_TOKEN",
         env::var("GITHUB_TOKEN").as_deref().unwrap_or(""),
     );
+    // Without this golangci-lint will try to use /.cache as its cache dir in
+    // Docker containers, which it may not have access to.
+    c.env("GOLANGCI_LINT_CACHE", env::temp_dir());
 
     output_from_command(c, cmd, args)
 }
