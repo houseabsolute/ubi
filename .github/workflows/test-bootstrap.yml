@@ -10,7 +10,7 @@ env:
   GITHUB_TOKEN: ${{ github.token }}
 
 jobs:
-  test:
+  test-bootstrap:
     name: Bootstrap - ${{ matrix.platform.os_name }}
     runs-on: ${{ matrix.platform.os }}
     strategy:

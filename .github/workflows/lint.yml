@@ -8,7 +8,7 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  test:
+  lint:
     name: Check that code is lint clean using precious
     runs-on: ubuntu-latest
     steps:
