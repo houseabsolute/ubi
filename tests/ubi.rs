@@ -53,7 +53,7 @@ impl PreservableTempdir {
     target_os = "windows"
 ))]
 #[test]
-fn tests() -> Result<()> {
+fn integration_tests() -> Result<()> {
     let cargo = make_exe_pathbuf(&["cargo"]);
     run_command(cargo.as_ref(), &["build"])?;
 
