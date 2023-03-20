@@ -43,6 +43,15 @@ impl PreservableTempdir {
     }
 }
 
+// Getting these running on other archs would be challenging. First, we'd have
+// to use `cross build` when building the ubi that's run for tests. Second,
+// the tests would have to be adjusted to account to account for every
+// platform with a release for one of the projects that's used in these tests.
+#[cfg(any(
+    all(target_os = "linux", target_arch = "x86_64"),
+    target_os = "macos",
+    target_os = "windows"
+))]
 #[test]
 fn tests() -> Result<()> {
     let cargo = make_exe_pathbuf(&["cargo"]);
