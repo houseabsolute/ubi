@@ -11,7 +11,7 @@ env:
 
 jobs:
   test-bootstrap:
-    name: Bootstrap - ${{ matrix.platform.os_name }}
+    name: ${{ matrix.platform.os_name }} - ${{ matrix.platform.script }}
     runs-on: ${{ matrix.platform.os }}
     strategy:
       fail-fast: false
@@ -26,6 +26,9 @@ jobs:
           - os_name: Windows
             os: windows-latest
             script: bootstrap-ubi.ps1
+          - os_name: Windows
+            os: windows-latest
+            script: bootstrap-ubi.sh
     steps:
       - uses: actions/checkout@v3
       - name: Run bootstrap script
@@ -47,7 +50,7 @@ jobs:
           fi
 
           exit 0
-        if: ${{ matrix.platform.os_name != 'Windows' }}
+        if: ${{ matrix.platform.script == 'bootstrap-ubi.sh' }}
       - name: Run bootstrap script
         shell: powershell
         run: |
@@ -65,4 +68,4 @@ jobs:
           }
 
           exit 0
-        if: ${{ matrix.platform.os_name == 'Windows' }}
+        if: ${{ matrix.platform.script == 'bootstrap-ubi.ps1' }}
