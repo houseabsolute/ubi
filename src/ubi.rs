@@ -3,7 +3,7 @@ use bzip2::read::BzDecoder;
 use fern::Dispatch;
 use flate2::read::GzDecoder;
 use itertools::Itertools;
-use log::debug;
+use log::{debug, info};
 use platforms::{Arch, Endian, Platform, OS};
 use regex::Regex;
 use reqwest::{
@@ -207,6 +207,7 @@ impl<'a> Ubi<'a> {
         let (_td1, archive_path) = self.download_release().await?;
         self.extract_binary(archive_path)?;
         self.make_binary_executable()?;
+        info!("Installed binary into {}", self.install_path.display());
 
         Ok(())
     }

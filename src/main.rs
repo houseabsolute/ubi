@@ -1,7 +1,7 @@
 mod ubi;
 
 use anyhow::{anyhow, Error, Result};
-use clap::{Arg, ArgGroup, ArgMatches, Command};
+use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command};
 use log::{debug, error};
 use platforms::{Platform, PlatformReq};
 use std::{
@@ -15,7 +15,7 @@ use ubi::Ubi;
 #[derive(Debug, Error)]
 enum UbiError {
     #[error("{0:}")]
-    InvalidArgsError(&'static str),
+    InvalidArgsError(String),
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -43,7 +43,7 @@ async fn main() {
     std::process::exit(status);
 }
 
-fn cmd<'a>() -> Command<'a> {
+fn cmd() -> Command {
     Command::new("ubi")
         .version(ubi::VERSION)
         .author("Dave Rolsky <autarch@urth.org>")
@@ -52,7 +52,6 @@ fn cmd<'a>() -> Command<'a> {
             Arg::new("project")
                 .long("project")
                 .short('p')
-                .takes_value(true)
                 .help(concat!(
                     "The project you want to install, like houseabsolute/precious",
                     " or https://github.com/houseabsolute/precious.",
@@ -62,14 +61,12 @@ fn cmd<'a>() -> Command<'a> {
             Arg::new("tag")
                 .long("tag")
                 .short('t')
-                .takes_value(true)
                 .help("The tag to download. Defaults to the latest release."),
         )
         .arg(
             Arg::new("url")
                 .long("url")
                 .short('u')
-                .takes_value(true)
                 .help(concat!(
                     "The url of the file to download. This can be provided",
                     " instead of a project or tag. This will not use the GitHub API,",
@@ -81,6 +78,7 @@ fn cmd<'a>() -> Command<'a> {
         .arg(
             Arg::new("self-upgrade")
                 .long("self-upgrade")
+                .action(ArgAction::SetTrue)
                 .help(concat!(
                     "Use ubi to upgrade to the latest version of ubi. The",
                     " --exe, --in, --project, --tag, and --url args will be",
@@ -91,14 +89,12 @@ fn cmd<'a>() -> Command<'a> {
             Arg::new("in")
                 .long("in")
                 .short('i')
-                .takes_value(true)
                 .help("The directory in which the binary should be placed. Defaults to ./bin."),
         )
         .arg(
             Arg::new("exe")
                 .long("exe")
                 .short('e')
-                .takes_value(true)
                 .help(concat!(
                     "The name of this project's executable. By default this is the same as the",
                     " project name, so for houseabsolute/precious we look for precious or",
@@ -110,7 +106,6 @@ fn cmd<'a>() -> Command<'a> {
             Arg::new("matching")
                 .long("matching")
                 .short('m')
-                .takes_value(true)
                 .help(concat!(
                     "A string that will be matched against the release filename when there are",
                     r#" multiple files for your OS/arch, i.e. "gnu" or "musl". Note that this will"#,
@@ -122,29 +117,32 @@ fn cmd<'a>() -> Command<'a> {
             Arg::new("verbose")
                 .short('v')
                 .long("verbose")
+                .action(ArgAction::SetTrue)
                 .help("Enable verbose output"),
         )
         .arg(
             Arg::new("debug")
                 .short('d')
                 .long("debug")
+                .action(ArgAction::SetTrue)
                 .help("Enable debugging output"),
         )
         .arg(
             Arg::new("quiet")
                 .short('q')
                 .long("quiet")
+                .action(ArgAction::SetTrue)
                 .help("Suppresses most output"),
         )
-        .group(ArgGroup::new("log-level").args(&["verbose", "debug", "quiet"]))
+        .group(ArgGroup::new("log-level").args(["verbose", "debug", "quiet"]))
 }
 
 pub fn init_logger(matches: &ArgMatches) -> Result<(), log::SetLoggerError> {
-    let level = if matches.is_present("debug") {
+    let level = if matches.get_flag("debug") {
         log::LevelFilter::Debug
-    } else if matches.is_present("verbose") {
+    } else if matches.get_flag("verbose") {
         log::LevelFilter::Info
-    } else if matches.is_present("quiet") {
+    } else if matches.get_flag("quiet") {
         log::LevelFilter::Error
     } else {
         log::LevelFilter::Warn
@@ -157,7 +155,7 @@ const TARGET: &str = env!("TARGET");
 
 fn make_ubi<'a>(mut matches: ArgMatches) -> Result<Ubi<'a>> {
     validate_args(&matches)?;
-    if matches.is_present("self-upgrade") {
+    if matches.get_flag("self-upgrade") {
         let cmd = cmd();
         matches = cmd.try_get_matches_from(self_upgrade_args()?)?;
     }
@@ -167,45 +165,47 @@ fn make_ubi<'a>(mut matches: ArgMatches) -> Result<Ubi<'a>> {
         .find(|p| req.matches(p))
         .unwrap_or_else(|| panic!("Could not find any platform matching {TARGET}"));
     Ubi::new(
-        matches.value_of("project"),
-        matches.value_of("tag"),
-        matches.value_of("url"),
-        matches.value_of("in"),
-        matches.value_of("matching"),
-        matches.value_of("exe"),
+        matches.get_one::<String>("project").map(|s| s.as_str()),
+        matches.get_one::<String>("tag").map(|s| s.as_str()),
+        matches.get_one::<String>("url").map(|s| s.as_str()),
+        matches.get_one::<String>("in").map(|s| s.as_str()),
+        matches.get_one::<String>("matching").map(|s| s.as_str()),
+        matches.get_one::<String>("exe").map(|s| s.as_str()),
         platform,
         None,
     )
 }
 
 fn validate_args(matches: &ArgMatches) -> Result<()> {
-    if matches.is_present("url") {
+    if matches.contains_id("url") {
         for a in &["project", "tag"] {
-            if matches.is_present(a) {
-                return Err(UbiError::InvalidArgsError(
-                    "You cannot combine the --url and --{a} options",
-                )
+            if matches.contains_id(a) {
+                return Err(UbiError::InvalidArgsError(format!(
+                    "You cannot combine the --url and --{a} options"
+                ))
                 .into());
             }
         }
     }
 
-    if matches.is_present("self-upgrade") {
+    if matches.get_flag("self-upgrade") {
         for a in &["exe", "in", "project", "tag"] {
-            if matches.is_present(a) {
-                return Err(UbiError::InvalidArgsError(
-                    "You cannot combine the --self-upgrade and --{a} options",
-                )
+            if matches.contains_id(a) {
+                return Err(UbiError::InvalidArgsError(format!(
+                    "You cannot combine the --self-upgrade and --{a} options"
+                ))
                 .into());
             }
         }
     }
 
-    if !(matches.is_present("project")
-        || matches.is_present("url")
-        || matches.is_present("self-upgrade"))
+    if !(matches.contains_id("project")
+        || matches.contains_id("url")
+        || matches.get_flag("self-upgrade"))
     {
-        return Err(UbiError::InvalidArgsError("You must pass a --project or --url.").into());
+        return Err(
+            UbiError::InvalidArgsError("You must pass a --project or --url.".to_string()).into(),
+        );
     }
 
     Ok(())
@@ -215,7 +215,8 @@ fn self_upgrade_args() -> Result<Vec<OsString>> {
     let mut munged: Vec<OsString> = vec![];
     let mut iter = args_os();
     while let Some(a) = iter.next() {
-        if a == "--exe" || a == "--project" || a == "--tag" || a == "--url" {
+        if a == "--exe" || a == "--project" || a == "--tag" || a == "--url" || a == "--self-upgrade"
+        {
             iter.next();
             continue;
         }
