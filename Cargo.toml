@@ -11,7 +11,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.70"
 bzip2 = "0.4.4"
-clap = "4.1.13"
+clap = "4.2.1"
 fern = { version = "0.6.2", features = ["colored"] }
 flate2 = "1.0.25"
 itertools = "0.10.5"
@@ -19,14 +19,14 @@ log = "0.4.17"
 openssl = { version = "0.10.48", features = ["vendored"] }
 platforms = "3.0.2"
 regex = "1.7.3"
-reqwest = { version = "0.11.15", default-features = false, features = ["gzip", "json", "default-tls"] }
+reqwest = { version = "0.11.16", default-features = false, features = ["gzip", "json", "default-tls"] }
 result = "1.0.0"
-serde = { version = "1.0.158", features = ["derive"] }
+serde = { version = "1.0.159", features = ["derive"] }
 strum = { version = "0.24.1", features = ["derive"] }
 tar = "0.4.38"
-tempfile = "3.4.0"
+tempfile = "3.5.0"
 thiserror = "1.0.40"
-tokio = { version = "1.26.0", default-features = false, features = ["macros", "rt"] }
+tokio = { version = "1.27.0", default-features = false, features = ["macros", "rt"] }
 url = { version = "2.3.1", features = ["serde"] }
 xz = "0.1.0"
 zip = "0.6.4"
@@ -35,4 +35,4 @@ zip = "0.6.4"
 allow-branch = ["master"]
 
 [dev-dependencies]
-mockito = "1.0.0"
+mockito = "1.0.2"
