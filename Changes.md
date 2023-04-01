@@ -1,3 +1,8 @@
+## 0.0.22
+
+- The `--self-upgrade` option now works on Windows. However, it leaves behind
+  an old binary named `ubi-old.exe` that must be deleted manually.
+
 ## 0.0.21 - 2023-03-12
 
 - Improved matching of OS and CPU architecture names in release asset

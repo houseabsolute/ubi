@@ -7,6 +7,7 @@ use platforms::{Platform, PlatformReq};
 use std::{
     env::{self, args_os},
     ffi::OsString,
+    path::PathBuf,
     str::FromStr,
 };
 use thiserror::Error;
@@ -28,8 +29,13 @@ async fn main() {
         std::process::exit(126);
     }
     let status = match make_ubi(matches) {
-        Ok(u) => match u.run().await {
-            Ok(()) => 0,
+        Ok((u, post_run)) => match u.run().await {
+            Ok(()) => {
+                if let Some(post_run) = post_run {
+                    post_run();
+                }
+                0
+            }
             Err(e) => {
                 print_err(e);
                 1
@@ -153,27 +159,42 @@ pub fn init_logger(matches: &ArgMatches) -> Result<(), log::SetLoggerError> {
 
 const TARGET: &str = env!("TARGET");
 
-fn make_ubi<'a>(mut matches: ArgMatches) -> Result<Ubi<'a>> {
+fn make_ubi<'a>(mut matches: ArgMatches) -> Result<(Ubi<'a>, Option<impl FnOnce()>)> {
     validate_args(&matches)?;
+    let mut post_run = None;
     if matches.get_flag("self-upgrade") {
         let cmd = cmd();
-        matches = cmd.try_get_matches_from(self_upgrade_args()?)?;
+        let (args, to_delete) = self_upgrade_args()?;
+        matches = cmd.try_get_matches_from(args)?;
+        if let Some(to_delete) = to_delete {
+            post_run = Some(|| {
+                let to_delete = to_delete;
+                println!(
+                    "The self-upgrade operation left an old binary behind that must be deleted manually: {}",
+                    to_delete.display(),
+                );
+            });
+        }
     }
     let req = PlatformReq::from_str(TARGET)?;
     let platform = Platform::ALL
         .iter()
         .find(|p| req.matches(p))
         .unwrap_or_else(|| panic!("Could not find any platform matching {TARGET}"));
-    Ubi::new(
-        matches.get_one::<String>("project").map(|s| s.as_str()),
-        matches.get_one::<String>("tag").map(|s| s.as_str()),
-        matches.get_one::<String>("url").map(|s| s.as_str()),
-        matches.get_one::<String>("in").map(|s| s.as_str()),
-        matches.get_one::<String>("matching").map(|s| s.as_str()),
-        matches.get_one::<String>("exe").map(|s| s.as_str()),
-        platform,
-        None,
-    )
+
+    Ok((
+        Ubi::new(
+            matches.get_one::<String>("project").map(|s| s.as_str()),
+            matches.get_one::<String>("tag").map(|s| s.as_str()),
+            matches.get_one::<String>("url").map(|s| s.as_str()),
+            matches.get_one::<String>("in").map(|s| s.as_str()),
+            matches.get_one::<String>("matching").map(|s| s.as_str()),
+            matches.get_one::<String>("exe").map(|s| s.as_str()),
+            platform,
+            None,
+        )?,
+        post_run,
+    ))
 }
 
 fn validate_args(matches: &ArgMatches) -> Result<()> {
@@ -211,7 +232,7 @@ fn validate_args(matches: &ArgMatches) -> Result<()> {
     Ok(())
 }
 
-fn self_upgrade_args() -> Result<Vec<OsString>> {
+fn self_upgrade_args() -> Result<(Vec<OsString>, Option<PathBuf>)> {
     let mut munged: Vec<OsString> = vec![];
     let mut iter = args_os();
     while let Some(a) = iter.next() {
@@ -236,8 +257,20 @@ fn self_upgrade_args() -> Result<Vec<OsString>> {
             .as_os_str()
             .to_os_string(),
     );
+
+    #[allow(unused_assignments, unused_mut)]
+    let mut to_delete = None;
+    #[cfg(target_os = "windows")]
+    {
+        let mut new_exe = current.clone();
+        new_exe.set_file_name("ubi-old.exe");
+        debug!("renaming {} to {}", current.display(), new_exe.display());
+        std::fs::rename(&current, &new_exe)?;
+        to_delete = Some(new_exe);
+    }
+
     debug!("munged args for self-upgrade = [{munged:?}]");
-    Ok(munged)
+    Ok((munged, to_delete))
 }
 
 fn print_err(e: Error) {

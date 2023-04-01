@@ -8,8 +8,6 @@ use std::{
     path::{Path, PathBuf},
     process,
 };
-#[cfg(not(target_os = "windows"))]
-use tempfile::tempdir;
 use tempfile::TempDir;
 
 struct PreservableTempdir {
@@ -190,9 +188,8 @@ fn integration_tests() -> Result<()> {
         }
     }
 
-    #[cfg(not(target_os = "windows"))]
     {
-        let new_ubi_dir = tempdir()?;
+        let new_ubi_dir = TempDir::new()?;
         let ubi_copy = make_exe_pathbuf(&[
             new_ubi_dir
                 .path()
@@ -201,7 +198,10 @@ fn integration_tests() -> Result<()> {
             "ubi",
         ]);
         fs::copy(ubi.as_path(), ubi_copy.as_path())?;
+
+        #[cfg(target_family = "unix")]
         let old_stat = fs::metadata(ubi_copy.as_path())?;
+
         run_test(
             td.path(),
             ubi_copy.as_ref(),
@@ -209,6 +209,7 @@ fn integration_tests() -> Result<()> {
             ubi_copy.clone(),
         )?;
 
+        #[cfg(target_family = "unix")]
         {
             let new_stat = fs::metadata(ubi_copy)?;
             // The "new" version will have an older modified time, since it's the
@@ -396,11 +397,17 @@ fn run_test(td: &Path, cmd: &Path, args: &[&str], mut expect: PathBuf) -> Result
 
     match run_command(cmd, &args) {
         Ok((stdout, stderr)) => {
-            assert_eq!(
-                stdout.unwrap_or_default(),
-                String::new(),
-                "no output to stdout",
-            );
+            if cfg!(windows) && args.contains(&"--self-upgrade") {
+                assert!(stdout
+                    .unwrap_or_default()
+                    .contains("The self-upgrade operation left an old binary behind that must be deleted manually"));
+            } else {
+                assert_eq!(
+                    stdout.unwrap_or_default(),
+                    String::new(),
+                    "no output to stdout",
+                );
+            }
             if debug {
                 print!("{}", stderr.unwrap());
             } else {
