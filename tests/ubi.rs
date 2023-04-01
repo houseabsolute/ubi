@@ -418,7 +418,7 @@ fn run_test(td: &Path, cmd: &Path, args: &[&str], mut expect: PathBuf) -> Result
         expect.set_extension("exe");
     }
 
-    let expect_str = expect.to_string_lossy().into_owned();
+    let expect_str = expect.to_string_lossy().to_string();
 
     let meta = fs::metadata(expect).context(format!("getting fs metadata for {expect_str}"))?;
     assert!(meta.is_file(), "downloaded file into expected location",);
@@ -493,7 +493,7 @@ fn output_from_command(
 }
 
 fn command_string(cmd: &Path, args: &[&str]) -> String {
-    let mut cstr = cmd.to_string_lossy().into_owned();
+    let mut cstr = cmd.to_string_lossy().to_string();
     if !args.is_empty() {
         cstr.push(' ');
         cstr.push_str(args.join(" ").as_str());
@@ -505,7 +505,7 @@ fn to_option_string(v: Vec<u8>) -> Option<String> {
     if v.is_empty() {
         None
     } else {
-        Some(String::from_utf8_lossy(&v).into_owned())
+        Some(String::from_utf8_lossy(&v).to_string())
     }
 }
 

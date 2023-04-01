@@ -235,7 +235,7 @@ impl<'a> Ubi<'a> {
         }
 
         let td = tempdir()?;
-        let mut archive_path = td.path().to_owned();
+        let mut archive_path = td.path().to_path_buf();
         archive_path.push(&asset_name);
         debug!("archive path is {}", archive_path.to_string_lossy());
 

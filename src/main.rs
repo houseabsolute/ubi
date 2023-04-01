@@ -234,7 +234,7 @@ fn self_upgrade_args() -> Result<Vec<OsString>> {
             .parent()
             .ok_or_else(|| anyhow!("executable path `{}` has no parent", current.display()))?
             .as_os_str()
-            .to_owned(),
+            .to_os_string(),
     );
     debug!("munged args for self-upgrade = [{munged:?}]");
     Ok(munged)
