@@ -1,4 +1,4 @@
-## 0.0.22
+## 0.0.22 - 2023-04-02
 
 - The `--self-upgrade` option now works on Windows. However, it leaves behind
   a binary named `ubi-old.exe` that must be deleted manually.
