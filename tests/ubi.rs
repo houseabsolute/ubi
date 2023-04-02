@@ -421,7 +421,7 @@ fn run_test(td: &Path, cmd: &Path, args: &[&str], mut expect: PathBuf) -> Result
     let expect_str = expect.to_string_lossy().to_string();
 
     let meta = fs::metadata(expect).context(format!("getting fs metadata for {expect_str}"))?;
-    assert!(meta.is_file(), "downloaded file into expected location",);
+    assert!(meta.is_file(), "downloaded file into expected location");
     #[cfg(target_family = "unix")]
     assert!(
         meta.permissions().mode() & 0o111 != 0,
