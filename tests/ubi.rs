@@ -418,9 +418,9 @@ fn run_test(td: &Path, cmd: &Path, args: &[&str], mut expect: PathBuf) -> Result
         expect.set_extension("exe");
     }
 
-    let expect_str = expect.to_string_lossy().to_string();
+    let expect_str = expect.to_string_lossy();
 
-    let meta = fs::metadata(expect).context(format!("getting fs metadata for {expect_str}"))?;
+    let meta = fs::metadata(&expect).context(format!("getting fs metadata for {expect_str}"))?;
     assert!(meta.is_file(), "downloaded file into expected location");
     #[cfg(target_family = "unix")]
     assert!(
