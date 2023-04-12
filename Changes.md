@@ -1,4 +1,4 @@
-## 0.0.23
+## 0.0.23 - 2023-04-11
 
 - Fix match for the jq and mkcert projects. This expands the matching a bit on
   Linux x86 platforms to match "linux32" and "linux64". It also handles
