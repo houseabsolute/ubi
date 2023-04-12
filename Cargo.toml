@@ -16,12 +16,12 @@ fern = { version = "0.6.2", features = ["colored"] }
 flate2 = "1.0.25"
 itertools = "0.10.5"
 log = "0.4.17"
-openssl = { version = "0.10.48", features = ["vendored"] }
+openssl = { version = "0.10.50", features = ["vendored"] }
 platforms = "3.0.2"
 regex = "1.7.3"
 reqwest = { version = "0.11.16", default-features = false, features = ["gzip", "json", "default-tls"] }
 result = "1.0.0"
-serde = { version = "1.0.159", features = ["derive"] }
+serde = { version = "1.0.160", features = ["derive"] }
 strum = { version = "0.24.1", features = ["derive"] }
 tar = "0.4.38"
 tempfile = "3.5.0"
