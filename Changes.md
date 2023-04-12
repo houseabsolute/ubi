@@ -1,3 +1,13 @@
+## 0.0.23
+
+- Fix match for the jq and mkcert projects. This expands the matching a bit on
+  Linux x86 platforms to match "linux32" and "linux64". It also handles
+  filenames with version strings like "mkcert-v1.4.4-linux-arm"
+  properly. Previously, it treated the last bit after the "." in the version
+  as an extension and rejected this as an invalid extension. Now there is a
+  bit of a gross hack to check explicitly for versions in the filename that
+  appear to be an extension. Addresses #34.
+
 ## 0.0.22 - 2023-04-02
 
 - The `--self-upgrade` option now works on Windows. However, it leaves behind

@@ -335,6 +335,8 @@ impl<'a> Ubi<'a> {
         let mut matches: Vec<Asset> = vec![];
         let mut names: Vec<String> = vec![];
 
+        let version_re = Regex::new(r#"(?:\d+\.)+(\d+.+?)\z"#)?;
+
         // This could all be done much more simply with the iterator's .find()
         // method, but then there's no place to put all the debugging output.
         for asset in assets {
@@ -343,8 +345,37 @@ impl<'a> Ubi<'a> {
             debug!("matching against asset name = {}", asset.name);
 
             if asset.name.contains('.') && Extension::from_path(&asset.name).is_none() {
-                debug!("it appears to have an invalid extension");
-                continue;
+                // If the name is something like "mkcert-v1.4.4-darwin-amd46"
+                // then the naive approach will think that this has an
+                // extension of ".4-darwin-amd46" and reject it as an invalid
+                // extension.
+                //
+                // So we need to match the name against a regex for versions
+                // and check if the part after the version is the same as the
+                // file's "extension". If it is, it's not a real extension.
+                let mut contains_version = false;
+                if let Some(caps) = version_re.captures(&asset.name) {
+                    if let Some(ext) = caps.get(1).map(|m| m.as_str()) {
+                        let path = PathBuf::from(&asset.name);
+                        if ext
+                            == path
+                                .extension()
+                                .map(|o| o.to_str().unwrap_or_default())
+                                .unwrap_or_default()
+                        {
+                            contains_version = true;
+                            debug!(
+                                "it looks like this file name contains a version: {}",
+                                asset.name
+                            );
+                        }
+                    }
+                }
+
+                if !contains_version {
+                    debug!("it appears to have an invalid extension");
+                    continue;
+                }
             }
 
             if os_matcher.is_match(&asset.name) {
@@ -574,7 +605,7 @@ impl<'a> Ubi<'a> {
             OS::Fuchsia => Regex::new(r"(?i:(?:\b|_)fuchsia(?:\b|_))"),
             //OS::Haiku => Regex::new(r"(?i:(?:\b|_)haiku(?:\b|_))"),
             OS::IllumOS => Regex::new(r"(?i:(?:\b|_)illumos(?:\b|_))"),
-            OS::Linux => Regex::new(r"(?i:(?:\b|_)linux(?:\b|_))"),
+            OS::Linux => Regex::new(r"(?i:(?:\b|_)linux(?:\b|_|32|64))"),
             OS::MacOS => Regex::new(r"(?i:(?:\b|_)(?:darwin|macos|osx)(?:\b|_))"),
             OS::NetBSD => Regex::new(r"(?i:(?:\b|_)netbsd(?:\b|_))"),
             //OS::OpenBSD => Regex::new(r"(?i:(?:\b|_)openbsd(?:\b|_))"),
@@ -928,6 +959,8 @@ fn x86_64_re() -> Result<Regex> {
             x64
             |
             amd64
+            |
+            linux64
             |
             # This is gross but the OS matcher will reject this on non-Windows
             # platforms.
@@ -1324,6 +1357,7 @@ mod test {
         Ok(())
     }
 
+    // jq '[.assets[] | {"url": .url} + {"name": .name}]' release.json
     const UBI_LATEST_RESPONSE: &str = r#"
 {
   "assets": [
@@ -1705,4 +1739,214 @@ mod test {
   ]
 }
 "#;
+
+    // Reported in https://github.com/houseabsolute/ubi/issues/34
+    #[tokio::test]
+    async fn test_mkcert_matching() -> Result<()> {
+        //init_logger(log::LevelFilter::Debug)?;
+
+        struct Test {
+            platforms: &'static [&'static str],
+            expect: &'static str,
+        }
+        let tests: &[Test] = &[
+            Test {
+                platforms: &["aarch64-apple-darwin"],
+                expect: "mkcert-v1.4.4-darwin-arm64",
+            },
+            Test {
+                platforms: &["x86_64-apple-darwin"],
+                expect: "mkcert-v1.4.4-darwin-amd64",
+            },
+            Test {
+                platforms: &["aarch64-unknown-linux-gnu", "aarch64-unknown-linux-musl"],
+                expect: "mkcert-v1.4.4-linux-arm64",
+            },
+            Test {
+                platforms: &["arm-unknown-linux-gnueabi", "arm-unknown-linux-musleabi"],
+                expect: "mkcert-v1.4.4-linux-arm",
+            },
+            Test {
+                platforms: &["x86_64-unknown-linux-musl"],
+                expect: "mkcert-v1.4.4-linux-amd64",
+            },
+            Test {
+                platforms: &["x86_64-pc-windows-gnu", "x86_64-pc-windows-msvc"],
+                expect: "mkcert-v1.4.4-windows-amd64.exe",
+            },
+        ];
+
+        let mut server = Server::new_async().await;
+        let m1 = server
+            .mock("GET", "/repos/FiloSottile/mkcert/releases/latest")
+            .match_header(ACCEPT.as_str(), "application/json")
+            .with_status(reqwest::StatusCode::OK.as_u16() as usize)
+            .with_body(MKCERT_LATEST_RESPONSE)
+            .expect_at_least(tests.len())
+            .create_async()
+            .await;
+
+        for t in tests {
+            for p in t.platforms {
+                let req = PlatformReq::from_str(p)
+                    .unwrap_or_else(|e| panic!("could not create PlatformReq for {}: {e}", p));
+                let platform = req.matching_platforms().next().unwrap();
+                let ubi = Ubi::new(
+                    Some("FiloSottile/mkcert"),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    platform,
+                    Some(server.url()),
+                )?;
+                let asset = ubi.asset().await?;
+                assert_eq!(
+                    asset.1, t.expect,
+                    "picked {} as protobuf asset name",
+                    t.expect
+                );
+            }
+        }
+
+        m1.assert_async().await;
+
+        Ok(())
+    }
+
+    const MKCERT_LATEST_RESPONSE: &str = r#"
+{
+  "assets": [
+    {
+      "url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709952",
+      "name": "mkcert-v1.4.4-darwin-amd64"
+    },
+    {
+      "url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709954",
+      "name": "mkcert-v1.4.4-darwin-arm64"
+    },
+    {
+      "url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709955",
+      "name": "mkcert-v1.4.4-linux-amd64"
+    },
+    {
+      "url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709956",
+      "name": "mkcert-v1.4.4-linux-arm"
+    },
+    {
+      "url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709957",
+      "name": "mkcert-v1.4.4-linux-arm64"
+    },
+    {
+      "url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709958",
+      "name": "mkcert-v1.4.4-windows-amd64.exe"
+    },
+    {
+      "url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709963",
+      "name": "mkcert-v1.4.4-windows-arm64.exe"
+    }
+  ]
+}"#;
+
+    // Reported in https://github.com/houseabsolute/ubi/issues/34
+    #[tokio::test]
+    async fn test_jq_matching() -> Result<()> {
+        //init_logger(log::LevelFilter::Debug)?;
+
+        struct Test {
+            platforms: &'static [&'static str],
+            expect: &'static str,
+        }
+        let tests: &[Test] = &[
+            Test {
+                platforms: &["x86_64-apple-darwin"],
+                expect: "jq-osx-amd64",
+            },
+            Test {
+                platforms: &["x86_64-unknown-linux-musl"],
+                expect: "jq-linux64",
+            },
+            Test {
+                platforms: &[
+                    "i586-pc-windows-msvc",
+                    "i686-pc-windows-gnu",
+                    "i686-pc-windows-msvc",
+                ],
+                expect: "jq-win32.exe",
+            },
+        ];
+
+        let mut server = Server::new_async().await;
+        let m1 = server
+            .mock("GET", "/repos/stedolan/jq/releases/latest")
+            .match_header(ACCEPT.as_str(), "application/json")
+            .with_status(reqwest::StatusCode::OK.as_u16() as usize)
+            .with_body(JQ_LATEST_RESPONSE)
+            .expect_at_least(tests.len())
+            .create_async()
+            .await;
+
+        for t in tests {
+            for p in t.platforms {
+                let req = PlatformReq::from_str(p)
+                    .unwrap_or_else(|e| panic!("could not create PlatformReq for {}: {e}", p));
+                let platform = req.matching_platforms().next().unwrap();
+                let ubi = Ubi::new(
+                    Some("stedolan/jq"),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    platform,
+                    Some(server.url()),
+                )?;
+                let asset = ubi.asset().await?;
+                assert_eq!(
+                    asset.1, t.expect,
+                    "picked {} as protobuf asset name",
+                    t.expect
+                );
+            }
+        }
+
+        m1.assert_async().await;
+
+        Ok(())
+    }
+
+    const JQ_LATEST_RESPONSE: &str = r#"
+{
+  "assets": [
+    {
+      "url": "https://api.github.com/repos/stedolan/jq/releases/assets/9780532",
+      "name": "jq-1.6.tar.gz"
+    },
+    {
+      "url": "https://api.github.com/repos/stedolan/jq/releases/assets/9780533",
+      "name": "jq-1.6.zip"
+    },
+    {
+      "url": "https://api.github.com/repos/stedolan/jq/releases/assets/9521004",
+      "name": "jq-linux32"
+    },
+    {
+      "url": "https://api.github.com/repos/stedolan/jq/releases/assets/9521005",
+      "name": "jq-linux64"
+    },
+    {
+      "url": "https://api.github.com/repos/stedolan/jq/releases/assets/9521006",
+      "name": "jq-osx-amd64"
+    },
+    {
+      "url": "https://api.github.com/repos/stedolan/jq/releases/assets/9521007",
+      "name": "jq-win32.exe"
+    },
+    {
+      "url": "https://api.github.com/repos/stedolan/jq/releases/assets/9521008",
+      "name": "jq-win64.exe"
+    }
+  ]
+}"#;
 }
