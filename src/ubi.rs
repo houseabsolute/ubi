@@ -1072,7 +1072,7 @@ mod test {
     }
 
     #[test]
-    fn test_exe_name() -> Result<()> {
+    fn exe_name() -> Result<()> {
         struct Test {
             exe: Option<&'static str>,
             project_name: &'static str,
@@ -1742,7 +1742,7 @@ mod test {
 
     // Reported in https://github.com/houseabsolute/ubi/issues/34
     #[tokio::test]
-    async fn test_mkcert_matching() -> Result<()> {
+    async fn mkcert_matching() -> Result<()> {
         //init_logger(log::LevelFilter::Debug)?;
 
         struct Test {
@@ -1851,7 +1851,7 @@ mod test {
 
     // Reported in https://github.com/houseabsolute/ubi/issues/34
     #[tokio::test]
-    async fn test_jq_matching() -> Result<()> {
+    async fn jq_matching() -> Result<()> {
         //init_logger(log::LevelFilter::Debug)?;
 
         struct Test {
