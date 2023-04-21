@@ -456,7 +456,7 @@ impl<'a> Ubi<'a> {
         );
         // We don't have any other criteria we could use to pick the right
         // one, and we want to pick the same one every time.
-        Ok(&filtered
+        Ok(&assets
             .iter()
             .sorted_by_key(|a| &a.name)
             .next()
@@ -1290,7 +1290,7 @@ mod test {
         for t in tests {
             for p in t.platforms {
                 let req = PlatformReq::from_str(p)
-                    .unwrap_or_else(|e| panic!("could not create PlatformReq for {}: {e}", p));
+                    .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
                 let platform = req.matching_platforms().next().unwrap();
 
                 if let Some(expect_ubi) = t.expect_ubi {
@@ -1659,7 +1659,7 @@ mod test {
         for t in tests {
             for p in t.platforms {
                 let req = PlatformReq::from_str(p)
-                    .unwrap_or_else(|e| panic!("could not create PlatformReq for {}: {e}", p));
+                    .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
                 let platform = req.matching_platforms().next().unwrap();
                 let ubi = Ubi::new(
                     Some("protocolbuffers/protobuf"),
@@ -1789,7 +1789,7 @@ mod test {
         for t in tests {
             for p in t.platforms {
                 let req = PlatformReq::from_str(p)
-                    .unwrap_or_else(|e| panic!("could not create PlatformReq for {}: {e}", p));
+                    .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
                 let platform = req.matching_platforms().next().unwrap();
                 let ubi = Ubi::new(
                     Some("FiloSottile/mkcert"),
@@ -1890,7 +1890,7 @@ mod test {
         for t in tests {
             for p in t.platforms {
                 let req = PlatformReq::from_str(p)
-                    .unwrap_or_else(|e| panic!("could not create PlatformReq for {}: {e}", p));
+                    .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
                 let platform = req.matching_platforms().next().unwrap();
                 let ubi = Ubi::new(
                     Some("stedolan/jq"),
@@ -1946,6 +1946,60 @@ mod test {
     {
       "url": "https://api.github.com/repos/stedolan/jq/releases/assets/9521008",
       "name": "jq-win64.exe"
+    }
+  ]
+}"#;
+
+    #[tokio::test]
+    async fn multiple_matches() -> Result<()> {
+        //init_logger(log::LevelFilter::Debug)?;
+
+        let platforms = ["x86_64-pc-windows-gnu", "i686-pc-windows-gnu"];
+
+        let mut server = Server::new_async().await;
+        let m1 = server
+            .mock("GET", "/repos/test/multiple-matches/releases/latest")
+            .match_header(ACCEPT.as_str(), "application/json")
+            .with_status(reqwest::StatusCode::OK.as_u16() as usize)
+            .with_body(MULTIPLE_MATCHES_RESPONSE)
+            .expect_at_least(platforms.len())
+            .create_async()
+            .await;
+
+        for p in platforms {
+            let req = PlatformReq::from_str(p)
+                .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
+            let platform = req.matching_platforms().next().unwrap();
+            let ubi = Ubi::new(
+                Some("test/multiple-matches"),
+                None,
+                None,
+                None,
+                None,
+                None,
+                platform,
+                Some(server.url()),
+            )?;
+            let asset = ubi.asset().await?;
+            let expect = "mm-i686-pc-windows-gnu.zip";
+            assert_eq!(asset.1, expect, "picked {expect} as protobuf asset name");
+        }
+
+        m1.assert_async().await;
+
+        Ok(())
+    }
+
+    const MULTIPLE_MATCHES_RESPONSE: &str = r#"
+{
+  "assets": [
+    {
+      "url": "https://api.github.com/repos/test/multiple-matches/releases/assets/9521007",
+      "name": "mm-i686-pc-windows-gnu.zip"
+    },
+    {
+      "url": "https://api.github.com/repos/test/multiple-matches/releases/assets/9521008",
+      "name": "mm-i686-pc-windows-msvc.zip"
     }
   ]
 }"#;

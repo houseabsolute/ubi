@@ -1,3 +1,9 @@
+## 0.0.24
+
+- Fixed a bug when there were multiple potential matching releases for a
+  platform, and either none of the releases were 64-bit or the platform itself
+  was not a 64-bit platform.
+
 ## 0.0.23 - 2023-04-11
 
 - Fix match for the jq and mkcert projects. This expands the matching a bit on
