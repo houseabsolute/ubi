@@ -1,4 +1,4 @@
-## 0.0.24
+## 0.0.24 - 2023-04-20
 
 - Fixed a bug when there were multiple potential matching releases for a
   platform, and either none of the releases were 64-bit or the platform itself
