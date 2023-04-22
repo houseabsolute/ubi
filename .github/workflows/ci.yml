@@ -38,11 +38,11 @@ jobs:
             target: arm-unknown-linux-musleabi
             bin: ubi
             name: ubi-Linux-arm-musl.tar.gz
-          - os_name: Linux-i586
+          - os_name: Linux-i686
             os: ubuntu-20.04
-            target: i586-unknown-linux-musl
+            target: i686-unknown-linux-musl
             bin: ubi
-            name: ubi-Linux-i586-musl.tar.gz
+            name: ubi-Linux-i686-musl.tar.gz
             skip_tests: true
           - os_name: Linux-mips
             os: ubuntu-20.04
