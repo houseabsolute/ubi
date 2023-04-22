@@ -145,7 +145,7 @@ jobs:
           git config --global user.name "J. Doe"
       - name: Install musl-tools on Linux
         run: sudo apt-get update --yes && sudo apt-get install --yes musl-tools
-        if: contains(matrix.platform.os, 'ubuntu')
+        if: contains(matrix.platform.name, 'musl')
       - name: Build binary
         uses: houseabsolute/actions-rust-cross@v0
         with:
