@@ -160,7 +160,7 @@ jobs:
           command: "test"
           target: ${{ matrix.platform.target }}
           toolchain: ${{ matrix.toolchain }}
-          args: "--locked"
+          args: "--locked --release"
         if: ${{ !matrix.platform.skip_tests }}
       - name: Package as archive
         shell: bash
