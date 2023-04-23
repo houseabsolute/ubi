@@ -11,7 +11,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.70"
 bzip2 = "0.4.4"
-clap = "4.2.4"
+clap = { version = "4.2.4", features = ["wrap_help"] }
 fern = { version = "0.6.2", features = ["colored"] }
 flate2 = "1.0.25"
 itertools = "0.10.5"
