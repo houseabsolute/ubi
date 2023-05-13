@@ -49,6 +49,8 @@ async fn main() {
     std::process::exit(status);
 }
 
+const MAX_TERM_WIDTH: usize = 100;
+
 fn cmd() -> Command {
     Command::new("ubi")
         .version(ubi::VERSION)
@@ -141,6 +143,7 @@ fn cmd() -> Command {
                 .help("Suppresses most output"),
         )
         .group(ArgGroup::new("log-level").args(["verbose", "debug", "quiet"]))
+        .max_term_width(MAX_TERM_WIDTH)
 }
 
 pub fn init_logger(matches: &ArgMatches) -> Result<(), log::SetLoggerError> {
