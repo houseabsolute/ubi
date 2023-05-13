@@ -1,4 +1,4 @@
-## 0.0.25
+## 0.0.25 - 2023-05-13
 
 - Help output is now line-wrapped based on your terminal width.
 
