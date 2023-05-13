@@ -2,6 +2,10 @@
 
 - Help output is now line-wrapped based on your terminal width.
 
+- Fix handling of tarballs that contain a directory matching the project
+  name. In such cases, `ubi` would extract that directory instead of looking
+  for the binary _in_ the tarball. Reported by Rafael Bodill. GH #36.
+
 ## 0.0.24 - 2023-04-20
 
 - Fixed a bug when there were multiple potential matching releases for a

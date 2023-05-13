@@ -521,6 +521,9 @@ impl<'a> Ubi<'a> {
         for entry in arch.entries()? {
             let mut entry = entry?;
             let path = entry.path()?;
+            if !entry.header().entry_type().is_file() {
+                continue;
+            }
             debug!("found tarball entry with path {}", path.to_string_lossy());
             if let Some(os_name) = path.file_name() {
                 if let Some(n) = os_name.to_str() {
@@ -1067,6 +1070,32 @@ mod test {
                 "got the right project from the --url",
             );
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn extract_binary() -> Result<()> {
+        let td = tempdir()?;
+        let td_path = td.path().to_string_lossy().to_string();
+        let req = PlatformReq::from_str("x86_64-unknown-linux-musl")?;
+        let platform = req.matching_platforms().next().unwrap();
+        let ubi = Ubi::new(
+            Some("org/project"),
+            None,
+            None,
+            Some(&td_path),
+            None,
+            None,
+            platform,
+            None,
+        )?;
+        ubi.extract_binary(PathBuf::from("test-data/project.tar.gz"))?;
+
+        let mut extracted_path = td.path().to_path_buf();
+        extracted_path.push("project");
+        assert!(extracted_path.exists());
+        assert!(extracted_path.is_file());
 
         Ok(())
     }
