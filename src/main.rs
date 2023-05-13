@@ -118,7 +118,7 @@ fn cmd() -> Command {
                     "A string that will be matched against the release filename when there are",
                     r#" multiple files for your OS/arch, i.e. "gnu" or "musl". Note that this will"#,
                     " be ignored if there is only used when there is only one matching release",
-                    " filename for your OS/arch",
+                    " filename for your OS/arch.",
                 )),
         )
         .arg(
@@ -126,21 +126,21 @@ fn cmd() -> Command {
                 .short('v')
                 .long("verbose")
                 .action(ArgAction::SetTrue)
-                .help("Enable verbose output"),
+                .help("Enable verbose output."),
         )
         .arg(
             Arg::new("debug")
                 .short('d')
                 .long("debug")
                 .action(ArgAction::SetTrue)
-                .help("Enable debugging output"),
+                .help("Enable debugging output."),
         )
         .arg(
             Arg::new("quiet")
                 .short('q')
                 .long("quiet")
                 .action(ArgAction::SetTrue)
-                .help("Suppresses most output"),
+                .help("Suppresses most output."),
         )
         .group(ArgGroup::new("log-level").args(["verbose", "debug", "quiet"]))
         .max_term_width(MAX_TERM_WIDTH)
