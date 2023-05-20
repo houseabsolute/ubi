@@ -172,22 +172,27 @@ jobs:
             tar czvf ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}
           fi
           cd -
-        if: startsWith( github.ref, 'refs/tags/v' ) || github.ref == 'refs/tags/test-release'
+        if: |
+          matrix.toolchain == 'stable' &&
+          ( startsWith( github.ref, 'refs/tags/v' ) ||
+            github.ref == 'refs/tags/test-release' )
       - name: Publish release artifacts
         uses: actions/upload-artifact@v3
         with:
           name: ubi-${{ matrix.platform.os_name }}
-          path: "ubi*"
-        if: github.ref == 'refs/tags/test-release'
+          path: "ubi-*"
+        if: matrix.toolchain == 'stable' && github.ref == 'refs/tags/test-release'
       - name: Generate SHA-256
         run: shasum -a 256 ${{ matrix.platform.name }}
         if: |
+          matrix.toolchain == 'stable' &&
           matrix.platform.os == 'macOS-latest' &&
-          ( startsWith( github.ref, 'refs/tags/v' ) || github.ref == 'refs/tags/test-release' )
+          ( startsWith( github.ref, 'refs/tags/v' ) ||
+            github.ref == 'refs/tags/test-release' )
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v1
         with:
           draft: true
           files: "ubi*"
           body_path: Changes.md
-        if: startsWith( github.ref, 'refs/tags/v' )
+        if: matrix.toolchain == 'stable' && startsWith( github.ref, 'refs/tags/v' )
