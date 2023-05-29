@@ -99,26 +99,22 @@ fn cmd() -> Command {
                 .short('i')
                 .help("The directory in which the binary should be placed. Defaults to ./bin."),
         )
-        .arg(
-            Arg::new("exe")
-                .long("exe")
-                .short('e')
-                .help(concat!(
-                    "The name of this project's executable. By default this is the same as the",
-                    " project name, so for houseabsolute/precious we look for precious or",
-                    r#" precious.exe. When running on Windows the ".exe" suffix will be added"#,
-                    " as needed.",
-                )),
-        )
+        .arg(Arg::new("exe").long("exe").short('e').help(concat!(
+            "The name of this project's executable. By default this is the same as the",
+            " project name, so for houseabsolute/precious we look for precious or",
+            r#" precious.exe. When running on Windows the ".exe" suffix will be added"#,
+            " as needed.",
+        )))
         .arg(
             Arg::new("matching")
                 .long("matching")
                 .short('m')
                 .help(concat!(
                     "A string that will be matched against the release filename when there are",
-                    r#" multiple files for your OS/arch, i.e. "gnu" or "musl". Note that this will"#,
-                    " be ignored if there is only used when there is only one matching release",
-                    " filename for your OS/arch.",
+                    " multiple matching files for your OS/arch. For example, there may be",
+                    " multiple releases for an OS/arch that differ by compiler (MSVC vs. gcc)",
+                    " or linked libc (glibc vs. musl). Note that this will be ignored if there",
+                    " is only one matching release filename for your OS/arch.",
                 )),
         )
         .arg(
