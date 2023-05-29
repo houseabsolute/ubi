@@ -56,33 +56,23 @@ fn cmd() -> Command {
         .version(ubi::VERSION)
         .author("Dave Rolsky <autarch@urth.org>")
         .about("The universal binary release installer")
-        .arg(
-            Arg::new("project")
-                .long("project")
-                .short('p')
-                .help(concat!(
-                    "The project you want to install, like houseabsolute/precious",
-                    " or https://github.com/houseabsolute/precious.",
-                )),
-        )
+        .arg(Arg::new("project").long("project").short('p').help(concat!(
+            "The project you want to install, like houseabsolute/precious",
+            " or https://github.com/houseabsolute/precious.",
+        )))
         .arg(
             Arg::new("tag")
                 .long("tag")
                 .short('t')
                 .help("The tag to download. Defaults to the latest release."),
         )
-        .arg(
-            Arg::new("url")
-                .long("url")
-                .short('u')
-                .help(concat!(
-                    "The url of the file to download. This can be provided",
-                    " instead of a project or tag. This will not use the GitHub API,",
-                    " so you will never hit the GitHub API limits. This means you",
-                    " do not need to set a GITHUB_TOKEN env var except for",
-                    " private repos.",
-                )),
-        )
+        .arg(Arg::new("url").long("url").short('u').help(concat!(
+            "The url of the file to download. This can be provided",
+            " instead of a project or tag. This will not use the GitHub API,",
+            " so you will never hit the GitHub API limits. This means you",
+            " do not need to set a GITHUB_TOKEN env var except for",
+            " private repos.",
+        )))
         .arg(
             Arg::new("self-upgrade")
                 .long("self-upgrade")
