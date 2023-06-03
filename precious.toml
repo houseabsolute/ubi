@@ -39,3 +39,13 @@ tidy_flags = "--write"
 ok_exit_codes = 0
 lint_failure_exit_codes = 1
 ignore_stderr = [ "Code style issues" ]
+
+[commands.shellcheck]
+type    = "lint"
+include = "**/*.sh"
+cmd     = [ "shellcheck" ]
+lint_flags = "--check"
+tidy_flags = "--write"
+ok_exit_codes = 0
+lint_failure_exit_codes = 1
+ignore_stderr = [ "Code style issues" ]
