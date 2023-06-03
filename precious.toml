@@ -33,7 +33,7 @@ expect_stderr = true
 [commands.prettier]
 type    = "both"
 include = [ "**/*.md", "**/*.yml" ]
-cmd     = [ "./node_modules/.bin/prettier", "--no-config" ]
+cmd     = [ "./node_modules/.bin/prettier", "--no-config", "--prose-wrap", "always", "--print-width", "100" ]
 lint_flags = "--check"
 tidy_flags = "--write"
 ok_exit_codes = 0
