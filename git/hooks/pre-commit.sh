@@ -7,8 +7,7 @@ if [[ -z $PRECIOUS ]]; then
     PRECIOUS=./bin/precious
 fi
 
-"$PRECIOUS" lint -s
-if (( $? != 0 )); then
+if ! "$PRECIOUS" lint -s; then
     status+=1
 fi
 

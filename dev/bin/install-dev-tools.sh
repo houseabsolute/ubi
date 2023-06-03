@@ -3,8 +3,8 @@
 set -eo pipefail
 
 function run () {
-    echo $1
-    eval $1
+    echo "$1"
+    eval "$1"
 }
 
 function install_tools () {
@@ -22,11 +22,10 @@ if [ "$1" == "-v" ]; then
     set -x
 fi
 
-mkdir -p $HOME/bin
+mkdir -p "$HOME/bin"
 
 set +e
-echo ":$PATH:" | grep --extended-regexp ":$HOME/bin:" >& /dev/null
-if [ "$?" -eq "0" ]; then
+if echo ":$PATH:" | grep --extended-regexp ":$HOME/bin:" >& /dev/null; then
     path_has_home_bin=1
 fi
 set -e

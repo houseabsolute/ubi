@@ -2,7 +2,7 @@
 
 set -e
 
-if [ $(id -u) -eq 0 ]; then
+if [ "$(id -u)" -eq 0 ]; then
     DEFAULT_TARGET="/usr/local/bin"
 else
     DEFAULT_TARGET="$HOME/bin"
@@ -146,8 +146,8 @@ echo ""
 echo "boostrap-ubi.sh: ubi has been installed to $TARGET."
 
 set +e
-echo ":$PATH:" | grep --extended-regexp ":$TARGET:" > /dev/null
-if [ "$?" != "0" ]; then
+TARGET_IS_IN_PATH=$( echo ":$PATH:" | grep --extended-regexp ":$TARGET:" 2> /dev/null )
+if [ -z "$TARGET_IS_IN_PATH" ]; then
     echo "boostrap-ubi.sh: It looks like $TARGET is not in your PATH. You may want to add it to use ubi."
 fi
 
