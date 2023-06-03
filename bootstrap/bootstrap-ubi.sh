@@ -17,44 +17,103 @@ fi
 
 cd "$TARGET"
 
-KERNEL=$(uname -s)
-ABI=""
-EXT="tar.gz"
-case "$KERNEL" in
-    Linux)
-        PLATFORM="Linux"
-        ABI="-musl"
-        ;;
-    Darwin)
-        PLATFORM="Darwin"
-        ;;
-    MINGW*)
-        PLATFORM="Windows"
-        EXT="zip"
-        ;;
-    *)
-        echo "boostrap-ubi.sh: Cannot determine what binary to download for your kernel: $KERNEL"
-        exit 3
-        ;;
-esac
+if [ -z "$FILENAME" ]; then
+    KERNEL=$(uname -s)
+    ABI=""
+    EXT="tar.gz"
+    case "$KERNEL" in
+        Linux)
+            OS="Linux"
+            ;;
+        Darwin)
+            OS="Darwin"
+            ;;
+        FreeBSD)
+            OS="FreeBSD"
+            ;;
+        NetBSD)
+            OS="NetBSD"
+            ;;
+        MINGW*)
+            OS="Windows"
+            EXT="zip"
+            ;;
+        *)
+            echo "boostrap-ubi.sh: Cannot determine what binary to download for your kernel: $KERNEL"
+            exit 3
+            ;;
+    esac
 
-# I previous had uname -p but that reports all sorts of weird stuff. On one
-# person's Linux x86_64 machine it reported "unknown". On macOS x86_64 you get
-# "i386". Why? I have no idea.
-ARCH=$(uname -m)
-case "$ARCH" in
-    x86_64)
-        CPU="x86_64"
-        ;;
-    arm64)
-        CPU="aarch64"
-        ;;
-    *)
-        echo "boostrap-ubi.sh: Cannot determine what binary to download for your CPU architecture: $ARCH"
-        exit 4
-esac
+    # I previous had uname -p but that reports all sorts of weird stuff. On one
+    # person's Linux x86_64 machine it reported "unknown". On macOS x86_64 you get
+    # "i386". Why? I have no idea.
+    ARCH=$(uname -m)
+    case "$ARCH" in
+        i386|i486|i586|i686)
+            CPU="i786"
+            if [ "$OS" = "Linux" ]; then
+                ABI="-musl"
+            fi
+            ;;
+        x86_64|amd64)
+            CPU="x86_64"
+            if [ "$OS" = "Linux" ]; then
+                ABI="-musl"
+            fi
+            ;;
+        arm)
+            CPU="arm"
+            ;;
+        aarch64|arm64)
+            CPU="aarch64"
+            ;;
+        mips)
+            CPU="mips"
+            ;;
+        mipsel|mipsle)
+            CPU="mipsel"
+            ;;
+        mips64)
+            CPU="mips64"
+            ;;
+        mips64el|mips64le)
+            CPU="mips64el"
+            ;;
+        powerpc|ppc)
+            CPU="powerpc"
+            if [ "$OS" = "Linux" ]; then
+                ABI="-gnu"
+            fi
+            ;;
+        powerpc64|ppc64)
+            CPU="powerpc64"
+            if [ "$OS" = "Linux" ]; then
+                ABI="-gnu"
+            fi
+            ;;
+        powerpc64le|ppc64le)
+            CPU="powerpc64le"
+            ;;
+        riscv64|rv64gc)
+            CPU="riscv64gc"
+            if [ "$OS" = "Linux" ]; then
+                ABI="-gnu"
+            fi
+            ;;
+        s390x)
+            CPU="s390x"
+            if [ "$OS" = "Linux" ]; then
+                ABI="-gnu"
+            fi
+            ;;
+        *)
+            echo "boostrap-ubi.sh: Cannot determine what binary to download for your CPU architecture: $ARCH"
+            exit 4
+    esac
 
-FILENAME="ubi-$PLATFORM-$CPU$ABI.$EXT"
+    FILENAME="ubi-$OS-$CPU$ABI.$EXT"
+fi
+
 if [ -z "$TAG" ]; then
     URL="https://github.com/houseabsolute/ubi/releases/latest/download/$FILENAME"
 else
@@ -75,7 +134,7 @@ elif [ "$STATUS" != "200" ]; then
     exit 6
 fi
 
-if [ "$EXT" = "tar.gz" ]; then
+if echo "$FILENAME" | grep "\\.tar\\.gz$"; then
     tar -xzf "$LOCAL_FILE" ubi
 else
     unzip "$LOCAL_FILE"
