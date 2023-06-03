@@ -3,8 +3,10 @@
 - The bootstrap script has been updated to try to handle more operating systems and CPU
   architectures. In addition, you can bypass its platform detection entirely by setting a `FILENAME`
   environment variable, which should be the name of one of the
-  [release file assets](https://github.com/houseabsolute/ubi/releases). Addresses GH #38. Reported
-  by Ole-Andreas Nylund.
+  [release file assets](https://github.com/houseabsolute/ubi/releases). Reported by Ole-Andreas
+  Nylund. Addresses GH #38.
+- On 32-bit platforms, `ubi` would always fail when given a `--matching` option on the command line.
+  Reported by Ole-Andreas Nylund. Fixes #40.
 
 ## 0.0.25 - 2023-05-13
 

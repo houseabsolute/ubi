@@ -412,8 +412,7 @@ impl<'a> Ubi<'a> {
             return Ok(&assets[0].name);
         }
 
-        let mut filtered: Vec<&Asset> = vec![];
-        if matches!(
+        let filtered: Vec<&Asset> = if matches!(
             self.platform.target_arch,
             Arch::AArch64
                 | Arch::Mips64
@@ -428,8 +427,19 @@ impl<'a> Ubi<'a> {
                 "found multiple candidate assets, filtering for 64-bit binaries in {:?}",
                 asset_names,
             );
-            filtered = assets.iter().filter(|a| a.name.contains("64")).collect();
-        }
+            let sixty_four_bit: Vec<_> = assets.iter().filter(|a| a.name.contains("64")).collect();
+            if sixty_four_bit.is_empty() {
+                debug!("no 64-bit assets found, falling back to all assets");
+                assets.iter().collect()
+            } else {
+                debug!("found 64-bit assets");
+                sixty_four_bit
+            }
+        } else {
+            // We already filtered out 64-bit binaries when matching against
+            // the CPU architecture.
+            assets.iter().collect()
+        };
 
         if !self.matching.is_empty() {
             debug!(
@@ -1145,6 +1155,169 @@ mod test {
             let req = PlatformReq::from_str(t.platform)?;
             let platform = req.matching_platforms().next().unwrap();
             assert_eq!(Ubi::exe_name(t.exe, t.project_name, platform), t.expect);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn pick_asset_from_matches_64_bit_platform() -> Result<()> {
+        let req = PlatformReq::from_str("x86_64-unknown-linux-musl")?;
+        let platform = req.matching_platforms().next().unwrap();
+        let mut ubi = Ubi::new(
+            Some("org/project"),
+            None,
+            None,
+            None,
+            None,
+            None,
+            platform,
+            None,
+        )?;
+
+        {
+            let assets = &[Asset {
+                name: "project-Linux-i686.tar.gz".to_string(),
+                url: Url::parse("https://example.com")?,
+            }];
+            let picked = ubi.pick_asset_from_matches(assets)?;
+            assert_eq!(picked, assets[0].name, "only one asset, so pick that one");
+        }
+
+        {
+            let assets = &[
+                Asset {
+                    name: "project-Linux-x86_64.tar.gz".to_string(),
+                    url: Url::parse("https://example.com")?,
+                },
+                Asset {
+                    name: "project-Linux-i686.tar.gz".to_string(),
+                    url: Url::parse("https://example.com")?,
+                },
+            ];
+            let picked = ubi.pick_asset_from_matches(assets)?;
+            assert_eq!(picked, assets[0].name, "pick the x86_64 asset on x86_64");
+        }
+
+        {
+            let assets = &[
+                Asset {
+                    name: "project-Linux-i686-gnu.tar.gz".to_string(),
+                    url: Url::parse("https://example.com")?,
+                },
+                Asset {
+                    name: "project-Linux-i686-musl.tar.gz".to_string(),
+                    url: Url::parse("https://example.com")?,
+                },
+            ];
+            let picked = ubi.pick_asset_from_matches(assets)?;
+            assert_eq!(
+                picked, assets[0].name,
+                "pick the first matching asset from two 32-bit assets"
+            );
+        }
+
+        ubi = Ubi::new(
+            Some("org/project"),
+            None,
+            None,
+            None,
+            Some("musl"),
+            None,
+            platform,
+            None,
+        )?;
+
+        {
+            let assets = &[
+                Asset {
+                    name: "project-Linux-x86_64-gnu.tar.gz".to_string(),
+                    url: Url::parse("https://example.com")?,
+                },
+                Asset {
+                    name: "project-Linux-x86_64-musl.tar.gz".to_string(),
+                    url: Url::parse("https://example.com")?,
+                },
+            ];
+            let picked = ubi.pick_asset_from_matches(assets)?;
+            assert_eq!(
+                picked, assets[1].name,
+                "pick the musl asset when matching is set"
+            );
+        }
+
+        {
+            let assets = &[
+                Asset {
+                    name: "project-Linux-i686-gnu.tar.gz".to_string(),
+                    url: Url::parse("https://example.com")?,
+                },
+                Asset {
+                    name: "project-Linux-i686-musl.tar.gz".to_string(),
+                    url: Url::parse("https://example.com")?,
+                },
+            ];
+            let picked = ubi.pick_asset_from_matches(assets)?;
+            assert_eq!(
+                picked, assets[1].name,
+                "pick the musl asset from two 32-bit assets"
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn pick_asset_from_matches_32_bit_platform() -> Result<()> {
+        let req = PlatformReq::from_str("i686-unknown-linux-gnu")?;
+        let platform = req.matching_platforms().next().unwrap();
+        let mut ubi = Ubi::new(
+            Some("org/project"),
+            None,
+            None,
+            None,
+            None,
+            None,
+            platform,
+            None,
+        )?;
+
+        {
+            let assets = &[Asset {
+                name: "project-Linux-i686.tar.gz".to_string(),
+                url: Url::parse("https://example.com")?,
+            }];
+            let picked = ubi.pick_asset_from_matches(assets)?;
+            assert_eq!(picked, assets[0].name, "only one asset, so pick that one");
+        }
+
+        ubi = Ubi::new(
+            Some("org/project"),
+            None,
+            None,
+            None,
+            Some("musl"),
+            None,
+            platform,
+            None,
+        )?;
+
+        {
+            let assets = &[
+                Asset {
+                    name: "project-Linux-i686-gnu.tar.gz".to_string(),
+                    url: Url::parse("https://example.com")?,
+                },
+                Asset {
+                    name: "project-Linux-i686-musl.tar.gz".to_string(),
+                    url: Url::parse("https://example.com")?,
+                },
+            ];
+            let picked = ubi.pick_asset_from_matches(assets)?;
+            assert_eq!(
+                picked, assets[1].name,
+                "pick the musl asset when matching is set"
+            );
         }
 
         Ok(())
