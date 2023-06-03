@@ -1,3 +1,11 @@
+## 0.0.26
+
+- The bootstrap script has been updated to try to handle more operating systems and CPU
+  architectures. In addition, you can bypass its platform detection entirely by setting a `FILENAME`
+  environment variable, which should be the name of one of the
+  [release file assets](https://github.com/houseabsolute/ubi/releases). Addresses GH #38. Reported
+  by Ole-Andreas Nylund.
+
 ## 0.0.25 - 2023-05-13
 
 - Help output is now line-wrapped based on your terminal width.
