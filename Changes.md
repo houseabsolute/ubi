@@ -1,4 +1,4 @@
-## 0.0.26
+## 0.0.26 - 2023-06-03
 
 - The bootstrap script has been updated to try to handle more operating systems and CPU
   architectures. In addition, you can bypass its platform detection entirely by setting a `FILENAME`
