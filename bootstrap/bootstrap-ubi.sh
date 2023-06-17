@@ -63,9 +63,15 @@ if [ -z "$FILENAME" ]; then
             ;;
         arm|armv5*|armv6*|armv7*)
             CPU="arm"
+            if [ "$OS" = "Linux" ]; then
+                LIBC="-musl"
+            fi
             ;;
         aarch64|arm64)
             CPU="aarch64"
+            if [ "$OS" = "Linux" ]; then
+                LIBC="-musl"
+            fi
             ;;
         mips)
             CPU="mips"
