@@ -19,7 +19,7 @@ cd "$TARGET"
 
 if [ -z "$FILENAME" ]; then
     KERNEL=$(uname -s)
-    ABI=""
+    LIBC=""
     EXT="tar.gz"
     case "$KERNEL" in
         Linux)
@@ -52,13 +52,13 @@ if [ -z "$FILENAME" ]; then
         i386|i486|i586|i686)
             CPU="i786"
             if [ "$OS" = "Linux" ]; then
-                ABI="-musl"
+                LIBC="-musl"
             fi
             ;;
         x86_64|amd64)
             CPU="x86_64"
             if [ "$OS" = "Linux" ]; then
-                ABI="-musl"
+                LIBC="-musl"
             fi
             ;;
         arm|armv5*|armv6*|armv7*)
@@ -82,13 +82,13 @@ if [ -z "$FILENAME" ]; then
         powerpc|ppc)
             CPU="powerpc"
             if [ "$OS" = "Linux" ]; then
-                ABI="-gnu"
+                LIBC="-gnu"
             fi
             ;;
         powerpc64|ppc64)
             CPU="powerpc64"
             if [ "$OS" = "Linux" ]; then
-                ABI="-gnu"
+                LIBC="-gnu"
             fi
             ;;
         powerpc64le|ppc64le)
@@ -97,13 +97,13 @@ if [ -z "$FILENAME" ]; then
         riscv64|rv64gc)
             CPU="riscv64gc"
             if [ "$OS" = "Linux" ]; then
-                ABI="-gnu"
+                LIBC="-gnu"
             fi
             ;;
         s390x)
             CPU="s390x"
             if [ "$OS" = "Linux" ]; then
-                ABI="-gnu"
+                LIBC="-gnu"
             fi
             ;;
         *)
@@ -111,7 +111,7 @@ if [ -z "$FILENAME" ]; then
             exit 4
     esac
 
-    FILENAME="ubi-$OS-$CPU$ABI.$EXT"
+    FILENAME="ubi-$OS-$CPU$LIBC.$EXT"
 fi
 
 if [ -z "$TAG" ]; then
