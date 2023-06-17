@@ -61,7 +61,7 @@ if [ -z "$FILENAME" ]; then
                 ABI="-musl"
             fi
             ;;
-        arm)
+        arm|armv5*|armv6*|armv7*)
             CPU="arm"
             ;;
         aarch64|arm64)

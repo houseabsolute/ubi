@@ -1,3 +1,8 @@
+## 0.0.27
+
+- The bootstrap script should handle more possible ARM processors correctly, including for the
+  Raspberry Pi. Reported by Olaf Alders. GH #42.
+
 ## 0.0.26 - 2023-06-03
 
 - The bootstrap script has been updated to try to handle more operating systems and CPU
