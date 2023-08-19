@@ -461,6 +461,26 @@ impl<'a> Ubi<'a> {
             return Ok(&filtered[0].name);
         }
 
+        if self.running_on_macos_arm() {
+            let asset_names = assets.iter().map(|a| a.name.as_str()).collect::<Vec<_>>();
+            debug!(
+                "found multiple candidate assets and running on macOS ARM, filtering for arm64 binaries in {:?}",
+                asset_names,
+            );
+
+            let arch_matcher = aarch64_re()?;
+            let arm64: Vec<_> = filtered
+                .iter()
+                .filter(|a| arch_matcher.is_match(&a.name))
+                .collect();
+            if arm64.is_empty() {
+                debug!("did not find any ARM binaries");
+            } else {
+                debug!("found ARM binary named {}", arm64[0].name);
+                return Ok(&arm64[0].name);
+            }
+        }
+
         debug!(
             "cannot disambiguate multiple asset names, picking the first one after sorting by name"
         );
@@ -635,6 +655,10 @@ impl<'a> Ubi<'a> {
     fn arch_matcher(&self) -> Result<Regex> {
         debug!("current CPU architecture = {}", self.platform.target_arch);
 
+        if self.running_on_macos_arm() {
+            return macos_aarch64_re();
+        }
+
         match (self.platform.target_arch, self.platform.target_endian) {
             (Arch::AArch64, _) => aarch64_re(),
             (Arch::Arm, _) => arm_re(),
@@ -659,6 +683,41 @@ impl<'a> Ubi<'a> {
             ),
         }
     }
+
+    fn running_on_macos_arm(&self) -> bool {
+        self.platform.target_os == OS::MacOS && self.platform.target_arch == Arch::AArch64
+    }
+}
+
+// This is a special case to account for the fact that MacOS ARM systems can
+// also return x86-64 binaries.
+fn macos_aarch64_re() -> Result<Regex> {
+    Regex::new(
+        r#"(?ix)
+        (?:
+            \b
+            |
+            _
+        )
+        (?:
+            aarch_?64
+            |
+            arm_?64
+            |
+            x86[_-]64
+            |
+            x64
+            |
+            amd64
+        )
+        (?:
+            \b
+            |
+            _
+        )
+"#,
+    )
+    .map_err(|e| e.into())
 }
 
 fn aarch64_re() -> Result<Regex> {
@@ -1317,6 +1376,64 @@ mod test {
             assert_eq!(
                 picked, assets[1].name,
                 "pick the musl asset when matching is set"
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn pick_asset_from_matches_macos_arm() -> Result<()> {
+        //init_logger(log::LevelFilter::Debug)?;
+        let req = PlatformReq::from_str("aarch64-apple-darwin")?;
+        let platform = req.matching_platforms().next().unwrap();
+        let ubi = Ubi::new(
+            Some("org/project"),
+            None,
+            None,
+            None,
+            None,
+            None,
+            platform,
+            None,
+        )?;
+
+        {
+            let assets = &[Asset {
+                name: "project-Macos-aarch64.tar.gz".to_string(),
+                url: Url::parse("https://example.com")?,
+            }];
+            let picked = ubi.pick_asset_from_matches(assets)?;
+            assert_eq!(picked, assets[0].name, "only one asset, so pick that one");
+        }
+
+        {
+            let assets = &[
+                Asset {
+                    name: "project-Macos-x86-64.tar.gz".to_string(),
+                    url: Url::parse("https://example.com")?,
+                },
+                Asset {
+                    name: "project-Macos-aarch64.tar.gz".to_string(),
+                    url: Url::parse("https://example.com")?,
+                },
+            ];
+            let picked = ubi.pick_asset_from_matches(assets)?;
+            assert_eq!(
+                picked, assets[1].name,
+                "pick the aarch64 asset on macOS ARM"
+            );
+        }
+
+        {
+            let assets = &[Asset {
+                name: "project-Macos-x86-64.tar.gz".to_string(),
+                url: Url::parse("https://example.com")?,
+            }];
+            let picked = ubi.pick_asset_from_matches(assets)?;
+            assert_eq!(
+                picked, assets[0].name,
+                "pick the x86-64 asset on macOS ARM if no aarch64 asset is available"
             );
         }
 
@@ -2202,6 +2319,100 @@ mod test {
     {
       "url": "https://api.github.com/repos/test/multiple-matches/releases/assets/9521008",
       "name": "mm-i686-pc-windows-msvc.zip"
+    }
+  ]
+}"#;
+
+    #[tokio::test]
+    async fn macos_arm() -> Result<()> {
+        //init_logger(log::LevelFilter::Debug)?;
+        let mut server = Server::new_async().await;
+        let m1 = server
+            .mock("GET", "/repos/test/macos/releases/latest")
+            .match_header(ACCEPT.as_str(), "application/json")
+            .with_status(reqwest::StatusCode::OK.as_u16() as usize)
+            .with_body(MACOS_RESPONSE1)
+            .expect_at_least(1)
+            .create_async()
+            .await;
+
+        let p = "aarch64-apple-darwin";
+        let req = PlatformReq::from_str(p)
+            .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
+        let platform = req.matching_platforms().next().unwrap();
+        let ubi = Ubi::new(
+            Some("test/macos"),
+            None,
+            None,
+            None,
+            None,
+            None,
+            platform,
+            Some(server.url()),
+        )?;
+
+        {
+            let asset = ubi.asset().await?;
+            let expect = "bat-v0.23.0-x86_64-apple-darwin.tar.gz";
+            assert_eq!(
+                asset.1, expect,
+                "picked {expect} as macos bat asset name when only x86 binary is available"
+            );
+            m1.assert_async().await;
+        }
+
+        server.reset();
+
+        let m2 = server
+            .mock("GET", "/repos/test/macos/releases/latest")
+            .match_header(ACCEPT.as_str(), "application/json")
+            .with_status(reqwest::StatusCode::OK.as_u16() as usize)
+            .with_body(MACOS_RESPONSE2)
+            .expect_at_least(1)
+            .create_async()
+            .await;
+
+        {
+            let asset = ubi.asset().await?;
+            let expect = "bat-v0.23.0-aarch64-apple-darwin.tar.gz";
+            assert_eq!(
+                asset.1, expect,
+                "picked {expect} as macos bat asset name when ARM binary is available"
+            );
+            m2.assert_async().await;
+        }
+
+        Ok(())
+    }
+
+    const MACOS_RESPONSE1: &str = r#"
+{
+  "assets": [
+    {
+      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100890821",
+      "name": "bat-v0.23.0-i686-unknown-linux-gnu.tar.gz"
+    },
+    {
+      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891186",
+      "name": "bat-v0.23.0-x86_64-apple-darwin.tar.gz"
+    }
+  ]
+}"#;
+
+    const MACOS_RESPONSE2: &str = r#"
+{
+  "assets": [
+    {
+      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100890821",
+      "name": "bat-v0.23.0-i686-unknown-linux-gnu.tar.gz"
+    },
+    {
+      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891186",
+      "name": "bat-v0.23.0-x86_64-apple-darwin.tar.gz"
+    },
+    {
+      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891186",
+      "name": "bat-v0.23.0-aarch64-apple-darwin.tar.gz"
     }
   ]
 }"#;
