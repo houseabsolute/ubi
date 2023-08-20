@@ -2,7 +2,6 @@
 
 - The bootstrap script should handle more possible ARM processors correctly, including for the
   Raspberry Pi. Reported by Olaf Alders. GH #42.
-
 - On macOS ARM, ubi will now pick an x86-64 macOS binary if no ARM binary is available. Reported by
   Olaf Alders. GH #44.
 
