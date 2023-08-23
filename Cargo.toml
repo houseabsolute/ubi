@@ -19,7 +19,7 @@ log = "0.4.20"
 platforms = "3.0.2"
 regex = "1.9.3"
 result = "1.0.0"
-serde = { version = "1.0.183", features = ["derive"] }
+serde = { version = "1.0.185", features = ["derive"] }
 strum = { version = "0.25.0", features = ["derive"] }
 tar = "0.4.40"
 tempfile = "3.8.0"
@@ -30,20 +30,20 @@ xz = "0.1.0"
 zip = "0.6.6"
 
 [target.'cfg(darwin)'.dependencies]
-reqwest = { version = "0.11.18", default-features = false, features = ["gzip", "json", "rustls-tls"] }
+reqwest = { version = "0.11.19", default-features = false, features = ["gzip", "json", "rustls-tls"] }
 
 [target.'cfg(all(target_os = "windows", target_arch="x86_64"))'.dependencies]
-reqwest = { version = "0.11.18", default-features = false, features = ["gzip", "json", "rustls-tls"] }
+reqwest = { version = "0.11.19", default-features = false, features = ["gzip", "json", "rustls-tls"] }
 
 [target.'cfg(all(target_os = "windows", not(target_arch="x86_64")))'.dependencies]
-reqwest = { version = "0.11.18", default-features = false, features = ["gzip", "json", "default-tls"] }
+reqwest = { version = "0.11.19", default-features = false, features = ["gzip", "json", "default-tls"] }
 openssl = { version = "0.10.56", features = ["vendored"] }
 
 [target.'cfg(all(target_os = "linux", any(target_arch="x86_64", target_arch="arm", target_arch="armv7", target_arch="mipsel")))'.dependencies]
-reqwest = { version = "0.11.18", default-features = false, features = ["gzip", "json", "rustls-tls"] }
+reqwest = { version = "0.11.19", default-features = false, features = ["gzip", "json", "rustls-tls"] }
 
 [target.'cfg(all(not(all(target_os = "linux", any(target_arch="x86_64", target_arch="arm", target_arch="armv7", target_arch="mipsel"))), not(target_os = "windows"), not(target_os = "darwin")))'.dependencies]
-reqwest = { version = "0.11.18", default-features = false, features = ["gzip", "json", "default-tls"] }
+reqwest = { version = "0.11.19", default-features = false, features = ["gzip", "json", "default-tls"] }
 openssl = { version = "0.10.56", features = ["vendored"] }
 
 [workspace.metadata.release]
