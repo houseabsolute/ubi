@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+use binstall_tar::Archive;
 use bzip2::read::BzDecoder;
 use fern::{
     colors::{Color, ColoredLevelConfig},
@@ -22,7 +23,6 @@ use std::{
     path::{Path, PathBuf},
 };
 use strum::{EnumIter, IntoEnumIterator};
-use tar::Archive;
 use tempfile::{tempdir, TempDir};
 use url::Url;
 use xz::read::XzDecoder;

@@ -10,6 +10,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.75"
+binstall-tar = "0.4.39"
 bzip2 = "0.4.4"
 clap = { version = "4.3.23", features = ["wrap_help"] }
 fern = { version = "0.6.2", features = ["colored"] }
@@ -21,7 +22,6 @@ regex = "1.9.3"
 result = "1.0.0"
 serde = { version = "1.0.185", features = ["derive"] }
 strum = { version = "0.25.0", features = ["derive"] }
-tar = "0.4.40"
 tempfile = "3.8.0"
 thiserror = "1.0.47"
 tokio = { version = "1.32.0", default-features = false, features = ["macros", "rt"] }

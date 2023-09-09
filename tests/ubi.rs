@@ -358,6 +358,33 @@ fn integration_tests() -> Result<()> {
         make_exe_pathbuf(&["bin", "tailwindcss"]),
     )?;
 
+    // The tarball for the Darwin x86-64 release uses the GNU sparse format,
+    // which isn't supported by the tar crate
+    // (https://github.com/alexcrichton/tar-rs/issues/295). Switching to the
+    // binstall-tar fork of the tar crate fixes this.
+    //
+    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    {
+        let ubi_bin = make_exe_pathbuf(&["bin", "ubi"]);
+        run_test(
+            td.path(),
+            ubi.as_ref(),
+            &["--project", "houseabsolute/ubi", "--tag", "v0.0.27"],
+            ubi_bin.clone(),
+        )?;
+
+        match run_command(ubi_bin.as_ref(), &["--version"]) {
+            Ok((stdout, _)) => {
+                assert!(stdout.is_some(), "got stdout from ubi");
+                assert!(
+                    stdout.unwrap().contains("ubi 0.0.27"),
+                    "got the expected stdout",
+                );
+            }
+            Err(e) => return Err(e),
+        }
+    }
+
     Ok(())
 }
 
