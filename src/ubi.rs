@@ -335,7 +335,7 @@ impl<'a> Ubi<'a> {
         let mut matches: Vec<Asset> = vec![];
         let mut names: Vec<String> = vec![];
 
-        let version_re = Regex::new(r#"(?:\d+\.)+(\d+.+?)\z"#)?;
+        let version_re = Regex::new(r"(?:\d+\.)+(\d+.+?)\z")?;
 
         // This could all be done much more simply with the iterator's .find()
         // method, but then there's no place to put all the debugging output.
@@ -693,7 +693,7 @@ impl<'a> Ubi<'a> {
 // also return x86-64 binaries.
 fn macos_aarch64_re() -> Result<Regex> {
     Regex::new(
-        r#"(?ix)
+        r"(?ix)
         (?:
             \b
             |
@@ -715,14 +715,14 @@ fn macos_aarch64_re() -> Result<Regex> {
             |
             _
         )
-"#,
+",
     )
     .map_err(|e| e.into())
 }
 
 fn aarch64_re() -> Result<Regex> {
     Regex::new(
-        r#"(?ix)
+        r"(?ix)
         (?:
             \b
             |
@@ -738,14 +738,14 @@ fn aarch64_re() -> Result<Regex> {
             |
             _
         )
-"#,
+",
     )
     .map_err(|e| e.into())
 }
 
 fn arm_re() -> Result<Regex> {
     Regex::new(
-        r#"(?ix)
+        r"(?ix)
         (?:
             \b
             |
@@ -757,14 +757,14 @@ fn arm_re() -> Result<Regex> {
             |
             _
         )
-"#,
+",
     )
     .map_err(|e| e.into())
 }
 
 fn mipsle_re() -> Result<Regex> {
     Regex::new(
-        r#"(?ix)
+        r"(?ix)
         (?:
             \b
             |
@@ -776,14 +776,14 @@ fn mipsle_re() -> Result<Regex> {
             |
             _
         )
-"#,
+",
     )
     .map_err(|e| e.into())
 }
 
 fn mips_re() -> Result<Regex> {
     Regex::new(
-        r#"(?ix)
+        r"(?ix)
         (?:
             \b
             |
@@ -795,14 +795,14 @@ fn mips_re() -> Result<Regex> {
             |
             _
         )
-"#,
+",
     )
     .map_err(|e| e.into())
 }
 
 fn mips64le_re() -> Result<Regex> {
     Regex::new(
-        r#"(?ix)
+        r"(?ix)
         (?:
             \b
             |
@@ -814,14 +814,14 @@ fn mips64le_re() -> Result<Regex> {
             |
             _
         )
-"#,
+",
     )
     .map_err(|e| e.into())
 }
 
 fn mips64_re() -> Result<Regex> {
     Regex::new(
-        r#"(?ix)
+        r"(?ix)
         (?:
             \b
             |
@@ -833,14 +833,14 @@ fn mips64_re() -> Result<Regex> {
             |
             _
         )
-"#,
+",
     )
     .map_err(|e| e.into())
 }
 
 fn ppc32_re() -> Result<Regex> {
     Regex::new(
-        r#"(?ix)
+        r"(?ix)
         (?:
             \b
             |
@@ -856,14 +856,14 @@ fn ppc32_re() -> Result<Regex> {
             |
             _
         )
-"#,
+",
     )
     .map_err(|e| e.into())
 }
 
 fn ppc64_re() -> Result<Regex> {
     Regex::new(
-        r#"(?ix)
+        r"(?ix)
         (?:
             \b
             |
@@ -890,14 +890,14 @@ fn ppc64_re() -> Result<Regex> {
             |
             _
         )
-"#,
+",
     )
     .map_err(|e| e.into())
 }
 
 fn ppc64le_re() -> Result<Regex> {
     Regex::new(
-        r#"(?ix)
+        r"(?ix)
         (?:
             \b
             |
@@ -924,14 +924,14 @@ fn ppc64le_re() -> Result<Regex> {
             |
             _
         )
-"#,
+",
     )
     .map_err(|e| e.into())
 }
 
 fn riscv64_re() -> Result<Regex> {
     Regex::new(
-        r#"(?ix)
+        r"(?ix)
         (?:
             \b
             |
@@ -943,14 +943,14 @@ fn riscv64_re() -> Result<Regex> {
             |
             _
         )
-"#,
+",
     )
     .map_err(|e| e.into())
 }
 
 fn s390x_re() -> Result<Regex> {
     Regex::new(
-        r#"(?ix)
+        r"(?ix)
         (?:
             \b
             |
@@ -962,14 +962,14 @@ fn s390x_re() -> Result<Regex> {
             |
             _
         )
-"#,
+",
     )
     .map_err(|e| e.into())
 }
 
 fn sparc64_re() -> Result<Regex> {
     Regex::new(
-        r#"(?ix)
+        r"(?ix)
         (?:
             \b
             |
@@ -981,14 +981,14 @@ fn sparc64_re() -> Result<Regex> {
             |
             _
         )
-"#,
+",
     )
     .map_err(|e| e.into())
 }
 
 fn x86_32_re() -> Result<Regex> {
     Regex::new(
-        r#"(?ix)
+        r"(?ix)
         (?:
             \b
             |
@@ -1008,14 +1008,14 @@ fn x86_32_re() -> Result<Regex> {
             |
             _
         )
-"#,
+",
     )
     .map_err(|e| e.into())
 }
 
 fn x86_64_re() -> Result<Regex> {
     Regex::new(
-        r#"(?ix)
+        r"(?ix)
         (?:
             \b
             |
@@ -1043,7 +1043,7 @@ fn x86_64_re() -> Result<Regex> {
             |
             _
         )
-"#,
+",
     )
     .map_err(|e| e.into())
 }
