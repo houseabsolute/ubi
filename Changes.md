@@ -1,8 +1,9 @@
 ## 0.0.28 - 2023-09-09
 
-- Fix a bug with tarballs that use the GNU sparse format. Such tarballs were not extracted properly,
-  leading to the extracted executable being garbled. This was an issue with the macOS x86-64 release
-  of ubi, which broke the `--self-upgrade` flag on that platform. Reported by Olaf Alders. GH #45.
+- Fixed a bug with tarballs that use the GNU sparse format. Such tarballs were not extracted
+  properly, leading to the extracted executable being garbled. This was an issue with the macOS
+  x86-64 release of ubi, which broke the `--self-upgrade` flag on that platform. Reported by Olaf
+  Alders. GH #45.
 
 ## 0.0.27 - 2023-08-19
 
