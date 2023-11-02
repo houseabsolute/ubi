@@ -30,7 +30,7 @@ jobs:
             os: windows-latest
             script: bootstrap-ubi.sh
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Run bootstrap script
         shell: bash
         run: |
