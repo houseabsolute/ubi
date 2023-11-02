@@ -12,42 +12,42 @@ edition = "2021"
 anyhow = "1.0.75"
 binstall-tar = "0.4.39"
 bzip2 = "0.4.4"
-clap = { version = "4.3.23", features = ["wrap_help"] }
+clap = { version = "4.4.7", features = ["wrap_help"] }
 fern = { version = "0.6.2", features = ["colored"] }
-flate2 = "1.0.27"
+flate2 = "1.0.28"
 itertools = "0.11.0"
 log = "0.4.20"
-platforms = "3.0.2"
-regex = "1.9.3"
+platforms = "3.2.0"
+regex = "1.10.2"
 result = "1.0.0"
-serde = { version = "1.0.185", features = ["derive"] }
+serde = { version = "1.0.190", features = ["derive"] }
 strum = { version = "0.25.0", features = ["derive"] }
-tempfile = "3.8.0"
-thiserror = "1.0.47"
-tokio = { version = "1.32.0", default-features = false, features = ["macros", "rt"] }
-url = { version = "2.4.0", features = ["serde"] }
+tempfile = "3.8.1"
+thiserror = "1.0.50"
+tokio = { version = "1.33.0", default-features = false, features = ["macros", "rt"] }
+url = { version = "2.4.1", features = ["serde"] }
 xz = "0.1.0"
 zip = "0.6.6"
 
 [target.'cfg(darwin)'.dependencies]
-reqwest = { version = "0.11.19", default-features = false, features = ["gzip", "json", "rustls-tls"] }
+reqwest = { version = "0.11.22", default-features = false, features = ["gzip", "json", "rustls-tls"] }
 
 [target.'cfg(all(target_os = "windows", target_arch="x86_64"))'.dependencies]
-reqwest = { version = "0.11.19", default-features = false, features = ["gzip", "json", "rustls-tls"] }
+reqwest = { version = "0.11.22", default-features = false, features = ["gzip", "json", "rustls-tls"] }
 
 [target.'cfg(all(target_os = "windows", not(target_arch="x86_64")))'.dependencies]
-reqwest = { version = "0.11.19", default-features = false, features = ["gzip", "json", "default-tls"] }
-openssl = { version = "0.10.56", features = ["vendored"] }
+reqwest = { version = "0.11.22", default-features = false, features = ["gzip", "json", "default-tls"] }
+openssl = { version = "0.10.58", features = ["vendored"] }
 
 [target.'cfg(all(target_os = "linux", any(target_arch="x86_64", target_arch="arm", target_arch="armv7", target_arch="mipsel")))'.dependencies]
-reqwest = { version = "0.11.19", default-features = false, features = ["gzip", "json", "rustls-tls"] }
+reqwest = { version = "0.11.22", default-features = false, features = ["gzip", "json", "rustls-tls"] }
 
 [target.'cfg(all(not(all(target_os = "linux", any(target_arch="x86_64", target_arch="arm", target_arch="armv7", target_arch="mipsel"))), not(target_os = "windows"), not(target_os = "darwin")))'.dependencies]
-reqwest = { version = "0.11.19", default-features = false, features = ["gzip", "json", "default-tls"] }
-openssl = { version = "0.10.56", features = ["vendored"] }
+reqwest = { version = "0.11.22", default-features = false, features = ["gzip", "json", "default-tls"] }
+openssl = { version = "0.10.58", features = ["vendored"] }
 
 [workspace.metadata.release]
 allow-branch = ["master"]
 
 [dev-dependencies]
-mockito = "1.1.0"
+mockito = "1.2.0"
