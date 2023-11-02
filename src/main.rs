@@ -156,8 +156,7 @@ fn make_ubi<'a>(mut matches: ArgMatches) -> Result<(Ubi<'a>, Option<impl FnOnce(
         let (args, to_delete) = self_upgrade_args()?;
         matches = cmd.try_get_matches_from(args)?;
         if let Some(to_delete) = to_delete {
-            post_run = Some(|| {
-                let to_delete = to_delete;
+            post_run = Some(move || {
                 println!(
                     "The self-upgrade operation left an old binary behind that must be deleted manually: {}",
                     to_delete.display(),
