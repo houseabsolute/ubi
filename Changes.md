@@ -1,3 +1,8 @@
+##
+
+- As of this release there are no longer binaries built for MIPS on Linux. These targets have been
+  demoted to tier 3 support by the Rust compiler.
+
 ## 0.0.28 - 2023-09-09
 
 - Fixed a bug with tarballs that use the GNU sparse format. Such tarballs were not extracted

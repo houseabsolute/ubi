@@ -44,28 +44,6 @@ jobs:
             bin: ubi
             name: ubi-Linux-i686-musl.tar.gz
             skip_tests: true
-          - os_name: Linux-mips
-            os: ubuntu-20.04
-            target: mips-unknown-linux-musl
-            bin: ubi
-            name: ubi-Linux-mips.tar.gz
-          - os_name: Linux-mipsel
-            os: ubuntu-20.04
-            target: mipsel-unknown-linux-musl
-            bin: ubi
-            name: ubi-Linux-mipsel.tar.gz
-          - os_name: Linux-mips64
-            os: ubuntu-20.04
-            target: mips64-unknown-linux-muslabi64
-            bin: ubi
-            name: ubi-Linux-mips64.tar.gz
-            skip_tests: true
-          - os_name: Linux-mips64el
-            os: ubuntu-20.04
-            target: mips64el-unknown-linux-muslabi64
-            bin: ubi
-            name: ubi-Linux-mips64el.tar.gz
-            skip_tests: true
           - os_name: Linux-powerpc
             os: ubuntu-20.04
             target: powerpc-unknown-linux-gnu
