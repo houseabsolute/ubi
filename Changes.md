@@ -1,5 +1,8 @@
 ##
 
+- If there is only one match for the platform's OS and the release filename has no architecture in
+  it, `ubi` will now pick that one (and hope that it works). This fixes an issue reported by
+  @krisan. GH #48.
 - As of this release there are no longer binaries built for MIPS on Linux. These targets have been
   demoted to tier 3 support by the Rust compiler.
 

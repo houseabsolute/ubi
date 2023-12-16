@@ -323,25 +323,17 @@ impl<'a> Ubi<'a> {
             return Ok(assets.remove(0));
         }
 
+        let all_names = assets.iter().map(|a| &a.name).join(", ");
+
         let os_matcher = self.os_matcher()?;
         debug!("matching assets against OS using {}", os_matcher.as_str());
 
-        let arch_matcher = self.arch_matcher()?;
-        debug!(
-            "matching assets against CPU architecture using {}",
-            arch_matcher.as_str(),
-        );
-
-        let mut matches: Vec<Asset> = vec![];
-        let mut names: Vec<String> = vec![];
-
+        let mut os_matches: Vec<Asset> = vec![];
         let version_re = Regex::new(r"(?:\d+\.)+(\d+.+?)\z")?;
 
         // This could all be done much more simply with the iterator's .find()
         // method, but then there's no place to put all the debugging output.
         for asset in assets {
-            names.push(asset.name.clone());
-
             debug!("matching against asset name = {}", asset.name);
 
             if asset.name.contains('.') && Extension::from_path(&asset.name).is_none() {
@@ -380,19 +372,42 @@ impl<'a> Ubi<'a> {
 
             if os_matcher.is_match(&asset.name) {
                 debug!("matches our OS");
+                os_matches.push(asset);
+            } else {
+                debug!("does not match our OS");
+            }
+        }
+
+        let arch_matcher = self.arch_matcher()?;
+        debug!(
+            "matching assets against CPU architecture using {}",
+            arch_matcher.as_str(),
+        );
+
+        let mut matches: Vec<Asset> = vec![];
+        if os_matches.len() == 1 {
+            debug!("there is only one asset that matches our OS");
+            if arch_matcher.is_match(&os_matches[0].name) {
+                debug!("matches our CPU architecture");
+                matches.push(os_matches.remove(0));
+            } else if all_arches_re()?.is_match(&os_matches[0].name) {
+                debug!("it matches a CPU architecture which is not ours");
+            } else {
+                debug!("does not match any CPU architecture, so we will try it");
+                matches.push(os_matches.remove(0));
+            }
+        } else {
+            for asset in os_matches {
                 if arch_matcher.is_match(&asset.name) {
                     debug!("matches our CPU architecture");
                     matches.push(asset);
                 } else {
                     debug!("does not match our CPU architecture");
                 }
-            } else {
-                debug!("does not match our OS");
             }
         }
 
         if matches.is_empty() {
-            let all_names = names.join(", ");
             return Err(anyhow!(
                 "could not find a release for this OS and architecture ({}) from {all_names}",
                 self.platform,
@@ -1044,6 +1059,31 @@ fn x86_64_re() -> Result<Regex> {
             _
         )
 ",
+    )
+    .map_err(|e| e.into())
+}
+
+fn all_arches_re() -> Result<Regex> {
+    Regex::new(
+        &[
+            aarch64_re()?,
+            arm_re()?,
+            mipsle_re()?,
+            mips_re()?,
+            mips64le_re()?,
+            mips64_re()?,
+            ppc32_re()?,
+            ppc64_re()?,
+            ppc64le_re()?,
+            riscv64_re()?,
+            s390x_re()?,
+            sparc64_re()?,
+            x86_32_re()?,
+            x86_64_re()?,
+        ]
+        .iter()
+        .map(|r| format!("({r})"))
+        .join("|"),
     )
     .map_err(|e| e.into())
 }
@@ -2413,6 +2453,115 @@ mod test {
     {
       "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891186",
       "name": "bat-v0.23.0-aarch64-apple-darwin.tar.gz"
+    }
+  ]
+}"#;
+
+    #[tokio::test]
+    async fn os_without_arch() -> Result<()> {
+        //init_logger(log::LevelFilter::Debug)?;
+
+        {
+            let mut server = Server::new_async().await;
+            let m1 = server
+                .mock("GET", "/repos/test/os-without-arch/releases/latest")
+                .match_header(ACCEPT.as_str(), "application/json")
+                .with_status(reqwest::StatusCode::OK.as_u16() as usize)
+                .with_body(OS_WITHOUT_ARCH_RESPONSE1)
+                .expect_at_least(1)
+                .create_async()
+                .await;
+
+            let p = "x86_64-apple-darwin";
+            let req = PlatformReq::from_str(p)
+                .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
+            let platform = req.matching_platforms().next().unwrap();
+            let ubi = Ubi::new(
+                Some("test/os-without-arch"),
+                None,
+                None,
+                None,
+                None,
+                None,
+                platform,
+                Some(server.url()),
+            )?;
+            let asset = ubi.asset().await?;
+            let expect = "gvproxy-darwin";
+            assert_eq!(asset.1, expect, "picked {expect} as protobuf asset name");
+
+            m1.assert_async().await;
+        }
+
+        {
+            let mut server = Server::new_async().await;
+            let m1 = server
+                .mock("GET", "/repos/test/os-without-arch/releases/latest")
+                .match_header(ACCEPT.as_str(), "application/json")
+                .with_status(reqwest::StatusCode::OK.as_u16() as usize)
+                .with_body(OS_WITHOUT_ARCH_RESPONSE2)
+                .expect_at_least(1)
+                .create_async()
+                .await;
+
+            let p = "x86_64-apple-darwin";
+            let req = PlatformReq::from_str(p)
+                .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
+            let platform = req.matching_platforms().next().unwrap();
+            let ubi = Ubi::new(
+                Some("test/os-without-arch"),
+                None,
+                None,
+                None,
+                None,
+                None,
+                platform,
+                Some(server.url()),
+            )?;
+            let asset = ubi.asset().await;
+            assert!(
+                asset.is_err(),
+                "should not have found an asset because the only darwin asset is for arm64",
+            );
+
+            m1.assert_async().await;
+        }
+
+        Ok(())
+    }
+
+    const OS_WITHOUT_ARCH_RESPONSE1: &str = r#"
+{
+  "assets": [
+    {
+      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100890821",
+      "name": "gvproxy-darwin"
+    },
+    {
+      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891186",
+      "name": "gvproxy-linux-amd64"
+    },
+    {
+      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891187",
+      "name": "gvproxy-linux-arm64"
+    }
+  ]
+}"#;
+
+    const OS_WITHOUT_ARCH_RESPONSE2: &str = r#"
+{
+  "assets": [
+    {
+      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100890821",
+      "name": "gvproxy-darwin-arm64"
+    },
+    {
+      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891186",
+      "name": "gvproxy-linux-amd64"
+    },
+    {
+      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891187",
+      "name": "gvproxy-linux-arm64"
     }
   ]
 }"#;
