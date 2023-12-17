@@ -37,14 +37,14 @@ reqwest = { version = "0.11.22", default-features = false, features = ["gzip", "
 
 [target.'cfg(all(target_os = "windows", not(target_arch="x86_64")))'.dependencies]
 reqwest = { version = "0.11.22", default-features = false, features = ["gzip", "json", "default-tls"] }
-openssl = { version = "=0.10.60", features = ["vendored"] }
+openssl = { version = "0.10.60", features = ["vendored"] }
 
 [target.'cfg(all(target_os = "linux", any(target_arch="x86_64", target_arch="arm", target_arch="armv7", target_arch="mipsel")))'.dependencies]
 reqwest = { version = "0.11.22", default-features = false, features = ["gzip", "json", "rustls-tls"] }
 
 [target.'cfg(all(not(all(target_os = "linux", any(target_arch="x86_64", target_arch="arm", target_arch="armv7", target_arch="mipsel"))), not(target_os = "windows"), not(target_os = "darwin")))'.dependencies]
 reqwest = { version = "0.11.22", default-features = false, features = ["gzip", "json", "default-tls"] }
-openssl = { version = "=0.10.60", features = ["vendored"] }
+openssl = { version = "0.10.60", features = ["vendored"] }
 
 [workspace.metadata.release]
 allow-branch = ["master"]
