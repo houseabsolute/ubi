@@ -1,6 +1,6 @@
 [package]
 name = "ubi"
-version = "0.0.28"
+version = "0.0.29"
 authors = ["Dave Rolsky <autarch@urth.org>"]
 description = "The Universal Binary Installer"
 repository = "https://github.com/houseabsolute/ubi"

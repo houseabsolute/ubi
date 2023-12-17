@@ -1,4 +1,4 @@
-##
+## 0.0.29 - 2023-12-17
 
 - If there is only one match for the platform's OS and the release filename has no architecture in
   it, `ubi` will now pick that one (and hope that it works). This fixes an issue reported by
