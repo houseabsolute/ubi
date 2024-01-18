@@ -1,3 +1,7 @@
+## 0.0.30
+
+- `ubi` is now always compiled with `rustls`, instead of using `openssl` on some platforms.
+
 ## 0.0.29 - 2023-12-17
 
 - If there is only one match for the platform's OS and the release filename has no architecture in

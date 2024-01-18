@@ -19,6 +19,7 @@ itertools = "0.12.0"
 log = "0.4.20"
 platforms = "=3.2.0"
 regex = "1.10.2"
+reqwest = { version = "0.11.23", default-features = false, features = ["gzip", "json", "rustls-tls"] }
 result = "1.0.0"
 serde = { version = "1.0.195", features = ["derive"] }
 strum = { version = "0.25.0", features = ["derive"] }
@@ -28,23 +29,6 @@ tokio = { version = "1.35.1", default-features = false, features = ["macros", "r
 url = { version = "2.5.0", features = ["serde"] }
 xz = "0.1.0"
 zip = "0.6.6"
-
-[target.'cfg(darwin)'.dependencies]
-reqwest = { version = "0.11.23", default-features = false, features = ["gzip", "json", "rustls-tls"] }
-
-[target.'cfg(all(target_os = "windows", target_arch="x86_64"))'.dependencies]
-reqwest = { version = "0.11.23", default-features = false, features = ["gzip", "json", "rustls-tls"] }
-
-[target.'cfg(all(target_os = "windows", not(target_arch="x86_64")))'.dependencies]
-reqwest = { version = "0.11.23", default-features = false, features = ["gzip", "json", "default-tls"] }
-openssl = { version = "0.10.62", features = ["vendored"] }
-
-[target.'cfg(all(target_os = "linux", any(target_arch="x86_64", target_arch="arm", target_arch="armv7", target_arch="mipsel")))'.dependencies]
-reqwest = { version = "0.11.23", default-features = false, features = ["gzip", "json", "rustls-tls"] }
-
-[target.'cfg(all(not(all(target_os = "linux", any(target_arch="x86_64", target_arch="arm", target_arch="armv7", target_arch="mipsel"))), not(target_os = "windows"), not(target_os = "darwin")))'.dependencies]
-reqwest = { version = "0.11.23", default-features = false, features = ["gzip", "json", "default-tls"] }
-openssl = { version = "0.10.62", features = ["vendored"] }
 
 [workspace.metadata.release]
 allow-branch = ["master"]
