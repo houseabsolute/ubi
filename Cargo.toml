@@ -9,23 +9,23 @@ license = "MIT OR Apache-2.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0.79"
+anyhow = "1.0.80"
 binstall-tar = "0.4.39"
 bzip2 = "0.4.4"
-clap = { version = "4.4.18", features = ["wrap_help"] }
+clap = { version = "4.5.1", features = ["wrap_help"] }
 fern = { version = "0.6.2", features = ["colored"] }
 flate2 = "1.0.28"
-itertools = "0.12.0"
-log = "0.4.20"
+itertools = "0.12.1"
+log = "0.4.21"
 platforms = "=3.2.0"
-regex = "1.10.2"
-reqwest = { version = "0.11.23", default-features = false, features = ["gzip", "json", "rustls-tls"] }
+regex = "1.10.3"
+reqwest = { version = "0.11.24", default-features = false, features = ["gzip", "json", "rustls-tls"] }
 result = "1.0.0"
-serde = { version = "1.0.195", features = ["derive"] }
-strum = { version = "0.25.0", features = ["derive"] }
-tempfile = "3.9.0"
-thiserror = "1.0.56"
-tokio = { version = "1.35.1", default-features = false, features = ["macros", "rt"] }
+serde = { version = "1.0.197", features = ["derive"] }
+strum = { version = "0.26.1", features = ["derive"] }
+tempfile = "3.10.1"
+thiserror = "1.0.57"
+tokio = { version = "1.36.0", default-features = false, features = ["macros", "rt"] }
 url = { version = "2.5.0", features = ["serde"] }
 xz = "0.1.0"
 zip = "0.6.6"
@@ -34,7 +34,7 @@ zip = "0.6.6"
 allow-branch = ["master"]
 
 [dev-dependencies]
-mockito = "1.2.0"
+mockito = "1.4.0"
 
 # workaround for https://github.com/cross-rs/cross/issues/1345
 [package.metadata.cross.target.x86_64-unknown-netbsd]
