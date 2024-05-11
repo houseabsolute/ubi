@@ -11,7 +11,7 @@ fi
 TARGET="${TARGET:=$DEFAULT_TARGET}"
 
 if [ ! -d "$TARGET" ]; then
-    >&2 echo "boostrap-ubi.sh: The install target directory, $TARGET, does not exist"
+    >&2 echo "bootstrap-ubi.sh: The install target directory, $TARGET, does not exist"
     exit 3
 fi
 
@@ -39,7 +39,7 @@ if [ -z "$FILENAME" ]; then
         EXT="zip"
         ;;
     *)
-        echo "boostrap-ubi.sh: Cannot determine what binary to download for your kernel: $KERNEL"
+        echo "bootstrap-ubi.sh: Cannot determine what binary to download for your kernel: $KERNEL"
         exit 3
         ;;
     esac
@@ -113,7 +113,7 @@ if [ -z "$FILENAME" ]; then
         fi
         ;;
     *)
-        echo "boostrap-ubi.sh: Cannot determine what binary to download for your CPU architecture: $ARCH"
+        echo "bootstrap-ubi.sh: Cannot determine what binary to download for your CPU architecture: $ARCH"
         exit 4
         ;;
     esac
@@ -150,12 +150,12 @@ fi
 rm -rf -- "$TEMPDIR"
 
 echo ""
-echo "boostrap-ubi.sh: ubi has been installed to $TARGET."
+echo "bootstrap-ubi.sh: ubi has been installed to $TARGET."
 
 set +e
 TARGET_IS_IN_PATH=$(echo ":$PATH:" | grep --extended-regexp ":$TARGET:" 2>/dev/null)
 if [ -z "$TARGET_IS_IN_PATH" ]; then
-    echo "boostrap-ubi.sh: It looks like $TARGET is not in your PATH. You may want to add it to use ubi."
+    echo "bootstrap-ubi.sh: It looks like $TARGET is not in your PATH. You may want to add it to use ubi."
 fi
 
 echo ""
