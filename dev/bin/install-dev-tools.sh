@@ -16,6 +16,7 @@ function install_tools() {
     run "ubi --project houseabsolute/omegasort --in ~/bin"
     run "ubi --project koalaman/shellcheck --in ~/bin"
     run "ubi --project mvdan/sh --in ~/bin --exe shfmt"
+    run "ubi --project crate-ci/typos --in ~/bin"
     run "npm install prettier@2.7.1"
 }
 

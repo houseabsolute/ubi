@@ -57,3 +57,11 @@ tidy_flags = "--write"
 ok_exit_codes = 0
 lint_failure_exit_codes = 1
 
+[commands.typos]
+type = "lint"
+include = "**/*"
+exclude = "**/*.tar.gz"
+cmd = "typos"
+invoke = "once"
+ok-exit-codes = 0
+lint-failure-exit-codes = 2
