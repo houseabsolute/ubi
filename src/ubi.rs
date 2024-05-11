@@ -334,7 +334,7 @@ impl<'a> Ubi<'a> {
         // This could all be done much more simply with the iterator's .find()
         // method, but then there's no place to put all the debugging output.
         for asset in assets {
-            debug!("matching against asset name = {}", asset.name);
+            debug!("matching OS against asset name = {}", asset.name);
 
             if asset.name.contains('.') && Extension::from_path(&asset.name).is_none() {
                 // If the name is something like "mkcert-v1.4.4-darwin-amd46"
@@ -398,11 +398,15 @@ impl<'a> Ubi<'a> {
             }
         } else {
             for asset in os_matches {
+                debug!(
+                    "matching CPU architecture against asset name = {}",
+                    asset.name,
+                );
                 if arch_matcher.is_match(&asset.name) {
-                    debug!("{} matches our CPU architecture", asset.name);
+                    debug!("matches our CPU architecture");
                     matches.push(asset);
                 } else {
-                    debug!("{} does not match our CPU architecture", asset.name);
+                    debug!("does not match our CPU architecture");
                 }
             }
         }
