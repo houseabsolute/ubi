@@ -1,4 +1,4 @@
-## 0.0.30
+## 0.0.30 - 2024-05-11
 
 - When a project's releases contain a mix of file names with and without an architecture, `ubi` will
   try one of the no-architecture names if it doesn't find any matches for the current architecture.
