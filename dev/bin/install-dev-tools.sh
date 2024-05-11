@@ -17,6 +17,7 @@ function install_tools() {
     run "ubi --project koalaman/shellcheck --in ~/bin"
     run "ubi --project mvdan/sh --in ~/bin --exe shfmt"
     run "ubi --project crate-ci/typos --in ~/bin"
+    run "ubi --project tamasfe/taplo --tag 0.8.1 --in ~/bin"
     run "npm install prettier@2.7.1"
 }
 
