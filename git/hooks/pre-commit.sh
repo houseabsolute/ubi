@@ -1,5 +1,6 @@
 #!/bin/bash
 
+declare -i status
 status=0
 
 PRECIOUS=$(which precious)
