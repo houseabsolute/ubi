@@ -2,19 +2,20 @@
 
 set -eo pipefail
 
-function run () {
+function run() {
     echo "$1"
     eval "$1"
 }
 
-function install_tools () {
+function install_tools() {
     curl --silent --location \
-         https://raw.githubusercontent.com/houseabsolute/ubi/master/bootstrap/bootstrap-ubi.sh |
+        https://raw.githubusercontent.com/houseabsolute/ubi/master/bootstrap/bootstrap-ubi.sh |
         sh
     run "rustup component add clippy"
     run "ubi --project houseabsolute/precious --in ~/bin"
     run "ubi --project houseabsolute/omegasort --in ~/bin"
     run "ubi --project koalaman/shellcheck --in ~/bin"
+    run "ubi --project mvdan/sh --in ~/bin --exe shfmt"
     run "npm install prettier@2.7.1"
 }
 
@@ -25,7 +26,7 @@ fi
 mkdir -p "$HOME/bin"
 
 set +e
-if echo ":$PATH:" | grep --extended-regexp ":$HOME/bin:" >& /dev/null; then
+if echo ":$PATH:" | grep --extended-regexp ":$HOME/bin:" >&/dev/null; then
     path_has_home_bin=1
 fi
 set -e
@@ -38,7 +39,7 @@ install_tools
 
 echo "Tools were installed into $HOME/bin."
 if [ -z "$path_has_home_bin" ]; then
-     echo "You should add $HOME/bin to your PATH."
+    echo "You should add $HOME/bin to your PATH."
 fi
 
 exit 0
