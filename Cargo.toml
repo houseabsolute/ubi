@@ -9,26 +9,28 @@ license = "MIT OR Apache-2.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0.82"
+anyhow = "1.0.83"
 binstall-tar = "0.4.39"
 bzip2 = "0.4.4"
 clap = { version = "4.5.4", features = ["wrap_help"] }
 fern = { version = "0.6.2", features = ["colored"] }
-flate2 = "1.0.28"
+flate2 = "1.0.30"
 itertools = "0.12.1"
 log = "0.4.21"
 platforms = "=3.2.0"
 regex = "1.10.4"
 reqwest = { version = "0.12.4", default-features = false, features = ["gzip", "json", "rustls-tls"] }
 result = "1.0.0"
-serde = { version = "1.0.198", features = ["derive"] }
+serde = { version = "1.0.201", features = ["derive"] }
 strum = { version = "0.26.2", features = ["derive"] }
 tempfile = "3.10.1"
-thiserror = "1.0.58"
+thiserror = "1.0.60"
 tokio = { version = "1.37.0", default-features = false, features = ["macros", "rt"] }
 url = { version = "2.5.0", features = ["serde"] }
 xz = "0.1.0"
-zip = "0.6.6"
+# This disables all the features that require C compilation, which greatly
+# simplifies cross-platform builds.
+zip = { version = "1.2.2", default-features = false, features = [ "aes-crypto", "bzip2", "deflate", "deflate64", "lzma", "zstd" ] }
 
 [workspace.metadata.release]
 allow-branch = ["master"]
