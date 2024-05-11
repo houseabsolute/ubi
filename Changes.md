@@ -4,7 +4,6 @@
   try one of the no-architecture names if it doesn't find any matches for the current architecture.
   An example of this is the `yt-dlp/yt-dlp` project, which has releases named `yt-dlp_linux` and
   `yt-dlp_linux_aarch64`.
-
 - `ubi` is now always compiled with `rustls`, instead of using `openssl` on some platforms.
 
 ## 0.0.29 - 2023-12-17
