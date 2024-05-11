@@ -399,10 +399,10 @@ impl<'a> Ubi<'a> {
         } else {
             for asset in os_matches {
                 if arch_matcher.is_match(&asset.name) {
-                    debug!("matches our CPU architecture");
+                    debug!("{} matches our CPU architecture", asset.name);
                     matches.push(asset);
                 } else {
-                    debug!("does not match our CPU architecture");
+                    debug!("{} does not match our CPU architecture", asset.name);
                 }
             }
         }
