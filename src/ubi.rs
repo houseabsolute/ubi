@@ -84,7 +84,7 @@ struct Release {
     assets: Vec<Asset>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 struct Asset {
     name: String,
     url: Url,
@@ -397,16 +397,29 @@ impl<'a> Ubi<'a> {
                 matches.push(os_matches.remove(0));
             }
         } else {
-            for asset in os_matches {
+            for asset in os_matches.iter() {
                 debug!(
                     "matching CPU architecture against asset name = {}",
                     asset.name,
                 );
                 if arch_matcher.is_match(&asset.name) {
                     debug!("matches our CPU architecture");
-                    matches.push(asset);
+                    matches.push(asset.clone());
                 } else {
                     debug!("does not match our CPU architecture");
+                }
+            }
+
+            if matches.is_empty() {
+                debug!("no assets matched our CPU architecture, will look for assets without an architecture");
+                for asset in os_matches {
+                    debug!("matching against asset name = {}", asset.name);
+                    if all_arches_re()?.is_match(&asset.name) {
+                        debug!("matches a CPU architecture which is not ours");
+                    } else {
+                        debug!("does not match any CPU architecture, so we will try it");
+                        matches.push(asset);
+                    }
                 }
             }
         }

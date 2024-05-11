@@ -385,6 +385,18 @@ fn integration_tests() -> Result<()> {
         }
     }
 
+    // This project has some releases that contain an architecture in the name
+    // and some that don't, e.g. `yt-dlp_linux` and
+    // `yt-dlp_linux_aarch64`. This tests that we pick one of the
+    // no-architecture releases when there's no file matching our
+    // architecture.
+    run_test(
+        td.path(),
+        ubi.as_ref(),
+        &["--project", "yt-dlp/yt-dlp", "--tag", "2024.04.09"],
+        make_exe_pathbuf(&["bin", "yt-dlp"]),
+    )?;
+
     Ok(())
 }
 
