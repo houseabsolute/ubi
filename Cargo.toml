@@ -25,7 +25,7 @@ reqwest = { version = "0.12.4", default-features = false, features = [
     "rustls-tls",
 ] }
 result = "1.0.0"
-serde = { version = "1.0.201", features = ["derive"] }
+serde = { version = "1.0.202", features = ["derive"] }
 strum = { version = "0.26.2", features = ["derive"] }
 tempfile = "3.10.1"
 thiserror = "1.0.60"
@@ -34,7 +34,7 @@ url = { version = "2.5.0", features = ["serde"] }
 xz = "0.1.0"
 # This disables all the features that require C compilation, which greatly
 # simplifies cross-platform builds.
-zip = { version = "1.2.2", default-features = false, features = [
+zip = { version = "1.2.3", default-features = false, features = [
     "aes-crypto",
     "bzip2",
     "deflate",
