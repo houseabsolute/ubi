@@ -748,7 +748,7 @@ fn open_file(path: &Path) -> Result<File> {
     File::open(path).with_context(|| format!("Failed to open file at {}", path.to_string_lossy()))
 }
 
-pub fn init_logger(level: log::LevelFilter) -> Result<(), log::SetLoggerError> {
+pub(crate) fn init_logger(level: log::LevelFilter) -> Result<(), log::SetLoggerError> {
     let line_colors = ColoredLevelConfig::new()
         .error(Color::Red)
         .warn(Color::Yellow)
