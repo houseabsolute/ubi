@@ -1,3 +1,4 @@
+mod arch;
 mod ubi;
 
 use anyhow::{anyhow, Error, Result};
