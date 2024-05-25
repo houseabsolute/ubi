@@ -1,4 +1,8 @@
 mod arch;
+mod extension;
+mod fetcher;
+mod picker;
+mod release;
 mod ubi;
 
 use anyhow::{anyhow, Error, Result};
@@ -177,7 +181,7 @@ fn make_ubi<'a>(mut matches: ArgMatches) -> Result<(Ubi<'a>, Option<impl FnOnce(
             matches.get_one::<String>("tag").map(|s| s.as_str()),
             matches.get_one::<String>("url").map(|s| s.as_str()),
             matches.get_one::<String>("in").map(|s| s.as_str()),
-            matches.get_one::<String>("matching").map(|s| s.as_str()),
+            matches.get_one::<String>("matching").cloned(),
             matches.get_one::<String>("exe").map(|s| s.as_str()),
             platform,
             None,
