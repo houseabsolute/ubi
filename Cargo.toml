@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0.83"
+anyhow = "1.0.86"
 binstall-tar = "0.4.39"
 bzip2 = "0.4.4"
 clap = { version = "4.5.4", features = ["wrap_help"] }
@@ -28,13 +28,13 @@ result = "1.0.0"
 serde = { version = "1.0.202", features = ["derive"] }
 strum = { version = "0.26.2", features = ["derive"] }
 tempfile = "3.10.1"
-thiserror = "1.0.60"
+thiserror = "1.0.61"
 tokio = { version = "1.37.0", default-features = false, features = ["macros", "rt"] }
 url = { version = "2.5.0", features = ["serde"] }
 xz = "0.1.0"
 # This disables all the features that require C compilation, which greatly
 # simplifies cross-platform builds.
-zip = { version = "1.2.3", default-features = false, features = [
+zip = { version = "2.0.0", default-features = false, features = [
     "aes-crypto",
     "bzip2",
     "deflate",
