@@ -93,15 +93,28 @@ struct Asset {
 
 #[derive(Debug)]
 pub(crate) struct Ubi<'a> {
-    project_name: String,
-    tag: Option<String>,
-    url: Option<Url>,
+    asset_fetcher: GitHubAssetFetcher,
     exe: String,
     matching: String,
     install_path: PathBuf,
     reqwest_client: Client,
     platform: &'a Platform,
+}
+
+#[derive(Debug)]
+struct GitHubAssetFetcher {
+    project_name: String,
+    tag: Option<String>,
+    url: Option<Url>,
     github_api_base: String,
+}
+
+#[derive(Debug)]
+struct Download {
+    // We need to keep the temp dir around so that it's not deleted before
+    // we're done with it.
+    _temp_dir: TempDir,
+    archive_path: PathBuf,
 }
 
 impl<'a> Ubi<'a> {
@@ -122,15 +135,17 @@ impl<'a> Ubi<'a> {
         let matching = Self::matching(matching);
         let install_path = Self::install_path(install_dir, &exe)?;
         Ok(Ubi {
-            project_name,
-            tag: tag.map(|s| s.to_string()),
-            url,
+            asset_fetcher: GitHubAssetFetcher {
+                project_name,
+                tag: tag.map(|s| s.to_string()),
+                url,
+                github_api_base: github_api_base.unwrap_or_else(|| GITHUB_API_BASE.to_string()),
+            },
             exe,
             matching,
             install_path,
             reqwest_client: Self::reqwest_client()?,
             platform,
-            github_api_base: github_api_base.unwrap_or_else(|| GITHUB_API_BASE.to_string()),
         })
     }
 
@@ -203,97 +218,6 @@ impl<'a> Ubi<'a> {
         Ok(i)
     }
 
-    pub(crate) async fn run(&self) -> Result<()> {
-        self.install_binary().await
-    }
-
-    async fn install_binary(&self) -> Result<()> {
-        let (_td1, archive_path) = self.download_release().await?;
-        self.extract_binary(archive_path)?;
-        self.make_binary_executable()?;
-        info!("Installed binary into {}", self.install_path.display());
-
-        Ok(())
-    }
-
-    async fn download_release(&self) -> Result<(TempDir, PathBuf)> {
-        let (asset_url, asset_name) = self.asset().await?;
-        debug!("downloading asset from {}", asset_url);
-
-        let req = self
-            .reqwest_client
-            .get(asset_url.clone())
-            .header(ACCEPT, HeaderValue::from_str("application/octet-stream")?)
-            .build()?;
-        let mut res = self.reqwest_client.execute(req).await?;
-        if res.status() != StatusCode::OK {
-            let mut msg = format!("error requesting {}: {}", asset_url, res.status());
-            if let Ok(t) = res.text().await {
-                msg.push('\n');
-                msg.push_str(&t);
-            }
-            return Err(anyhow!(msg));
-        }
-
-        let td = tempdir()?;
-        let mut archive_path = td.path().to_path_buf();
-        archive_path.push(&asset_name);
-        debug!("archive path is {}", archive_path.to_string_lossy());
-
-        {
-            let mut downloaded_file = File::create(&archive_path)?;
-            while let Some(c) = res.chunk().await? {
-                downloaded_file.write_all(c.as_ref())?;
-            }
-        }
-
-        Ok((td, archive_path))
-    }
-
-    async fn asset(&self) -> Result<(Url, String)> {
-        if let Some(url) = &self.url {
-            return Ok((
-                url.clone(),
-                url.path().split('/').last().unwrap().to_string(),
-            ));
-        }
-
-        let release_info = self.release_info().await?;
-        let asset = self.pick_asset(release_info.assets)?;
-        debug!("picked asset named {}", asset.name);
-
-        Ok((asset.url, asset.name))
-    }
-
-    async fn release_info(&self) -> Result<Release> {
-        let mut parts = self.project_name.split('/');
-        let owner = parts.next().unwrap();
-        let repo = parts.next().unwrap();
-
-        let url = match &self.tag {
-            Some(tag) => format!(
-                "{}/repos/{owner}/{repo}/releases/tags/{tag}",
-                self.github_api_base,
-            ),
-            None => format!(
-                "{}/repos/{owner}/{repo}/releases/latest",
-                self.github_api_base,
-            ),
-        };
-        let req = self
-            .reqwest_client
-            .get(url)
-            .header(ACCEPT, HeaderValue::from_str("application/json")?)
-            .build()?;
-        let res = self.reqwest_client.execute(req).await?;
-
-        if let Err(e) = res.error_for_status_ref() {
-            return Err(anyhow::Error::new(e));
-        }
-
-        Ok(res.json::<Release>().await?)
-    }
-
     fn reqwest_client() -> Result<Client> {
         let builder = Client::builder().gzip(true);
 
@@ -316,6 +240,66 @@ impl<'a> Ubi<'a> {
 
     fn github_token() -> Option<String> {
         env::var("GITHUB_TOKEN").ok()
+    }
+
+    pub(crate) async fn run(&self) -> Result<()> {
+        let download = self
+            .download_asset(&self.reqwest_client, self.asset().await?)
+            .await?;
+        self.install_binary(download).await
+    }
+
+    async fn asset(&self) -> Result<Asset> {
+        let assets = self
+            .asset_fetcher
+            .fetch_assets(&self.reqwest_client)
+            .await?;
+        let asset = self.pick_asset(assets)?;
+        debug!("picked asset named {}", asset.name);
+        Ok(asset)
+    }
+
+    async fn download_asset(&self, client: &Client, asset: Asset) -> Result<Download> {
+        debug!("downloading asset from {}", asset.url);
+
+        let req = client
+            .get(asset.url.clone())
+            .header(ACCEPT, HeaderValue::from_str("application/octet-stream")?)
+            .build()?;
+        let mut res = self.reqwest_client.execute(req).await?;
+        if res.status() != StatusCode::OK {
+            let mut msg = format!("error requesting {}: {}", asset.url, res.status());
+            if let Ok(t) = res.text().await {
+                msg.push('\n');
+                msg.push_str(&t);
+            }
+            return Err(anyhow!(msg));
+        }
+
+        let td = tempdir()?;
+        let mut archive_path = td.path().to_path_buf();
+        archive_path.push(&asset.name);
+        debug!("archive path is {}", archive_path.to_string_lossy());
+
+        {
+            let mut downloaded_file = File::create(&archive_path)?;
+            while let Some(c) = res.chunk().await? {
+                downloaded_file.write_all(c.as_ref())?;
+            }
+        }
+
+        Ok(Download {
+            _temp_dir: td,
+            archive_path,
+        })
+    }
+
+    async fn install_binary(&self, download: Download) -> Result<()> {
+        self.extract_binary(download.archive_path)?;
+        self.make_binary_executable()?;
+        info!("Installed binary into {}", self.install_path.display());
+
+        Ok(())
     }
 
     fn pick_asset(&self, mut assets: Vec<Asset>) -> Result<Asset> {
@@ -719,6 +703,47 @@ impl<'a> Ubi<'a> {
 
     fn running_on_macos_arm(&self) -> bool {
         self.platform.target_os == OS::MacOS && self.platform.target_arch == Arch::AArch64
+    }
+}
+
+impl GitHubAssetFetcher {
+    async fn fetch_assets(&self, client: &Client) -> Result<Vec<Asset>> {
+        if let Some(url) = &self.url {
+            return Ok(vec![Asset {
+                name: url.path().split('/').last().unwrap().to_string(),
+                url: url.clone(),
+            }]);
+        }
+
+        Ok(self.release_info(client).await?.assets)
+    }
+
+    async fn release_info(&self, client: &Client) -> Result<Release> {
+        let mut parts = self.project_name.split('/');
+        let owner = parts.next().unwrap();
+        let repo = parts.next().unwrap();
+
+        let url = match &self.tag {
+            Some(tag) => format!(
+                "{}/repos/{owner}/{repo}/releases/tags/{tag}",
+                self.github_api_base,
+            ),
+            None => format!(
+                "{}/repos/{owner}/{repo}/releases/latest",
+                self.github_api_base,
+            ),
+        };
+        let req = client
+            .get(url)
+            .header(ACCEPT, HeaderValue::from_str("application/json")?)
+            .build()?;
+        let res = client.execute(req).await?;
+
+        if let Err(e) = res.error_for_status_ref() {
+            return Err(anyhow::Error::new(e));
+        }
+
+        Ok(res.json::<Release>().await?)
     }
 }
 
@@ -1303,12 +1328,12 @@ mod test {
                         expect_ubi.0
                     ))?;
                     assert_eq!(
-                        asset.0, expect_ubi_url,
+                        asset.url, expect_ubi_url,
                         "picked {} as ubi url",
                         expect_ubi_url,
                     );
                     assert_eq!(
-                        asset.1, expect_ubi.1,
+                        asset.name, expect_ubi.1,
                         "picked {} as ubi asset name",
                         expect_ubi.1,
                     );
@@ -1331,12 +1356,12 @@ mod test {
                         expect_omegasort.0
                     ))?;
                     assert_eq!(
-                        asset.0, expect_omegasort_url,
+                        asset.url, expect_omegasort_url,
                         "picked {} as omegasort url",
                         expect_omegasort_url,
                     );
                     assert_eq!(
-                        asset.1, expect_omegasort.1,
+                        asset.name, expect_omegasort.1,
                         "picked {} as omegasort ID",
                         expect_omegasort.1,
                     );
@@ -1666,7 +1691,7 @@ mod test {
                 )?;
                 let asset = ubi.asset().await?;
                 assert_eq!(
-                    asset.1, t.expect,
+                    asset.name, t.expect,
                     "picked {} as protobuf asset name",
                     t.expect
                 );
@@ -1796,7 +1821,7 @@ mod test {
                 )?;
                 let asset = ubi.asset().await?;
                 assert_eq!(
-                    asset.1, t.expect,
+                    asset.name, t.expect,
                     "picked {} as protobuf asset name",
                     t.expect
                 );
@@ -1897,7 +1922,7 @@ mod test {
                 )?;
                 let asset = ubi.asset().await?;
                 assert_eq!(
-                    asset.1, t.expect,
+                    asset.name, t.expect,
                     "picked {} as protobuf asset name",
                     t.expect
                 );
@@ -1975,7 +2000,7 @@ mod test {
             )?;
             let asset = ubi.asset().await?;
             let expect = "mm-i686-pc-windows-gnu.zip";
-            assert_eq!(asset.1, expect, "picked {expect} as protobuf asset name");
+            assert_eq!(asset.name, expect, "picked {expect} as protobuf asset name");
         }
 
         m1.assert_async().await;
@@ -2029,7 +2054,7 @@ mod test {
             let asset = ubi.asset().await?;
             let expect = "bat-v0.23.0-x86_64-apple-darwin.tar.gz";
             assert_eq!(
-                asset.1, expect,
+                asset.name, expect,
                 "picked {expect} as macos bat asset name when only x86 binary is available"
             );
             m1.assert_async().await;
@@ -2050,7 +2075,7 @@ mod test {
             let asset = ubi.asset().await?;
             let expect = "bat-v0.23.0-aarch64-apple-darwin.tar.gz";
             assert_eq!(
-                asset.1, expect,
+                asset.name, expect,
                 "picked {expect} as macos bat asset name when ARM binary is available"
             );
             m2.assert_async().await;
@@ -2122,7 +2147,7 @@ mod test {
             )?;
             let asset = ubi.asset().await?;
             let expect = "gvproxy-darwin";
-            assert_eq!(asset.1, expect, "picked {expect} as protobuf asset name");
+            assert_eq!(asset.name, expect, "picked {expect} as protobuf asset name");
 
             m1.assert_async().await;
         }
