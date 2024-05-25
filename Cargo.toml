@@ -16,6 +16,7 @@ clap = { version = "4.5.4", features = ["wrap_help"] }
 fern = { version = "0.6.2", features = ["colored"] }
 flate2 = "1.0.30"
 itertools = "0.12.1"
+lazy-regex = "3.1.0"
 log = "0.4.21"
 platforms = "=3.2.0"
 regex = "1.10.4"

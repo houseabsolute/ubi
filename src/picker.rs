@@ -1,6 +1,7 @@
 use crate::{arch::*, extension::Extension, release::Asset};
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
+use lazy_regex::{regex, Lazy};
 use log::debug;
 use platforms::{Arch, Endian, Platform, OS};
 use regex::Regex;
@@ -50,7 +51,7 @@ impl<'a> AssetPicker<'a> {
         let os_matcher = self.os_matcher();
         debug!("matching assets against OS using {}", os_matcher.as_str());
 
-        let version_re = Regex::new(r"(?:\d+\.)+(\d+.+?)\z").unwrap();
+        let version_re = regex!(r"(?:\d+\.)+(\d+.+?)\z");
 
         let mut os_matches: Vec<Asset> = vec![];
 
@@ -274,7 +275,7 @@ impl<'a> AssetPicker<'a> {
         (matches, None)
     }
 
-    fn os_matcher(&self) -> Regex {
+    fn os_matcher(&self) -> &'static Lazy<Regex> {
         debug!("current OS = {}", self.platform.target_os);
 
         match self.platform.target_os {
@@ -286,25 +287,25 @@ impl<'a> AssetPicker<'a> {
             // correspond to any target supported by rustup. Those are
             // commented out here.
             //
-            //OS::Dragonfly => Regex::new(r"(?i:(?:\b|_)dragonfly(?:\b|_))").unwrap(),
-            OS::FreeBSD => Regex::new(r"(?i:(?:\b|_)freebsd(?:\b|_))").unwrap(),
-            OS::Fuchsia => Regex::new(r"(?i:(?:\b|_)fuchsia(?:\b|_))").unwrap(),
-            //OS::Haiku => Regex::new(r"(?i:(?:\b|_)haiku(?:\b|_))").unwrap(),
-            OS::IllumOS => Regex::new(r"(?i:(?:\b|_)illumos(?:\b|_))").unwrap(),
-            OS::Linux => Regex::new(r"(?i:(?:\b|_)linux(?:\b|_|32|64))").unwrap(),
-            OS::MacOS => Regex::new(r"(?i:(?:\b|_)(?:darwin|macos|osx)(?:\b|_))").unwrap(),
-            OS::NetBSD => Regex::new(r"(?i:(?:\b|_)netbsd(?:\b|_))").unwrap(),
-            //OS::OpenBSD => Regex::new(r"(?i:(?:\b|_)openbsd(?:\b|_))").unwrap(),
-            OS::Solaris => Regex::new(r"(?i:(?:\b|_)solaris(?:\b|_))").unwrap(),
-            //OS::VxWorks => Regex::new(r"(?i:(?:\b|_)vxworks(?:\b|_))").unwrap(),
-            OS::Windows => Regex::new(r"(?i:(?:\b|_)win(?:32|64|dows)?(?:\b|_))").unwrap(),
+            //OS::Dragonfly => regex!(r"(?i:(?:\b|_)dragonfly(?:\b|_))"),
+            OS::FreeBSD => regex!(r"(?i:(?:\b|_)freebsd(?:\b|_))"),
+            OS::Fuchsia => regex!(r"(?i:(?:\b|_)fuchsia(?:\b|_))"),
+            //OS::Haiku => regex!(r"(?i:(?:\b|_)haiku(?:\b|_))"),
+            OS::IllumOS => regex!(r"(?i:(?:\b|_)illumos(?:\b|_))"),
+            OS::Linux => regex!(r"(?i:(?:\b|_)linux(?:\b|_|32|64))"),
+            OS::MacOS => regex!(r"(?i:(?:\b|_)(?:darwin|macos|osx)(?:\b|_))"),
+            OS::NetBSD => regex!(r"(?i:(?:\b|_)netbsd(?:\b|_))"),
+            //OS::OpenBSD => regex!(r"(?i:(?:\b|_)openbsd(?:\b|_))"),
+            OS::Solaris => regex!(r"(?i:(?:\b|_)solaris(?:\b|_))"),
+            //OS::VxWorks => regex!(r"(?i:(?:\b|_)vxworks(?:\b|_))"),
+            OS::Windows => regex!(r"(?i:(?:\b|_)win(?:32|64|dows)?(?:\b|_))"),
             _ => unreachable!(
                 "Cannot determine what type of compiled binary to use for this platform"
             ),
         }
     }
 
-    fn arch_matcher(&self) -> Regex {
+    fn arch_matcher(&self) -> &'static Lazy<Regex> {
         debug!("current CPU architecture = {}", self.platform.target_arch);
 
         if self.running_on_macos_arm() {
@@ -321,12 +322,12 @@ impl<'a> AssetPicker<'a> {
             (Arch::PowerPc, _) => ppc32_re(),
             (Arch::PowerPc64, Endian::Big) => ppc64_re(),
             (Arch::PowerPc64, Endian::Little) => ppc64le_re(),
-            //(Arch::Riscv32, _) => Regex::new(r"(?i:(?:\b|_)riscv(?:32)?(?:\b|_))").unwrap(),
+            //(Arch::Riscv32, _) => regex!(r"(?i:(?:\b|_)riscv(?:32)?(?:\b|_))"),
             (Arch::Riscv64, _) => riscv64_re(),
             (Arch::S390X, _) => s390x_re(),
             // Sparc is not supported by Go. 32-bit Sparc is not supported
             // by Rust, AFAICT.
-            //(Arch::Sparc, _) => Regex::new(r"(?i:(?:\b|_)sparc(?:\b|_))").unwrap(),
+            //(Arch::Sparc, _) => regex!(r"(?i:(?:\b|_)sparc(?:\b|_))"),
             (Arch::Sparc64, _) => sparc64_re(),
             (Arch::X86, _) => x86_32_re(),
             (Arch::X86_64, _) => x86_64_re(),

@@ -1,10 +1,11 @@
 use itertools::Itertools;
+use lazy_regex::{regex, Lazy};
 use regex::Regex;
 
 // This is a special case to account for the fact that MacOS ARM systems can
 // also return x86-64 binaries.
-pub(crate) fn macos_aarch64_re() -> Regex {
-    Regex::new(
+pub(crate) fn macos_aarch64_re() -> &'static Lazy<Regex> {
+    regex!(
         r"(?ix)
         (?:
             \b
@@ -27,13 +28,12 @@ pub(crate) fn macos_aarch64_re() -> Regex {
             |
             _
         )
-",
+        "
     )
-    .unwrap()
 }
 
-pub(crate) fn aarch64_re() -> Regex {
-    Regex::new(
+pub(crate) fn aarch64_re() -> &'static Lazy<Regex> {
+    regex!(
         r"(?ix)
         (?:
             \b
@@ -50,13 +50,12 @@ pub(crate) fn aarch64_re() -> Regex {
             |
             _
         )
-",
+        "
     )
-    .unwrap()
 }
 
-pub(crate) fn arm_re() -> Regex {
-    Regex::new(
+pub(crate) fn arm_re() -> &'static Lazy<Regex> {
+    regex!(
         r"(?ix)
         (?:
             \b
@@ -69,13 +68,12 @@ pub(crate) fn arm_re() -> Regex {
             |
             _
         )
-",
+        "
     )
-    .unwrap()
 }
 
-pub(crate) fn mipsle_re() -> Regex {
-    Regex::new(
+pub(crate) fn mipsle_re() -> &'static Lazy<Regex> {
+    regex!(
         r"(?ix)
         (?:
             \b
@@ -88,13 +86,12 @@ pub(crate) fn mipsle_re() -> Regex {
             |
             _
         )
-",
+        "
     )
-    .unwrap()
 }
 
-pub(crate) fn mips_re() -> Regex {
-    Regex::new(
+pub(crate) fn mips_re() -> &'static Lazy<Regex> {
+    regex!(
         r"(?ix)
         (?:
             \b
@@ -107,13 +104,12 @@ pub(crate) fn mips_re() -> Regex {
             |
             _
         )
-",
+        "
     )
-    .unwrap()
 }
 
-pub(crate) fn mips64le_re() -> Regex {
-    Regex::new(
+pub(crate) fn mips64le_re() -> &'static Lazy<Regex> {
+    regex!(
         r"(?ix)
         (?:
             \b
@@ -126,13 +122,12 @@ pub(crate) fn mips64le_re() -> Regex {
             |
             _
         )
-",
+        "
     )
-    .unwrap()
 }
 
-pub(crate) fn mips64_re() -> Regex {
-    Regex::new(
+pub(crate) fn mips64_re() -> &'static Lazy<Regex> {
+    regex!(
         r"(?ix)
         (?:
             \b
@@ -145,13 +140,12 @@ pub(crate) fn mips64_re() -> Regex {
             |
             _
         )
-",
+        "
     )
-    .unwrap()
 }
 
-pub(crate) fn ppc32_re() -> Regex {
-    Regex::new(
+pub(crate) fn ppc32_re() -> &'static Lazy<Regex> {
+    regex!(
         r"(?ix)
         (?:
             \b
@@ -168,13 +162,12 @@ pub(crate) fn ppc32_re() -> Regex {
             |
             _
         )
-",
+        "
     )
-    .unwrap()
 }
 
-pub(crate) fn ppc64_re() -> Regex {
-    Regex::new(
+pub(crate) fn ppc64_re() -> &'static Lazy<Regex> {
+    regex!(
         r"(?ix)
         (?:
             \b
@@ -202,13 +195,12 @@ pub(crate) fn ppc64_re() -> Regex {
             |
             _
         )
-",
+        "
     )
-    .unwrap()
 }
 
-pub(crate) fn ppc64le_re() -> Regex {
-    Regex::new(
+pub(crate) fn ppc64le_re() -> &'static Lazy<Regex> {
+    regex!(
         r"(?ix)
         (?:
             \b
@@ -236,13 +228,12 @@ pub(crate) fn ppc64le_re() -> Regex {
             |
             _
         )
-",
+        "
     )
-    .unwrap()
 }
 
-pub(crate) fn riscv64_re() -> Regex {
-    Regex::new(
+pub(crate) fn riscv64_re() -> &'static Lazy<Regex> {
+    regex!(
         r"(?ix)
         (?:
             \b
@@ -255,13 +246,12 @@ pub(crate) fn riscv64_re() -> Regex {
             |
             _
         )
-",
+        "
     )
-    .unwrap()
 }
 
-pub(crate) fn s390x_re() -> Regex {
-    Regex::new(
+pub(crate) fn s390x_re() -> &'static Lazy<Regex> {
+    regex!(
         r"(?ix)
         (?:
             \b
@@ -274,13 +264,12 @@ pub(crate) fn s390x_re() -> Regex {
             |
             _
         )
-",
+        "
     )
-    .unwrap()
 }
 
-pub(crate) fn sparc64_re() -> Regex {
-    Regex::new(
+pub(crate) fn sparc64_re() -> &'static Lazy<Regex> {
+    regex!(
         r"(?ix)
         (?:
             \b
@@ -293,13 +282,12 @@ pub(crate) fn sparc64_re() -> Regex {
             |
             _
         )
-",
+        "
     )
-    .unwrap()
 }
 
-pub(crate) fn x86_32_re() -> Regex {
-    Regex::new(
+pub(crate) fn x86_32_re() -> &'static Lazy<Regex> {
+    regex!(
         r"(?ix)
         (?:
             \b
@@ -320,13 +308,12 @@ pub(crate) fn x86_32_re() -> Regex {
             |
             _
         )
-",
+        "
     )
-    .unwrap()
 }
 
-pub(crate) fn x86_64_re() -> Regex {
-    Regex::new(
+pub(crate) fn x86_64_re() -> &'static Lazy<Regex> {
+    regex!(
         r"(?ix)
         (?:
             \b
@@ -355,9 +342,8 @@ pub(crate) fn x86_64_re() -> Regex {
             |
             _
         )
-",
+        "
     )
-    .unwrap()
 }
 
 pub(crate) fn all_arches_re() -> Regex {
@@ -379,7 +365,7 @@ pub(crate) fn all_arches_re() -> Regex {
             x86_64_re(),
         ]
         .iter()
-        .map(|r| format!("({r})"))
+        .map(|r| format!("({})", r.as_str()))
         .join("|"),
     )
     .unwrap()
