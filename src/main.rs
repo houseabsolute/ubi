@@ -1,6 +1,7 @@
 mod arch;
 mod extension;
 mod fetcher;
+mod installer;
 mod picker;
 mod release;
 mod ubi;
