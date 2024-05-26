@@ -1,3 +1,5 @@
+- Added support for the `.bz2` and `.tar.bz2 file extensions.
+
 ## 0.0.30 - 2024-05-11
 
 - When a project's releases contain a mix of file names with and without an architecture, `ubi` will

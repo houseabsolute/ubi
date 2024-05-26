@@ -1,12 +1,14 @@
 use itertools::Itertools;
 use strum::{EnumIter, IntoEnumIterator};
 
-#[derive(Debug, EnumIter)]
+#[derive(Debug, EnumIter, PartialEq, Eq)]
 pub(crate) enum Extension {
     Bz,
+    Bz2,
     Exe,
     Gz,
     TarBz,
+    TarBz2,
     TarGz,
     TarXz,
     Tbz,
@@ -20,9 +22,11 @@ impl Extension {
     pub(crate) fn extension(&self) -> &'static str {
         match self {
             Extension::Bz => ".bz",
+            Extension::Bz2 => ".bz2",
             Extension::Exe => ".exe",
             Extension::Gz => ".gz",
             Extension::TarBz => ".tar.bz",
+            Extension::TarBz2 => ".tar.bz2",
             Extension::TarGz => ".tar.gz",
             Extension::TarXz => ".tar.xz",
             Extension::Tbz => ".tbz",

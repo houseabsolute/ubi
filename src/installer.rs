@@ -48,12 +48,13 @@ impl Installer {
             .to_string_lossy();
         match Extension::from_path(filename) {
             Some(Extension::TarBz)
+            | Some(Extension::TarBz2)
             | Some(Extension::TarGz)
             | Some(Extension::TarXz)
             | Some(Extension::Tbz)
             | Some(Extension::Tgz)
             | Some(Extension::Txz) => self.extract_tarball(downloaded_file),
-            Some(Extension::Bz) => self.unbzip(downloaded_file),
+            Some(Extension::Bz) | Some(Extension::Bz2) => self.unbzip(downloaded_file),
             Some(Extension::Gz) => self.ungzip(downloaded_file),
             Some(Extension::Xz) => self.unxz(downloaded_file),
             Some(Extension::Zip) => self.extract_zip(downloaded_file),
@@ -170,7 +171,9 @@ fn tar_reader_for(downloaded_file: PathBuf) -> Result<Archive<Box<dyn Read>>> {
     let ext = downloaded_file.extension();
     match ext {
         Some(ext) => match ext.to_str() {
-            Some("bz") | Some("tbz") => Ok(Archive::new(Box::new(BzDecoder::new(file)))),
+            Some("bz") | Some("tbz") | Some("bz2") | Some("tbz2") => {
+                Ok(Archive::new(Box::new(BzDecoder::new(file))))
+            }
             Some("gz") | Some("tgz") => Ok(Archive::new(Box::new(GzDecoder::new(file)))),
             Some("xz") | Some("txz") => Ok(Archive::new(Box::new(XzDecoder::new(file)))),
             Some(e) => Err(anyhow!(
