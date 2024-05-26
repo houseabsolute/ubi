@@ -60,7 +60,7 @@ impl<'a> AssetPicker<'a> {
         for asset in assets {
             debug!("matching OS against asset name = {}", asset.name);
 
-            if asset.name.contains('.') && Extension::from_path(&asset.name).is_none() {
+            if asset.name.contains('.') && Extension::from_path(&asset.name).is_err() {
                 // If the name is something like "mkcert-v1.4.4-darwin-amd46"
                 // then the naive approach will think that this has an
                 // extension of ".4-darwin-amd46" and reject it as an invalid

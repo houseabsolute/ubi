@@ -46,7 +46,7 @@ impl Installer {
                 )
             })
             .to_string_lossy();
-        match Extension::from_path(filename) {
+        match Extension::from_path(filename)? {
             Some(Extension::TarBz)
             | Some(Extension::TarBz2)
             | Some(Extension::TarGz)
@@ -196,22 +196,40 @@ fn open_file(path: &Path) -> Result<File> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(target_family = "unix")]
+    use std::os::unix::fs::PermissionsExt;
     use tempfile::tempdir;
+    use test_case::test_case;
 
-    #[test]
-    fn extract_binary() -> Result<()> {
+    #[test_case("test-data/project.bz", "project")]
+    #[test_case("test-data/project.bz2", "project")]
+    #[test_case("test-data/project.exe", "project")]
+    #[test_case("test-data/project.gz", "project")]
+    #[test_case("test-data/project.tar.bz", "project")]
+    #[test_case("test-data/project.tar.bz2", "project")]
+    #[test_case("test-data/project.tar.gz", "project")]
+    #[test_case("test-data/project.tar.xz", "project")]
+    #[test_case("test-data/project.xz", "project")]
+    #[test_case("test-data/project.zip", "project")]
+    #[test_case("test-data/project", "project")]
+    fn install(archive_path: &str, exe: &str) -> Result<()> {
         //crate::ubi::init_logger(log::LevelFilter::Debug)?;
 
         let td = tempdir()?;
         let mut install_path = td.path().to_path_buf();
         install_path.push("project");
-        let installer = Installer::new(install_path, "project".to_string());
-        installer.extract_binary(PathBuf::from("test-data/project.tar.gz"))?;
+        let installer = Installer::new(install_path.clone(), exe.to_string());
+        installer.install(Download {
+            // It doesn't matter what we use here. We're not actually going to
+            // put anything in this temp dir.
+            _temp_dir: tempdir()?,
+            archive_path: PathBuf::from(archive_path),
+        })?;
 
-        let mut extracted_path = td.path().to_path_buf();
-        extracted_path.push("project");
-        assert!(extracted_path.exists());
-        assert!(extracted_path.is_file());
+        assert!(install_path.exists());
+        assert!(install_path.is_file());
+        #[cfg(target_family = "unix")]
+        assert!(install_path.metadata()?.permissions().mode() & 0o111 != 0);
 
         Ok(())
     }
