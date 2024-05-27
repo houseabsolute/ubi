@@ -48,23 +48,23 @@ impl Extension {
 
     pub(crate) fn from_path<S: AsRef<str>>(path: S) -> Result<Option<Extension>> {
         let path = path.as_ref();
+        let Some(ext_str) = Path::new(path).extension() else {
+            return Ok(None);
+        };
+
         // We need to try the longest extension first so that ".tar.gz"
         // matches before ".gz" and so on for other compression formats.
-        if let Some(ext) = Extension::iter()
+        match Extension::iter()
             .sorted_by(|a, b| Ord::cmp(&a.extension().len(), &b.extension().len()))
             .rev()
             .find(|e| path.ends_with(e.extension()))
         {
-            Ok(Some(ext))
-        } else {
-            if let Some(ext) = Path::new(path).extension() {
-                return Err(ExtensionError::UnknownExtension {
-                    path: path.to_string(),
-                    ext: ext.to_string_lossy().to_string(),
-                }
-                .into());
+            Some(ext) => Ok(Some(ext)),
+            None => Err(ExtensionError::UnknownExtension {
+                path: path.to_string(),
+                ext: ext_str.to_string_lossy().to_string(),
             }
-            Ok(None)
+            .into()),
         }
     }
 }
