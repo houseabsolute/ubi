@@ -52,7 +52,7 @@ impl<'a> Ubi<'a> {
         Ok(Ubi {
             asset_fetcher: GitHubAssetFetcher::new(
                 project_name,
-                tag.map(|s| s.to_string()),
+                tag.map(std::string::ToString::to_string),
                 url,
                 github_api_base,
             ),
@@ -91,38 +91,36 @@ impl<'a> Ubi<'a> {
     }
 
     fn exe_name(exe: Option<&str>, project_name: &str, platform: &Platform) -> String {
-        let exe = match exe {
-            Some(e) => match platform.target_os {
+        let name = if let Some(e) = exe {
+            match platform.target_os {
                 OS::Windows => format!("{e}.exe"),
                 _ => e.to_string(),
-            },
-            None => {
-                let parts = project_name.split('/').collect::<Vec<&str>>();
-                let e = parts[parts.len() - 1].to_string();
-                if matches!(platform.target_os, OS::Windows) {
-                    format!("{e}.exe")
-                } else {
-                    e
-                }
+            }
+        } else {
+            let parts = project_name.split('/').collect::<Vec<&str>>();
+            let e = parts[parts.len() - 1].to_string();
+            if matches!(platform.target_os, OS::Windows) {
+                format!("{e}.exe")
+            } else {
+                e
             }
         };
-        debug!("exe name = {exe}");
-        exe
+        debug!("exe name = {name}");
+        name
     }
 
     fn install_path(install_dir: Option<&str>, exe: &str) -> Result<PathBuf> {
-        let mut i = match install_dir {
-            Some(i) => PathBuf::from(i),
-            None => {
-                let mut i = env::current_dir()?;
-                i.push("bin");
-                i
-            }
+        let mut path = if let Some(i) = install_dir {
+            PathBuf::from(i)
+        } else {
+            let mut i = env::current_dir()?;
+            i.push("bin");
+            i
         };
-        create_dir_all(&i)?;
-        i.push(exe);
-        debug!("install path = {}", i.to_string_lossy());
-        Ok(i)
+        create_dir_all(&path)?;
+        path.push(exe);
+        debug!("install path = {}", path.to_string_lossy());
+        Ok(path)
     }
 
     fn reqwest_client() -> Result<Client> {
@@ -152,7 +150,7 @@ impl<'a> Ubi<'a> {
     pub(crate) async fn run(&self) -> Result<()> {
         let asset = self.asset().await?;
         let download = self.download_asset(&self.reqwest_client, asset).await?;
-        self.installer.install(download)
+        self.installer.install(&download)
     }
 
     async fn asset(&self) -> Result<Asset> {
@@ -172,10 +170,10 @@ impl<'a> Ubi<'a> {
             .get(asset.url.clone())
             .header(ACCEPT, HeaderValue::from_str("application/octet-stream")?)
             .build()?;
-        let mut res = self.reqwest_client.execute(req).await?;
-        if res.status() != StatusCode::OK {
-            let mut msg = format!("error requesting {}: {}", asset.url, res.status());
-            if let Ok(t) = res.text().await {
+        let mut resp = self.reqwest_client.execute(req).await?;
+        if resp.status() != StatusCode::OK {
+            let mut msg = format!("error requesting {}: {}", asset.url, resp.status());
+            if let Ok(t) = resp.text().await {
                 msg.push('\n');
                 msg.push_str(&t);
             }
@@ -189,7 +187,7 @@ impl<'a> Ubi<'a> {
 
         {
             let mut downloaded_file = File::create(&archive_path)?;
-            while let Some(c) = res.chunk().await? {
+            while let Some(c) = resp.chunk().await? {
                 downloaded_file.write_all(c.as_ref())?;
             }
         }
@@ -320,6 +318,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[allow(clippy::too_many_lines)]
     async fn asset_picking() -> Result<()> {
         //init_logger(log::LevelFilter::Debug)?;
 
@@ -331,18 +330,18 @@ mod test {
         let tests: &[Test] = &[
             Test {
                 platforms: &["aarch64-apple-darwin"],
-                expect_ubi: Some((96252654, "ubi-Darwin-aarch64.tar.gz")),
-                expect_omegasort: Some((84376701, "omegasort_0.0.7_Darwin_arm64.tar.gz")),
+                expect_ubi: Some((96_252_654, "ubi-Darwin-aarch64.tar.gz")),
+                expect_omegasort: Some((84_376_701, "omegasort_0.0.7_Darwin_arm64.tar.gz")),
             },
             Test {
                 platforms: &["x86_64-apple-darwin"],
-                expect_ubi: Some((96252671, "ubi-Darwin-x86_64.tar.gz")),
-                expect_omegasort: Some((84376694, "omegasort_0.0.7_Darwin_x86_64.tar.gz")),
+                expect_ubi: Some((96_252_671, "ubi-Darwin-x86_64.tar.gz")),
+                expect_omegasort: Some((84_376_694, "omegasort_0.0.7_Darwin_x86_64.tar.gz")),
             },
             Test {
                 platforms: &["x86_64-unknown-freebsd"],
                 expect_ubi: Some((1, "ubi-FreeBSD-x86_64.tar.gz")),
-                expect_omegasort: Some((84376692, "omegasort_0.0.7_FreeBSD_x86_64.tar.gz")),
+                expect_omegasort: Some((84_376_692, "omegasort_0.0.7_FreeBSD_x86_64.tar.gz")),
             },
             Test {
                 platforms: &["aarch64-fuchsia"],
@@ -361,12 +360,12 @@ mod test {
             },
             Test {
                 platforms: &["aarch64-unknown-linux-gnu", "aarch64-unknown-linux-musl"],
-                expect_ubi: Some((96252412, "ubi-Linux-aarch64-musl.tar.gz")),
-                expect_omegasort: Some((84376697, "omegasort_0.0.7_Linux_arm64.tar.gz")),
+                expect_ubi: Some((96_252_412, "ubi-Linux-aarch64-musl.tar.gz")),
+                expect_omegasort: Some((84_376_697, "omegasort_0.0.7_Linux_arm64.tar.gz")),
             },
             Test {
                 platforms: &["arm-unknown-linux-musleabi"],
-                expect_ubi: Some((96252419, "ubi-Linux-arm-musl.tar.gz")),
+                expect_ubi: Some((96_252_419, "ubi-Linux-arm-musl.tar.gz")),
                 expect_omegasort: Some((42, "omegasort_0.0.7_Linux_arm.tar.gz")),
             },
             Test {
@@ -437,8 +436,8 @@ mod test {
             },
             Test {
                 platforms: &["x86_64-unknown-linux-musl"],
-                expect_ubi: Some((96297448, "ubi-Linux-x86_64-musl.tar.gz")),
-                expect_omegasort: Some((84376700, "omegasort_0.0.7_Linux_x86_64.tar.gz")),
+                expect_ubi: Some((96_297_448, "ubi-Linux-x86_64-musl.tar.gz")),
+                expect_omegasort: Some((84_376_700, "omegasort_0.0.7_Linux_x86_64.tar.gz")),
             },
             Test {
                 platforms: &["x86_64-unknown-netbsd"],
@@ -458,12 +457,12 @@ mod test {
             Test {
                 platforms: &["aarch64-pc-windows-msvc"],
                 expect_ubi: Some((7, "ubi-Windows-aarch64.zip")),
-                expect_omegasort: Some((84376695, "omegasort_0.0.7_Windows_arm64.tar.gz")),
+                expect_omegasort: Some((84_376_695, "omegasort_0.0.7_Windows_arm64.tar.gz")),
             },
             Test {
                 platforms: &["x86_64-pc-windows-gnu", "x86_64-pc-windows-msvc"],
-                expect_ubi: Some((96252617, "ubi-Windows-x86_64.zip")),
-                expect_omegasort: Some((84376693, "omegasort_0.0.7_Windows_x86_64.tar.gz")),
+                expect_ubi: Some((96_252_617, "ubi-Windows-x86_64.zip")),
+                expect_omegasort: Some((84_376_693, "omegasort_0.0.7_Windows_x86_64.tar.gz")),
             },
         ];
 
@@ -509,8 +508,7 @@ mod test {
                     ))?;
                     assert_eq!(
                         asset.url, expect_ubi_url,
-                        "picked {} as ubi url",
-                        expect_ubi_url,
+                        "picked {expect_ubi_url} as ubi url",
                     );
                     assert_eq!(
                         asset.name, expect_ubi.1,
@@ -537,8 +535,7 @@ mod test {
                     ))?;
                     assert_eq!(
                         asset.url, expect_omegasort_url,
-                        "picked {} as omegasort url",
-                        expect_omegasort_url,
+                        "picked {expect_omegasort_url} as omegasort url",
                     );
                     assert_eq!(
                         asset.name, expect_omegasort.1,

@@ -43,12 +43,12 @@ async fn main() {
                 0
             }
             Err(e) => {
-                print_err(e);
+                print_err(&e);
                 1
             }
         },
         Err(e) => {
-            print_err(e);
+            print_err(&e);
             127
         }
     };
@@ -138,7 +138,7 @@ fn cmd() -> Command {
         .max_term_width(MAX_TERM_WIDTH)
 }
 
-pub fn init_logger(matches: &ArgMatches) -> Result<(), log::SetLoggerError> {
+pub(crate) fn init_logger(matches: &ArgMatches) -> Result<(), log::SetLoggerError> {
     let level = if matches.get_flag("debug") {
         log::LevelFilter::Debug
     } else if matches.get_flag("verbose") {
@@ -178,12 +178,12 @@ fn make_ubi<'a>(mut matches: ArgMatches) -> Result<(Ubi<'a>, Option<impl FnOnce(
 
     Ok((
         Ubi::new(
-            matches.get_one::<String>("project").map(|s| s.as_str()),
-            matches.get_one::<String>("tag").map(|s| s.as_str()),
-            matches.get_one::<String>("url").map(|s| s.as_str()),
-            matches.get_one::<String>("in").map(|s| s.as_str()),
+            matches.get_one::<String>("project").map(String::as_str),
+            matches.get_one::<String>("tag").map(String::as_str),
+            matches.get_one::<String>("url").map(String::as_str),
+            matches.get_one::<String>("in").map(String::as_str),
             matches.get_one::<String>("matching").cloned(),
-            matches.get_one::<String>("exe").map(|s| s.as_str()),
+            matches.get_one::<String>("exe").map(String::as_str),
             platform,
             None,
         )?,
@@ -240,7 +240,7 @@ fn self_upgrade_args() -> Result<(Vec<OsString>, Option<PathBuf>)> {
     munged.append(
         &mut vec!["--project", "houseabsolute/ubi", "--in"]
             .into_iter()
-            .map(|a| a.into())
+            .map(Into::into)
             .collect(),
     );
     let current = env::current_exe()?;
@@ -267,7 +267,7 @@ fn self_upgrade_args() -> Result<(Vec<OsString>, Option<PathBuf>)> {
     Ok((munged, to_delete))
 }
 
-fn print_err(e: Error) {
+fn print_err(e: &Error) {
     error!("{e}");
     if let Some(ue) = e.downcast_ref::<UbiError>() {
         match ue {

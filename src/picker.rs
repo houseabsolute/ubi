@@ -1,4 +1,12 @@
-use crate::{arch::*, extension::Extension, release::Asset};
+use crate::{
+    arch::{
+        aarch64_re, all_arches_re, arm_re, macos_aarch64_re, mips64_re, mips64le_re, mips_re,
+        mipsle_re, ppc32_re, ppc64_re, ppc64le_re, riscv64_re, s390x_re, sparc64_re, x86_32_re,
+        x86_64_re,
+    },
+    extension::Extension,
+    release::Asset,
+};
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
 use lazy_regex::{regex, Lazy};
@@ -26,7 +34,7 @@ impl<'a> AssetPicker<'a> {
 
         let all_names = assets.iter().map(|a| &a.name).join(", ");
 
-        let os_matches = self.os_matches(assets)?;
+        let os_matches = self.os_matches(assets);
         if os_matches.is_empty() {
             return Err(anyhow!(
                 "could not find a release for this OS ({}) from {all_names}",
@@ -34,7 +42,7 @@ impl<'a> AssetPicker<'a> {
             ));
         }
 
-        let matches = self.arch_matches(os_matches)?;
+        let matches = self.arch_matches(os_matches);
         if matches.is_empty() {
             return Err(anyhow!(
                 "could not find a release for this OS and architecture ({}) from {all_names}",
@@ -47,13 +55,13 @@ impl<'a> AssetPicker<'a> {
         Ok(picked)
     }
 
-    fn os_matches(&self, assets: Vec<Asset>) -> Result<Vec<Asset>> {
+    fn os_matches(&self, assets: Vec<Asset>) -> Vec<Asset> {
         let os_matcher = self.os_matcher();
         debug!("matching assets against OS using {}", os_matcher.as_str());
 
         let version_re = regex!(r"(?:\d+\.)+(\d+.+?)\z");
 
-        let mut os_matches: Vec<Asset> = vec![];
+        let mut matches: Vec<Asset> = vec![];
 
         // This could all be done much more simply with the iterator's .find()
         // method, but then there's no place to put all the debugging output.
@@ -96,49 +104,49 @@ impl<'a> AssetPicker<'a> {
 
             if os_matcher.is_match(&asset.name) {
                 debug!("matches our OS");
-                os_matches.push(asset);
+                matches.push(asset);
             } else {
                 debug!("does not match our OS");
             }
         }
 
-        Ok(os_matches)
+        matches
     }
 
-    fn arch_matches(&self, mut os_matches: Vec<Asset>) -> Result<Vec<Asset>> {
+    fn arch_matches(&self, mut os_matches: Vec<Asset>) -> Vec<Asset> {
         let arch_matcher = self.arch_matcher();
         debug!(
             "matching assets against CPU architecture using {}",
             arch_matcher.as_str(),
         );
 
-        let mut arch_matches: Vec<Asset> = vec![];
+        let mut matches: Vec<Asset> = vec![];
         if os_matches.len() == 1 {
             debug!("there is only one asset that matches our OS");
             if arch_matcher.is_match(&os_matches[0].name) {
                 debug!("matches our CPU architecture");
-                arch_matches.push(os_matches.remove(0));
+                matches.push(os_matches.remove(0));
             } else if all_arches_re().is_match(&os_matches[0].name) {
                 debug!("it matches a CPU architecture which is not ours");
             } else {
                 debug!("does not match any CPU architecture, so we will try it");
-                arch_matches.push(os_matches.remove(0));
+                matches.push(os_matches.remove(0));
             }
         } else {
-            for asset in os_matches.iter() {
+            for asset in &os_matches {
                 debug!(
                     "matching CPU architecture against asset name = {}",
                     asset.name,
                 );
                 if arch_matcher.is_match(&asset.name) {
                     debug!("matches our CPU architecture");
-                    arch_matches.push(asset.clone());
+                    matches.push(asset.clone());
                 } else {
                     debug!("does not match our CPU architecture");
                 }
             }
 
-            if arch_matches.is_empty() {
+            if matches.is_empty() {
                 debug!("no assets matched our CPU architecture, will look for assets without an architecture");
                 for asset in os_matches {
                     debug!("matching against asset name = {}", asset.name);
@@ -146,13 +154,13 @@ impl<'a> AssetPicker<'a> {
                         debug!("matches a CPU architecture which is not ours");
                     } else {
                         debug!("does not match any CPU architecture, so we will try it");
-                        arch_matches.push(asset);
+                        matches.push(asset);
                     }
                 }
             }
         }
 
-        Ok(arch_matches)
+        matches
     }
 
     fn pick_asset_from_matches(&self, mut matches: Vec<Asset>) -> Result<Asset> {
@@ -363,8 +371,8 @@ mod test {
                 name: "project-Linux-i686.tar.gz".to_string(),
                 url: Url::parse("https://example.com")?,
             }];
-            let picked = picker.pick_asset_from_matches(assets.clone())?;
-            assert_eq!(picked, assets[0], "only one asset, so pick that one");
+            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
+            assert_eq!(picked_asset, assets[0], "only one asset, so pick that one");
         }
 
         {
@@ -378,8 +386,8 @@ mod test {
                     url: Url::parse("https://example.com")?,
                 },
             ];
-            let picked = picker.pick_asset_from_matches(assets.clone())?;
-            assert_eq!(picked, assets[0], "pick the x86_64 asset on x86_64");
+            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
+            assert_eq!(picked_asset, assets[0], "pick the x86_64 asset on x86_64");
         }
 
         {
@@ -393,9 +401,9 @@ mod test {
                     url: Url::parse("https://example.com")?,
                 },
             ];
-            let picked = picker.pick_asset_from_matches(assets.clone())?;
+            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
             assert_eq!(
-                picked, assets[0],
+                picked_asset, assets[0],
                 "pick the first matching asset from two 32-bit assets"
             );
         }
@@ -416,9 +424,9 @@ mod test {
                     url: Url::parse("https://example.com")?,
                 },
             ];
-            let picked = picker.pick_asset_from_matches(assets.clone())?;
+            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
             assert_eq!(
-                picked, assets[1],
+                picked_asset, assets[1],
                 "pick the musl asset when matching is set"
             );
         }
@@ -434,9 +442,9 @@ mod test {
                     url: Url::parse("https://example.com")?,
                 },
             ];
-            let picked = picker.pick_asset_from_matches(assets.clone())?;
+            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
             assert_eq!(
-                picked, assets[1],
+                picked_asset, assets[1],
                 "pick the musl asset from two 32-bit assets"
             );
         }
@@ -458,8 +466,8 @@ mod test {
                 name: "project-Linux-i686.tar.gz".to_string(),
                 url: Url::parse("https://example.com")?,
             }];
-            let picked = picker.pick_asset_from_matches(assets.clone())?;
-            assert_eq!(picked, assets[0], "only one asset, so pick that one");
+            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
+            assert_eq!(picked_asset, assets[0], "only one asset, so pick that one");
         }
 
         let picker = AssetPicker {
@@ -478,9 +486,9 @@ mod test {
                     url: Url::parse("https://example.com")?,
                 },
             ];
-            let picked = picker.pick_asset_from_matches(assets.clone())?;
+            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
             assert_eq!(
-                picked, assets[1],
+                picked_asset, assets[1],
                 "pick the musl asset when matching is set"
             );
         }
@@ -503,8 +511,8 @@ mod test {
                 name: "project-Macos-aarch64.tar.gz".to_string(),
                 url: Url::parse("https://example.com")?,
             }];
-            let picked = picker.pick_asset_from_matches(assets.clone())?;
-            assert_eq!(picked, assets[0], "only one asset, so pick that one");
+            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
+            assert_eq!(picked_asset, assets[0], "only one asset, so pick that one");
         }
 
         {
@@ -518,8 +526,11 @@ mod test {
                     url: Url::parse("https://example.com")?,
                 },
             ];
-            let picked = picker.pick_asset_from_matches(assets.clone())?;
-            assert_eq!(picked, assets[1], "pick the aarch64 asset on macOS ARM");
+            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
+            assert_eq!(
+                picked_asset, assets[1],
+                "pick the aarch64 asset on macOS ARM"
+            );
         }
 
         {
@@ -527,9 +538,9 @@ mod test {
                 name: "project-Macos-x86-64.tar.gz".to_string(),
                 url: Url::parse("https://example.com")?,
             }];
-            let picked = picker.pick_asset_from_matches(assets.clone())?;
+            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
             assert_eq!(
-                picked, assets[0],
+                picked_asset, assets[0],
                 "pick the x86-64 asset on macOS ARM if no aarch64 asset is available"
             );
         }

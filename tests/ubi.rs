@@ -51,6 +51,7 @@ impl PreservableTempdir {
     target_os = "windows"
 ))]
 #[test]
+#[allow(clippy::too_many_lines)]
 fn integration_tests() -> Result<()> {
     let cargo = make_exe_pathbuf(&["cargo"]);
     run_command(cargo.as_ref(), &["build"])?;
@@ -477,9 +478,9 @@ fn run_test(td: &Path, cmd: &Path, args: &[&str], mut expect: PathBuf) -> Result
     Ok(())
 }
 
-pub fn run_command(cmd: &Path, args: &[&str]) -> Result<(Option<String>, Option<String>)> {
+fn run_command(cmd: &Path, args: &[&str]) -> Result<(Option<String>, Option<String>)> {
     let mut c = process::Command::new(cmd);
-    for a in args.iter() {
+    for a in args {
         c.arg(a);
     }
     c.env(
@@ -503,37 +504,33 @@ fn output_from_command(
 
     let output = c.output()?;
     match output.status.code() {
-        Some(code) => match code {
-            0 => Ok((
-                to_option_string(output.stdout),
-                to_option_string(output.stderr),
-            )),
-            _ => {
-                let mut msg = format!("ran {cstr} and got non-zero exit code: {code}");
-                if !output.stdout.is_empty() {
-                    msg.push_str("\nStdout:\n");
-                    msg.push_str(&String::from_utf8_lossy(&output.stdout));
-                }
-                if !output.stderr.is_empty() {
-                    msg.push_str("\nStderr:\n");
-                    msg.push_str(&String::from_utf8_lossy(&output.stderr));
-                }
-                Err(anyhow!(msg))
+        Some(0) => Ok((
+            to_option_string(&output.stdout),
+            to_option_string(&output.stderr),
+        )),
+        Some(code) => {
+            let mut msg = format!("ran {cstr} and got non-zero exit code: {code}");
+            if !output.stdout.is_empty() {
+                msg.push_str("\nStdout:\n");
+                msg.push_str(&String::from_utf8_lossy(&output.stdout));
             }
-        },
+            if !output.stderr.is_empty() {
+                msg.push_str("\nStderr:\n");
+                msg.push_str(&String::from_utf8_lossy(&output.stderr));
+            }
+            Err(anyhow!(msg))
+        }
         None => {
             let cstr = command_string(cmd, args);
-            match output.status.success() {
-                true => Err(anyhow!("ran {} successfully but it had no exit code", cstr)),
-                false => {
-                    let signal = signal_from_status(output.status);
-                    Err(anyhow!(
-                        "ran {} successfully but was killed by signal {}",
-                        cstr,
-                        signal,
-                    ))
-                }
+            if output.status.success() {
+                return Err(anyhow!("ran {} successfully but it had no exit code", cstr));
             }
+            let signal = signal_from_status(output.status);
+            Err(anyhow!(
+                "ran {} successfully but was killed by signal {}",
+                cstr,
+                signal,
+            ))
         }
     }
 }
@@ -547,11 +544,11 @@ fn command_string(cmd: &Path, args: &[&str]) -> String {
     cstr
 }
 
-fn to_option_string(v: Vec<u8>) -> Option<String> {
+fn to_option_string(v: &[u8]) -> Option<String> {
     if v.is_empty() {
         None
     } else {
-        Some(String::from_utf8_lossy(&v).to_string())
+        Some(String::from_utf8_lossy(v).to_string())
     }
 }
 

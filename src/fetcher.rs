@@ -58,12 +58,12 @@ impl GitHubAssetFetcher {
             .get(url)
             .header(ACCEPT, HeaderValue::from_str("application/json")?)
             .build()?;
-        let res = client.execute(req).await?;
+        let resp = client.execute(req).await?;
 
-        if let Err(e) = res.error_for_status_ref() {
+        if let Err(e) = resp.error_for_status_ref() {
             return Err(anyhow::Error::new(e));
         }
 
-        Ok(res.json::<Release>().await?)
+        Ok(resp.json::<Release>().await?)
     }
 }
