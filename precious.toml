@@ -1,5 +1,49 @@
 exclude = ["target"]
 
+[commands.clippy]
+type = "lint"
+include = "**/*.rs"
+invoke = "once"
+path-args = "none"
+working-dir = "root"
+cmd = [
+    "cargo",
+    "clippy",
+    "--color",
+    "always",
+    "--locked",
+    "--all-targets",
+    "--all-features",
+    "--",
+    "-D",
+    "clippy::pedantic",
+]
+ok_exit_codes = 0
+lint_failure_exit_codes = 101
+expect_stderr = true
+
+[commands."clippy --fix"]
+type = "tidy"
+include = "**/*.rs"
+invoke = "once"
+path-args = "none"
+working-dir = "root"
+cmd = [
+    "cargo",
+    "clippy",
+    "--fix",
+    "--allow-dirty",
+    "--locked",
+    "--all-targets",
+    "--all-features",
+    "--",
+    "-D",
+    "clippy::pedantic",
+]
+ok_exit_codes = 0
+lint_failure_exit_codes = 101
+expect_stderr = true
+
 [commands.rustfmt]
 type = "both"
 include = "**/*.rs"
@@ -7,17 +51,6 @@ cmd = ["rustfmt", "--edition", "2021"]
 lint_flags = "--check"
 ok_exit_codes = [0]
 lint_failure_exit_codes = [1]
-
-[commands.clippy]
-type = "lint"
-include = "**/*.rs"
-invoke = "once"
-path-args = "none"
-working-dir = "root"
-cmd = ["cargo", "clippy", "--locked", "--all-targets", "--all-features", "--", "-D", "clippy::all"]
-ok_exit_codes = 0
-lint_failure_exit_codes = 101
-expect_stderr = true
 
 [commands.omegasort-gitignore]
 type = "both"
