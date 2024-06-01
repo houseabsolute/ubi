@@ -1,3 +1,5 @@
+## 0.0.31 - 2024-06-01
+
 - Added support for the `.bz2` and `.tar.bz2` file extensions.
 
 ## 0.0.30 - 2024-05-11
