@@ -1,3 +1,7 @@
+## 0.0.32 - 2024-06-01
+
+- Added support for plain `.tar` files with no compression.
+
 ## 0.0.31 - 2024-06-01
 
 - Added support for the `.bz2` and `.tar.bz2` file extensions.

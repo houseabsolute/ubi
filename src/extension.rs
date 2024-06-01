@@ -16,6 +16,7 @@ pub(crate) enum Extension {
     Bz2,
     Exe,
     Gz,
+    Tar,
     TarBz,
     TarBz2,
     TarGz,
@@ -34,6 +35,7 @@ impl Extension {
             Extension::Bz2 => ".bz2",
             Extension::Exe => ".exe",
             Extension::Gz => ".gz",
+            Extension::Tar => ".tar",
             Extension::TarBz => ".tar.bz",
             Extension::TarBz2 => ".tar.bz2",
             Extension::TarGz => ".tar.gz",
@@ -78,6 +80,7 @@ mod test {
     #[test_case("foo.bz2", Ok(Some(Extension::Bz2)))]
     #[test_case("foo.exe", Ok(Some(Extension::Exe)))]
     #[test_case("foo.gz", Ok(Some(Extension::Gz)))]
+    #[test_case("foo.tar", Ok(Some(Extension::Tar)))]
     #[test_case("foo.tar.bz", Ok(Some(Extension::TarBz)))]
     #[test_case("foo.tar.bz2", Ok(Some(Extension::TarBz2)))]
     #[test_case("foo.tar.gz", Ok(Some(Extension::TarGz)))]

@@ -48,7 +48,8 @@ impl Installer {
             .to_string_lossy();
         match Extension::from_path(filename)? {
             Some(
-                Extension::TarBz
+                Extension::Tar
+                | Extension::TarBz
                 | Extension::TarBz2
                 | Extension::TarGz
                 | Extension::TarXz
@@ -173,6 +174,7 @@ fn tar_reader_for(downloaded_file: &Path) -> Result<Archive<Box<dyn Read>>> {
     let ext = downloaded_file.extension();
     match ext {
         Some(ext) => match ext.to_str() {
+            Some("tar") => Ok(Archive::new(Box::new(file))),
             Some("bz" | "tbz" | "bz2" | "tbz2") => Ok(Archive::new(Box::new(BzDecoder::new(file)))),
             Some("gz" | "tgz") => Ok(Archive::new(Box::new(GzDecoder::new(file)))),
             Some("xz" | "txz") => Ok(Archive::new(Box::new(XzDecoder::new(file)))),
@@ -205,6 +207,7 @@ mod tests {
     #[test_case("test-data/project.bz2", "project")]
     #[test_case("test-data/project.exe", "project")]
     #[test_case("test-data/project.gz", "project")]
+    #[test_case("test-data/project.tar", "project")]
     #[test_case("test-data/project.tar.bz", "project")]
     #[test_case("test-data/project.tar.bz2", "project")]
     #[test_case("test-data/project.tar.gz", "project")]
