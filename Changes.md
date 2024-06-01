@@ -1,6 +1,8 @@
 ## 0.0.32 - 2024-06-01
 
 - Added support for plain `.tar` files with no compression.
+- Fix handling of files with a version in the filename and no extension, like
+  `shfmt_v3.8.0_linux_arm64`. This was fixed before but I broke it in the 0.0.31 release.
 
 ## 0.0.31 - 2024-06-01
 

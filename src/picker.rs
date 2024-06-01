@@ -13,7 +13,6 @@ use lazy_regex::{regex, Lazy};
 use log::debug;
 use platforms::{Arch, Endian, Platform, OS};
 use regex::Regex;
-use std::path::PathBuf;
 
 #[derive(Debug)]
 pub(crate) struct AssetPicker<'a> {
@@ -26,7 +25,19 @@ impl<'a> AssetPicker<'a> {
         Self { matching, platform }
     }
 
-    pub(crate) fn pick_asset(&self, mut assets: Vec<Asset>) -> Result<Asset> {
+    pub(crate) fn pick_asset(&self, assets: Vec<Asset>) -> Result<Asset> {
+        debug!("filtering out assets that do not have a valid extension");
+        let mut assets: Vec<_> = assets
+            .into_iter()
+            .filter(|a| {
+                if Extension::from_path(&a.name).is_err() {
+                    debug!("skipping asset with invalid extension: {}", a.name);
+                    return false;
+                }
+                true
+            })
+            .collect();
+
         if assets.len() == 1 {
             debug!("there is only one asset to pick");
             return Ok(assets.remove(0));
@@ -59,48 +70,12 @@ impl<'a> AssetPicker<'a> {
         let os_matcher = self.os_matcher();
         debug!("matching assets against OS using {}", os_matcher.as_str());
 
-        let version_re = regex!(r"(?:\d+\.)+(\d+.+?)\z");
-
         let mut matches: Vec<Asset> = vec![];
 
         // This could all be done much more simply with the iterator's .find()
         // method, but then there's no place to put all the debugging output.
         for asset in assets {
             debug!("matching OS against asset name = {}", asset.name);
-
-            if asset.name.contains('.') && Extension::from_path(&asset.name).is_err() {
-                // If the name is something like "mkcert-v1.4.4-darwin-amd46"
-                // then the naive approach will think that this has an
-                // extension of ".4-darwin-amd46" and reject it as an invalid
-                // extension.
-                //
-                // So we need to match the name against a regex for versions
-                // and check if the part after the version is the same as the
-                // file's "extension". If it is, it's not a real extension.
-                let mut contains_version = false;
-                if let Some(caps) = version_re.captures(&asset.name) {
-                    if let Some(ext) = caps.get(1).map(|m| m.as_str()) {
-                        let path = PathBuf::from(&asset.name);
-                        if ext
-                            == path
-                                .extension()
-                                .map(|o| o.to_str().unwrap_or_default())
-                                .unwrap_or_default()
-                        {
-                            contains_version = true;
-                            debug!(
-                                "it looks like this file name contains a version: {}",
-                                asset.name
-                            );
-                        }
-                    }
-                }
-
-                if !contains_version {
-                    debug!("it appears to have an invalid extension");
-                    continue;
-                }
-            }
 
             if os_matcher.is_match(&asset.name) {
                 debug!("matches our OS");

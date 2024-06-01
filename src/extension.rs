@@ -1,6 +1,8 @@
 use anyhow::Result;
 use itertools::Itertools;
-use std::path::Path;
+use lazy_regex::regex;
+use log::debug;
+use std::{ffi::OsStr, path::Path};
 use strum::{EnumIter, IntoEnumIterator};
 use thiserror::Error;
 
@@ -56,19 +58,47 @@ impl Extension {
 
         // We need to try the longest extension first so that ".tar.gz"
         // matches before ".gz" and so on for other compression formats.
-        match Extension::iter()
+        if let Some(ext) = Extension::iter()
             .sorted_by(|a, b| Ord::cmp(&a.extension().len(), &b.extension().len()))
             .rev()
             .find(|e| path.ends_with(e.extension()))
         {
-            Some(ext) => Ok(Some(ext)),
-            None => Err(ExtensionError::UnknownExtension {
-                path: path.to_string(),
-                ext: ext_str.to_string_lossy().to_string(),
-            }
-            .into()),
+            return Ok(Some(ext));
         }
+
+        if extension_is_part_of_version(path, ext_str) {
+            debug!("the extension {ext_str:?} is part of the version, ignoring");
+            return Ok(None);
+        }
+
+        Err(ExtensionError::UnknownExtension {
+            path: path.to_string(),
+            ext: ext_str.to_string_lossy().to_string(),
+        }
+        .into())
     }
+}
+
+fn extension_is_part_of_version(path: &str, ext_str: &OsStr) -> bool {
+    let ext_str = ext_str.to_string_lossy().to_string();
+
+    let version_number_ext_re = regex!(r"^\.\d+");
+    if version_number_ext_re.is_match(&ext_str) {
+        return false;
+    }
+
+    // This matches something like "foo_3.2.1_linux_amd64" and captures ".1_".
+    let version_number_re = regex!(r"\d+\.(\d+[^.]+)");
+    let Some(caps) = version_number_re.captures(path) else {
+        return false;
+    };
+    let Some(dot_num) = caps.get(1) else {
+        return false;
+    };
+
+    // If the extension starts with the last part of the version then it's not
+    // a real extension.
+    ext_str == dot_num.as_str()
 }
 
 #[cfg(test)]
@@ -88,6 +118,7 @@ mod test {
     #[test_case("foo.xz", Ok(Some(Extension::Xz)))]
     #[test_case("foo.zip", Ok(Some(Extension::Zip)))]
     #[test_case("foo", Ok(None))]
+    #[test_case("foo_3.2.1_linux_amd64", Ok(None))]
     #[test_case("foo.bar", Err(ExtensionError::UnknownExtension { path: "foo.bar".to_string(), ext: "bar".to_string() }.into()))]
     fn from_path(path: &str, expect: Result<Option<Extension>>) {
         let ext = Extension::from_path(path);
