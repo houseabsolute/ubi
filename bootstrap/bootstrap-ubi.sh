@@ -44,7 +44,7 @@ if [ -z "$FILENAME" ]; then
         ;;
     esac
 
-    # I previous had uname -p but that reports all sorts of weird stuff. On one
+    # I previously had `uname -p` but that reports all sorts of weird stuff. On one
     # person's Linux x86_64 machine it reported "unknown". On macOS x86_64 you get
     # "i386". Why? I have no idea.
     ARCH=$(uname -m)
