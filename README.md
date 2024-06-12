@@ -1,4 +1,4 @@
-# The Universal Binary Installer
+# The Universal Binary Installer Library and CLI Tool
 
 When I say "universal", I mean it downloads binaries from GitHub releases.
 
@@ -10,6 +10,15 @@ When I say "installer", I mean it plops the binary wherever you tell it to.
 And finally, when I say "UBI", I don't mean
 "[universal basic income](https://en.wikipedia.org/wiki/Universal_basic_income)", but that'd be nice
 too.
+
+## Using UBI as a Library
+
+```
+[dependencies]
+ubi = "0.1.0"
+```
+
+See the [`ubi` docs on docs.rs](https://docs.rs/crate/ubi/latest) for more details.
 
 ## Installing It
 

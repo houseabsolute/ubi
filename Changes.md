@@ -1,3 +1,8 @@
+## 0.1.0 - 2024-07-21
+
+- UBI can now be used as a library. See the
+  [`ubi` docs on docs.rs](https://docs.rs/crate/ubi/latest) for more details.
+
 ## 0.0.32 - 2024-06-01
 
 - Fix support for plain `.tar` files with no compression.

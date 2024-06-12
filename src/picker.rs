@@ -16,12 +16,12 @@ use regex::Regex;
 
 #[derive(Debug)]
 pub(crate) struct AssetPicker<'a> {
-    matching: Option<String>,
+    matching: Option<&'a str>,
     platform: &'a Platform,
 }
 
 impl<'a> AssetPicker<'a> {
-    pub(crate) fn new(matching: Option<String>, platform: &'a Platform) -> Self {
+    pub(crate) fn new(matching: Option<&'a str>, platform: &'a Platform) -> Self {
         Self { matching, platform }
     }
 
@@ -217,7 +217,7 @@ impl<'a> AssetPicker<'a> {
             return Ok((matches, None));
         }
 
-        let m = self.matching.as_deref().unwrap();
+        let m = self.matching.unwrap();
         debug!(
             r#"looking for an asset matching the string "{}" passed in --matching"#,
             m
@@ -384,7 +384,7 @@ mod test {
         }
 
         let picker = AssetPicker {
-            matching: Some("musl".to_string()),
+            matching: Some("musl"),
             platform,
         };
 
@@ -446,7 +446,7 @@ mod test {
         }
 
         let picker = AssetPicker {
-            matching: Some("musl".to_string()),
+            matching: Some("musl"),
             platform,
         };
 

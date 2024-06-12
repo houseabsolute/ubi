@@ -1,3 +1,31 @@
+//! A library (and CLI tool) for downloading and installing pre-built binaries from GitHub.
+//! UBI stands for "Universal Binary Installer". It downloads and installs pre-built binaries from
+//! GitHub releases. It is designed to be used in shell scripts and other automation.
+//!
+//! This project also ships a CLI tool named `ubi`. See [the project's GitHub
+//! repo](https://github.com/houseabsolute/ubi) for more details on installing and using this tool.
+//!
+//! ```ignore
+//! use ubi::UbiBuilder;
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     let ubi = UbiBuilder::new()
+//!         .project("houseabsolute/precious")
+//!         .install_dir("/usr/local/bin")
+//!         .build()?;
+//!
+//!     ubi.install_binary().await?;
+//!
+//!     Ok(())
+//! }
+mod arch;
+mod extension;
+mod fetcher;
+mod installer;
+mod picker;
+mod release;
+
 use crate::{
     fetcher::GitHubAssetFetcher, installer::Installer, picker::AssetPicker, release::Asset,
     release::Download,
@@ -8,7 +36,7 @@ use fern::{
     Dispatch,
 };
 use log::debug;
-use platforms::{Platform, OS};
+use platforms::{Platform, PlatformReq, OS};
 use reqwest::{
     header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION, USER_AGENT},
     Client, StatusCode,
@@ -19,14 +47,163 @@ use std::{
     fs::{create_dir_all, File},
     io::Write,
     path::PathBuf,
+    str::FromStr,
 };
 use tempfile::tempdir;
 use url::Url;
 
-pub(crate) const VERSION: &str = env!("CARGO_PKG_VERSION");
+// The version of the `ubi` crate.
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+/// `UbiBuilder` is used to create a `Ubi` instance.
+#[derive(Debug, Default)]
+pub struct UbiBuilder<'a> {
+    project: Option<&'a str>,
+    tag: Option<&'a str>,
+    url: Option<&'a str>,
+    install_dir: Option<PathBuf>,
+    matching: Option<&'a str>,
+    exe: Option<&'a str>,
+    github_token: Option<&'a str>,
+    platform: Option<&'a Platform>,
+    github_api_url_base: Option<String>,
+}
+
+impl<'a> UbiBuilder<'a> {
+    /// Returns a new empty `UbiBuilder`.
+    #[must_use]
+    pub fn new() -> Self {
+        UbiBuilder::default()
+    }
+
+    /// Set the project to download from. This can either be just the org/name, like
+    /// `houseabsolute/precious`, or a complete GitHub URL to the project, like
+    /// `https://github.com/houseabsolute/precious`. It also accepts a URL to any page in the
+    /// project, like `https://github.com/houseabsolute/precious/releases`.
+    ///
+    /// You must set this or a `url`, but not both.
+    #[must_use]
+    pub fn project(mut self, project: &'a str) -> Self {
+        self.project = Some(project);
+        self
+    }
+
+    /// Set the tag to download. By default the most recent release is downloaded. You cannot set
+    /// this with the `url` option.
+    #[must_use]
+    pub fn tag(mut self, tag: &'a str) -> Self {
+        self.tag = Some(tag);
+        self
+    }
+
+    /// Set the URL to download from. This can be provided instead of a project or tag. This will
+    /// not use the GitHub API, so you will never hit the GitHub API limits. That in turn means you
+    /// won't have to set a `GITHUB_TOKEN` env var except when downloading a release from a private
+    /// repo when the URL is set.
+    ///
+    /// You must set this or a `project`, but not both.
+    #[must_use]
+    pub fn url(mut self, url: &'a str) -> Self {
+        self.url = Some(url);
+        self
+    }
+
+    /// Set the directory to install the binary in. If not set it will default to `./bin`.
+    #[must_use]
+    pub fn install_dir(mut self, install_dir: PathBuf) -> Self {
+        self.install_dir = Some(install_dir);
+        self
+    }
+
+    /// Set a string to match against the release filename when there are multiple files for your
+    /// OS/arch, i.e. "gnu" or "musl".  Note that this will be ignored if there is only used when
+    /// there is only one matching release filename for your OS/arch
+    #[must_use]
+    pub fn matching(mut self, matching: &'a str) -> Self {
+        self.matching = Some(matching);
+        self
+    }
+
+    /// Set the name of the executable to look for in archive files. By default this is the same as
+    /// the project name, so for `houseabsolute/precious` we look for `precious` or
+    /// `precious.exe`. When running on Windows the ".exe" suffix will be added as needed.
+    #[must_use]
+    pub fn exe(mut self, exe: &'a str) -> Self {
+        self.exe = Some(exe);
+        self
+    }
+
+    /// Set a GitHub token to use for API requests. If this is not set then the `GITHUB_TOKEN` env
+    /// var will be checked instead.
+    #[must_use]
+    pub fn github_token(mut self, token: &'a str) -> Self {
+        self.github_token = Some(token);
+        self
+    }
+
+    /// Set the platform to download for. If not set it will be determined based on the current
+    /// platform's OS/arch.
+    #[must_use]
+    pub fn platform(mut self, platform: &'a Platform) -> Self {
+        self.platform = Some(platform);
+        self
+    }
+
+    /// Set the base URL for the GitHub API. This is useful for testing or if you want to operate
+    /// against a GitHub Enterprise installation.
+    #[must_use]
+    pub fn github_api_url_base(mut self, github_api_url_base: String) -> Self {
+        self.github_api_url_base = Some(github_api_url_base);
+        self
+    }
+
+    const TARGET: &'static str = env!("TARGET");
+
+    /// Builds a new `Ubi` instance and returns it.
+    ///
+    /// # Errors
+    ///
+    /// If you have tried to set incompatible options (setting a `project` or `tag` with a `url`) or
+    /// you have not set required options (one of `project` or `url`), then this method will return
+    /// an error.
+    pub fn build(self) -> Result<Ubi<'a>> {
+        if self.project.is_none() && self.url.is_none() {
+            return Err(anyhow!("You must set a project or url"));
+        }
+        if self.url.is_some() && (self.project.is_some() || self.tag.is_some()) {
+            return Err(anyhow!("You cannot set a url with a project or tag"));
+        }
+
+        let platform = if let Some(p) = self.platform {
+            p
+        } else {
+            let req = PlatformReq::from_str(Self::TARGET)?;
+            Platform::ALL
+                .iter()
+                .find(|p| req.matches(p))
+                .ok_or(anyhow!(
+                    "Could not find any platform matching {}",
+                    Self::TARGET
+                ))?
+        };
+
+        Ubi::new(
+            self.project,
+            self.tag,
+            self.url,
+            self.install_dir,
+            self.matching,
+            self.exe,
+            self.github_token,
+            platform,
+            self.github_api_url_base,
+        )
+    }
+}
+
+/// `Ubi` is the core of this library, and is used to download and install a binary.
 #[derive(Debug)]
-pub(crate) struct Ubi<'a> {
+pub struct Ubi<'a> {
     asset_fetcher: GitHubAssetFetcher,
     asset_picker: AssetPicker<'a>,
     installer: Installer,
@@ -34,16 +211,18 @@ pub(crate) struct Ubi<'a> {
 }
 
 impl<'a> Ubi<'a> {
+    /// Create a new Ubi instance.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn new(
+    fn new(
         project: Option<&str>,
         tag: Option<&str>,
         url: Option<&str>,
-        install_dir: Option<&str>,
-        matching: Option<String>,
+        install_dir: Option<PathBuf>,
+        matching: Option<&'a str>,
         exe: Option<&str>,
+        github_token: Option<&str>,
         platform: &'a Platform,
-        github_api_base: Option<String>,
+        github_api_url_base: Option<String>,
     ) -> Result<Ubi<'a>> {
         let url = url.map(Url::parse).invert()?;
         let project_name = Self::parse_project_name(project, url.as_ref())?;
@@ -54,11 +233,11 @@ impl<'a> Ubi<'a> {
                 project_name,
                 tag.map(std::string::ToString::to_string),
                 url,
-                github_api_base,
+                github_api_url_base,
             ),
             asset_picker: AssetPicker::new(matching, platform),
             installer: Installer::new(install_path, exe),
-            reqwest_client: Self::reqwest_client()?,
+            reqwest_client: Self::reqwest_client(github_token)?,
         })
     }
 
@@ -109,9 +288,9 @@ impl<'a> Ubi<'a> {
         name
     }
 
-    fn install_path(install_dir: Option<&str>, exe: &str) -> Result<PathBuf> {
+    fn install_path(install_dir: Option<PathBuf>, exe: &str) -> Result<PathBuf> {
         let mut path = if let Some(i) = install_dir {
-            PathBuf::from(i)
+            i
         } else {
             let mut i = env::current_dir()?;
             i.push("bin");
@@ -123,7 +302,7 @@ impl<'a> Ubi<'a> {
         Ok(path)
     }
 
-    fn reqwest_client() -> Result<Client> {
+    fn reqwest_client(github_token: Option<&str>) -> Result<Client> {
         let builder = Client::builder().gzip(true);
 
         let mut headers = HeaderMap::new();
@@ -132,7 +311,12 @@ impl<'a> Ubi<'a> {
             HeaderValue::from_str(&format!("ubi version {VERSION}"))?,
         );
 
-        if let Some(token) = Self::github_token() {
+        let mut github_token = github_token.map(String::from);
+        if github_token.is_none() {
+            github_token = env::var("GITHUB_TOKEN").ok();
+        }
+
+        if let Some(token) = github_token {
             debug!("adding GitHub token to GitHub requests");
             let bearer = format!("Bearer {token}");
             let mut auth_val = HeaderValue::from_str(&bearer)?;
@@ -143,11 +327,20 @@ impl<'a> Ubi<'a> {
         Ok(builder.default_headers(headers).build()?)
     }
 
-    fn github_token() -> Option<String> {
-        env::var("GITHUB_TOKEN").ok()
-    }
-
-    pub(crate) async fn run(&self) -> Result<()> {
+    /// Install the binary.
+    ///
+    /// # Errors
+    ///
+    /// There are a number of cases where an error can be returned:
+    ///
+    /// * Network errors on requests to GitHub.
+    /// * Unable to find the requested project.
+    /// * Unable to find a matching for the specific platform.
+    /// * Unable to unpack/uncompress the downloaded release file.
+    /// * Unable to find an executable with the right name in a downloaded archive.
+    /// * Unable to write the executable to the specified directory.
+    /// * Unable to set executable permissions on the installed binary.
+    pub async fn install_binary(&self) -> Result<()> {
         let asset = self.asset().await?;
         let download = self.download_asset(&self.reqwest_client, asset).await?;
         self.installer.install(&download)
@@ -199,7 +392,13 @@ impl<'a> Ubi<'a> {
     }
 }
 
-pub(crate) fn init_logger(level: log::LevelFilter) -> Result<(), log::SetLoggerError> {
+/// This function initializes logging for the application. It's public for the sake of the `ubi`
+/// binary, but it lives in the library crate so that test code can also enable logging.
+///
+/// # Errors
+///
+/// This can return a `log::SetLoggerError` error.
+pub fn init_logger(level: log::LevelFilter) -> Result<(), log::SetLoggerError> {
     let line_colors = ColoredLevelConfig::new()
         .error(Color::Red)
         .warn(Color::Yellow)
@@ -498,6 +697,7 @@ mod test {
                         None,
                         None,
                         None,
+                        None,
                         platform,
                         Some(server.url()),
                     )?;
@@ -520,6 +720,7 @@ mod test {
                 if let Some(expect_omegasort) = t.expect_omegasort {
                     let ubi = Ubi::new(
                         Some("houseabsolute/omegasort"),
+                        None,
                         None,
                         None,
                         None,
@@ -863,6 +1064,7 @@ mod test {
                     None,
                     None,
                     None,
+                    None,
                     platform,
                     Some(server.url()),
                 )?;
@@ -993,6 +1195,7 @@ mod test {
                     None,
                     None,
                     None,
+                    None,
                     platform,
                     Some(server.url()),
                 )?;
@@ -1094,6 +1297,7 @@ mod test {
                     None,
                     None,
                     None,
+                    None,
                     platform,
                     Some(server.url()),
                 )?;
@@ -1172,6 +1376,7 @@ mod test {
                 None,
                 None,
                 None,
+                None,
                 platform,
                 Some(server.url()),
             )?;
@@ -1218,6 +1423,7 @@ mod test {
         let platform = req.matching_platforms().next().unwrap();
         let ubi = Ubi::new(
             Some("test/macos"),
+            None,
             None,
             None,
             None,
@@ -1319,6 +1525,7 @@ mod test {
                 None,
                 None,
                 None,
+                None,
                 platform,
                 Some(server.url()),
             )?;
@@ -1346,6 +1553,7 @@ mod test {
             let platform = req.matching_platforms().next().unwrap();
             let ubi = Ubi::new(
                 Some("test/os-without-arch"),
+                None,
                 None,
                 None,
                 None,

@@ -1,23 +1,12 @@
-mod arch;
-mod extension;
-mod fetcher;
-mod installer;
-mod picker;
-mod release;
-mod ubi;
-
 use anyhow::{anyhow, Error, Result};
 use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command};
 use log::{debug, error};
-use platforms::{Platform, PlatformReq};
 use std::{
-    env::{self, args_os},
-    ffi::OsString,
-    path::PathBuf,
-    str::FromStr,
+    env,
+    path::{Path, PathBuf},
 };
 use thiserror::Error;
-use ubi::Ubi;
+use ubi::{Ubi, UbiBuilder};
 
 #[derive(Debug, Error)]
 enum UbiError {
@@ -29,13 +18,26 @@ enum UbiError {
 async fn main() {
     let cmd = cmd();
     let matches = cmd.get_matches();
-    let res = init_logger(&matches);
+    let res = init_logger_from_matches(&matches);
     if let Err(e) = res {
         eprintln!("Error creating logger: {e}");
         std::process::exit(126);
     }
-    let status = match make_ubi(matches) {
-        Ok((u, post_run)) => match u.run().await {
+
+    // We use this when `--self-upgrade` is passed. We need to create this String here so that we
+    // can make a Ubi<'_> instance that borrows this value. It needs to have the same lifetime as
+    // matches. If we try to make it in `self_upgrade_ubi` we end up trying to return a reference
+    // data owned by that fn.
+    let ubi_exe_path = match env::current_exe() {
+        Ok(p) => p,
+        Err(e) => {
+            let e = anyhow!("could not find path for current executable: {e}");
+            print_err(&e);
+            std::process::exit(127);
+        }
+    };
+    let status = match make_ubi(&matches, &ubi_exe_path) {
+        Ok((u, post_run)) => match u.install_binary().await {
             Ok(()) => {
                 if let Some(post_run) = post_run {
                     post_run();
@@ -59,7 +61,7 @@ const MAX_TERM_WIDTH: usize = 100;
 
 fn cmd() -> Command {
     Command::new("ubi")
-        .version(ubi::VERSION)
+        .version(env!("CARGO_PKG_VERSION"))
         .author("Dave Rolsky <autarch@urth.org>")
         .about("The universal binary release installer")
         .arg(Arg::new("project").long("project").short('p').help(concat!(
@@ -138,7 +140,7 @@ fn cmd() -> Command {
         .max_term_width(MAX_TERM_WIDTH)
 }
 
-pub(crate) fn init_logger(matches: &ArgMatches) -> Result<(), log::SetLoggerError> {
+pub(crate) fn init_logger_from_matches(matches: &ArgMatches) -> Result<(), log::SetLoggerError> {
     let level = if matches.get_flag("debug") {
         log::LevelFilter::Debug
     } else if matches.get_flag("verbose") {
@@ -152,43 +154,36 @@ pub(crate) fn init_logger(matches: &ArgMatches) -> Result<(), log::SetLoggerErro
     ubi::init_logger(level)
 }
 
-const TARGET: &str = env!("TARGET");
-
-fn make_ubi<'a>(mut matches: ArgMatches) -> Result<(Ubi<'a>, Option<impl FnOnce()>)> {
-    validate_args(&matches)?;
-    let mut post_run = None;
+fn make_ubi<'a>(
+    matches: &'a ArgMatches,
+    ubi_exe_path: &'a Path,
+) -> Result<(Ubi<'a>, Option<impl FnOnce()>)> {
+    validate_args(matches)?;
     if matches.get_flag("self-upgrade") {
-        let cmd = cmd();
-        let (args, to_delete) = self_upgrade_args()?;
-        matches = cmd.try_get_matches_from(args)?;
-        if let Some(to_delete) = to_delete {
-            post_run = Some(move || {
-                println!(
-                    "The self-upgrade operation left an old binary behind that must be deleted manually: {}",
-                    to_delete.display(),
-                );
-            });
-        }
+        return self_upgrade_ubi(ubi_exe_path);
     }
-    let req = PlatformReq::from_str(TARGET)?;
-    let platform = Platform::ALL
-        .iter()
-        .find(|p| req.matches(p))
-        .unwrap_or_else(|| panic!("Could not find any platform matching {TARGET}"));
 
-    Ok((
-        Ubi::new(
-            matches.get_one::<String>("project").map(String::as_str),
-            matches.get_one::<String>("tag").map(String::as_str),
-            matches.get_one::<String>("url").map(String::as_str),
-            matches.get_one::<String>("in").map(String::as_str),
-            matches.get_one::<String>("matching").cloned(),
-            matches.get_one::<String>("exe").map(String::as_str),
-            platform,
-            None,
-        )?,
-        post_run,
-    ))
+    let mut builder = UbiBuilder::new();
+    if let Some(p) = matches.get_one::<String>("project") {
+        builder = builder.project(p);
+    }
+    if let Some(t) = matches.get_one::<String>("tag") {
+        builder = builder.tag(t);
+    }
+    if let Some(u) = matches.get_one::<String>("url") {
+        builder = builder.url(u);
+    }
+    if let Some(i) = matches.get_one::<String>("in") {
+        builder = builder.install_dir(PathBuf::from(i));
+    }
+    if let Some(m) = matches.get_one::<String>("matching") {
+        builder = builder.matching(m);
+    }
+    if let Some(e) = matches.get_one::<String>("exe") {
+        builder = builder.exe(e);
+    }
+
+    Ok((builder.build()?, None))
 }
 
 fn validate_args(matches: &ArgMatches) -> Result<()> {
@@ -226,45 +221,39 @@ fn validate_args(matches: &ArgMatches) -> Result<()> {
     Ok(())
 }
 
-fn self_upgrade_args() -> Result<(Vec<OsString>, Option<PathBuf>)> {
-    let mut munged: Vec<OsString> = vec![];
-    let mut iter = args_os();
-    while let Some(a) = iter.next() {
-        if a == "--exe" || a == "--project" || a == "--tag" || a == "--url" || a == "--self-upgrade"
-        {
-            iter.next();
-            continue;
-        }
-        munged.push(a);
-    }
-    munged.append(
-        &mut vec!["--project", "houseabsolute/ubi", "--in"]
-            .into_iter()
-            .map(Into::into)
-            .collect(),
-    );
-    let current = env::current_exe()?;
-    munged.push(
-        current
-            .parent()
-            .ok_or_else(|| anyhow!("executable path `{}` has no parent", current.display()))?
-            .as_os_str()
-            .to_os_string(),
-    );
+fn self_upgrade_ubi(ubi_exe_path: &Path) -> Result<(Ubi<'_>, Option<impl FnOnce()>)> {
+    let ubi = UbiBuilder::new()
+        .project("houseabsolute/ubi")
+        .install_dir(
+            ubi_exe_path
+                .parent()
+                .ok_or_else(|| {
+                    anyhow!("executable path `{}` has no parent", ubi_exe_path.display())
+                })?
+                .to_path_buf(),
+        )
+        .build()?;
 
-    #[allow(unused_assignments, unused_mut)]
-    let mut to_delete = None;
-    #[cfg(target_os = "windows")]
-    {
-        let mut new_exe = current.clone();
+    let post_run = if cfg!(target_os = "windows") {
+        let mut new_exe = ubi_exe_path.to_path_buf();
         new_exe.set_file_name("ubi-old.exe");
-        debug!("renaming {} to {}", current.display(), new_exe.display());
-        std::fs::rename(&current, &new_exe)?;
-        to_delete = Some(new_exe);
-    }
+        debug!(
+            "renaming {} to {}",
+            ubi_exe_path.display(),
+            new_exe.display()
+        );
+        std::fs::rename(ubi_exe_path, &new_exe)?;
+        Some(move || {
+            println!(
+                "The self-upgrade operation left an old binary behind that must be deleted manually: {}",
+                new_exe.display(),
+            );
+        })
+    } else {
+        None
+    };
 
-    debug!("munged args for self-upgrade = [{munged:?}]");
-    Ok((munged, to_delete))
+    Ok((ubi, post_run))
 }
 
 fn print_err(e: &Error) {
