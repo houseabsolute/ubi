@@ -141,7 +141,7 @@ if [ -z "$STATUS" ]; then
     >&2 echo "curl failed to download $URL and did not print a status code"
     exit 5
 elif [ "$STATUS" != "200" ]; then
-    >&2 echo "curl failed to download $URL with status code = $STATUS"
+    >&2 echo "curl failed to download $URL - status code = $STATUS"
     exit 6
 fi
 
