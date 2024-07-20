@@ -1,5 +1,9 @@
 #!/bin/sh
 
+if [ -n "$UBI_DEBUG_BOOTSTRAP" ]; then
+    set -x
+fi
+
 set -e
 
 if [ "$(id -u)" -eq 0 ]; then

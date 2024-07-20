@@ -37,7 +37,7 @@ jobs:
           set -e
           mkdir -p "$HOME/bin"
 
-          ./bootstrap/${{ matrix.platform.script }}
+          UBI_DEBUG_BOOTSTRAP=1 ./bootstrap/${{ matrix.platform.script }}
           if [ ! -x "$HOME/bin/ubi" ]; then
               echo "Running ./bootstrap/${{ matrix.platform.script }} did not install ubi!"
               exit 1
