@@ -26,9 +26,12 @@ jobs:
           - os_name: Windows
             os: windows-latest
             script: bootstrap-ubi.ps1
-          - os_name: Windows
-            os: windows-latest
-            script: bootstrap-ubi.sh
+          # Curl seems to be broken in this environment for some reason. See here for an example -
+          # https://github.com/houseabsolute/ubi/actions/runs/10022996389/job/27703398529
+          #
+          # - os_name: Windows
+          #   os: windows-latest
+          #   script: bootstrap-ubi.sh
     steps:
       - uses: actions/checkout@v4
       - name: Run bootstrap script
