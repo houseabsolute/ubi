@@ -136,7 +136,7 @@ trap 'rm -rf -- "$TEMPDIR"' EXIT
 LOCAL_FILE="$TEMPDIR/$FILENAME"
 
 echo "downloading $URL"
-STATUS=$(curl --silent --output "$LOCAL_FILE" --write-out "%{http_code}" --location "$URL")
+STATUS=$(curl --silent --show-error --location --output "$LOCAL_FILE" --write-out "%{http_code}" "$URL")
 if [ -z "$STATUS" ]; then
     >&2 echo "curl failed to download $URL and did not print a status code"
     exit 5
