@@ -2,7 +2,7 @@
 name = "ubi"
 version = "0.1.0"
 authors = ["Dave Rolsky <autarch@urth.org>"]
-description = "The Universal Binary Installer"
+description = "The Universal Binary Installer library and CLI tool"
 repository = "https://github.com/houseabsolute/ubi"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
