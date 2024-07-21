@@ -55,7 +55,7 @@ use url::Url;
 // The version of the `ubi` crate.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// `UbiBuilder` is used to create a `Ubi` instance.
+/// `UbiBuilder` is used to create a [`Ubi`] instance.
 #[derive(Debug, Default)]
 pub struct UbiBuilder<'a> {
     project: Option<&'a str>,
@@ -77,11 +77,11 @@ impl<'a> UbiBuilder<'a> {
     }
 
     /// Set the project to download from. This can either be just the org/name, like
-    /// `houseabsolute/precious`, or a complete GitHub URL to the project, like
+    /// `houseabsolute/precious`, or the complete GitHub URL to the project, like
     /// `https://github.com/houseabsolute/precious`. It also accepts a URL to any page in the
     /// project, like `https://github.com/houseabsolute/precious/releases`.
     ///
-    /// You must set this or a `url`, but not both.
+    /// You must set this or set `url`, but not both.
     #[must_use]
     pub fn project(mut self, project: &'a str) -> Self {
         self.project = Some(project);
@@ -101,14 +101,14 @@ impl<'a> UbiBuilder<'a> {
     /// won't have to set a `GITHUB_TOKEN` env var except when downloading a release from a private
     /// repo when the URL is set.
     ///
-    /// You must set this or a `project`, but not both.
+    /// You must set this or set `project`, but not both.
     #[must_use]
     pub fn url(mut self, url: &'a str) -> Self {
         self.url = Some(url);
         self
     }
 
-    /// Set the directory to install the binary in. If not set it will default to `./bin`.
+    /// Set the directory to install the binary in. If not set, it will default to `./bin`.
     #[must_use]
     pub fn install_dir(mut self, install_dir: PathBuf) -> Self {
         self.install_dir = Some(install_dir);
@@ -116,8 +116,9 @@ impl<'a> UbiBuilder<'a> {
     }
 
     /// Set a string to match against the release filename when there are multiple files for your
-    /// OS/arch, i.e. "gnu" or "musl".  Note that this will be ignored if there is only used when
-    /// there is only one matching release filename for your OS/arch
+    /// OS/arch, i.e. "gnu" or "musl". Note that this is only used when there is more than one
+    /// matching release filename for your OS/arch. If only one release asset matches your OS/arch,
+    /// then this will be ignored.
     #[must_use]
     pub fn matching(mut self, matching: &'a str) -> Self {
         self.matching = Some(matching);
@@ -133,8 +134,8 @@ impl<'a> UbiBuilder<'a> {
         self
     }
 
-    /// Set a GitHub token to use for API requests. If this is not set then the `GITHUB_TOKEN` env
-    /// var will be checked instead.
+    /// Set a GitHub token to use for API requests. If this is not set then this will be taken from
+    /// the `GITHUB_TOKEN` env var if it is set.
     #[must_use]
     pub fn github_token(mut self, token: &'a str) -> Self {
         self.github_token = Some(token);
@@ -159,7 +160,7 @@ impl<'a> UbiBuilder<'a> {
 
     const TARGET: &'static str = env!("TARGET");
 
-    /// Builds a new `Ubi` instance and returns it.
+    /// Builds a new [`Ubi`] instance and returns it.
     ///
     /// # Errors
     ///
@@ -201,7 +202,8 @@ impl<'a> UbiBuilder<'a> {
     }
 }
 
-/// `Ubi` is the core of this library, and is used to download and install a binary.
+/// `Ubi` is the core of this library, and is used to download and install a binary. Use the
+/// [`UbiBuilder`] struct to create a new `Ubi` instance.
 #[derive(Debug)]
 pub struct Ubi<'a> {
     asset_fetcher: GitHubAssetFetcher,
@@ -327,15 +329,20 @@ impl<'a> Ubi<'a> {
         Ok(builder.default_headers(headers).build()?)
     }
 
-    /// Install the binary.
+    /// Install the binary. This will download the appropriate release asset from GitHub and unpack
+    /// it. It will look for an executable (based on the name of the project or the explicitly set
+    /// executable name) in the unpacked archive and write it to the install directory. It will also
+    /// set the executable bit on the installed binary on platforms where this is necessary.
     ///
     /// # Errors
     ///
     /// There are a number of cases where an error can be returned:
     ///
     /// * Network errors on requests to GitHub.
+    /// * You've reached the API limits for GitHub (try setting the `GITHUB_TOKEN` env var to
+    ///   increase these).
     /// * Unable to find the requested project.
-    /// * Unable to find a matching for the specific platform.
+    /// * Unable to find a match for the platform on which the code is running.
     /// * Unable to unpack/uncompress the downloaded release file.
     /// * Unable to find an executable with the right name in a downloaded archive.
     /// * Unable to write the executable to the specified directory.
