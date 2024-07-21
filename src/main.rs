@@ -235,18 +235,18 @@ fn self_upgrade_ubi(ubi_exe_path: &Path) -> Result<(Ubi<'_>, Option<impl FnOnce(
         .build()?;
 
     let post_run = if cfg!(target_os = "windows") {
-        let mut new_exe = ubi_exe_path.to_path_buf();
-        new_exe.set_file_name("ubi-old.exe");
+        let mut old_exe = ubi_exe_path.to_path_buf();
+        old_exe.set_file_name("ubi-old.exe");
         debug!(
             "renaming {} to {}",
             ubi_exe_path.display(),
-            new_exe.display()
+            old_exe.display()
         );
-        std::fs::rename(ubi_exe_path, &new_exe)?;
+        std::fs::rename(ubi_exe_path, &old_exe)?;
         Some(move || {
             println!(
                 "The self-upgrade operation left an old binary behind that must be deleted manually: {}",
-                new_exe.display(),
+                old_exe.display(),
             );
         })
     } else {
