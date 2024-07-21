@@ -18,7 +18,7 @@ too.
 ubi = "0.1.0"
 ```
 
-See the [`ubi` docs on docs.rs](https://docs.rs/crate/ubi/latest) for more details.
+See the [`ubi` docs on docs.rs](https://docs.rs/ubi/latest/ubi/) for more details.
 
 ## Installing It
 
