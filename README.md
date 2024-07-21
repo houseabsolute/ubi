@@ -116,7 +116,7 @@ directly.
 You can run `ubi --self-upgrade` to upgrade `ubi` using `ubi`. Note that you must have write
 permissions to the directory containing `ubi` for this to work.
 
-This does not work on Windows. See GH #21.
+On Windows, this leaves behind a file named `ubi-old.exe` that must be deleted manually.
 
 ## Best Practices for Using `ubi` in CI
 
