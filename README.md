@@ -25,7 +25,7 @@ See the [`ubi` docs on docs.rs](https://docs.rs/crate/ubi/latest) for more detai
 You can install it by hand by downloading the latest
 [release from the releases page](https://github.com/houseabsolute/ubi/releases).
 
-There are also bootstrap install scripts that provide a half-assed implementation of `ubi`:
+There are also bootstrap installer scripts that provide a half-assed implementation of `ubi`:
 
 ### Linux and macOS
 
@@ -65,8 +65,8 @@ curl --silent --location \
 powershell -exec bypass -c "Invoke-WebRequest -URI 'https://raw.githubusercontent.com/houseabsolute/ubi/master/bootstrap/bootstrap-ubi.ps1' -UseBasicParsing | Invoke-Expression"
 ```
 
-You can run this from a command or Powershell command line. This will install `ubi.exe` into the
-directory where you run this.
+You can run this from a command or the Powershell command line. This will install `ubi.exe` into the
+current directory.
 
 ## How to Use It
 
@@ -124,8 +124,8 @@ There are a few things you'll want to consider when using `ubi` in CI.
 
 First, there are
 [the GitHub API rate limits](https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting).
-These can be as low as 60 requests per hour per IP when not providing a `GITHUB_TOKEN`, so you will
-almost certainly want to provide this. When running in GitHub Actions you can use the
+This limit can be as low as 60 requests per hour per IP when not providing a `GITHUB_TOKEN`, so you
+will almost certainly want to provide this. When running in GitHub Actions you can use the
 `${{ secrets.GITHUB_TOKEN }}` syntax to set this env var, and in that case the rate limits are per
 repository.
 
@@ -138,6 +138,13 @@ repository.
         sh
   env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+- name: Install tools with UBI
+  shell: bash
+  run: |
+    "$HOME/bin/ubi" --project houseabsolute/precious --in "$HOME/bin"
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 If you only run `ubi` on one platform, you can avoid hitting the GitHub API entirely by using the
@@ -145,9 +152,9 @@ If you only run `ubi` on one platform, you can avoid hitting the GitHub API enti
 largely defeats the purpose of using `ubi`.
 
 If you are downloading executables from repos you don't control _and_ you don't use the `--url`
-parameter, then you should use the `--tag` parameter to specify the release version you want to
-install. Otherwise `ubi` will always download the latest version, which can lead to surprise
-breakage in CI.
+parameter, then you should use the `--tag` parameter to specify the released version you want to
+install. Otherwise `ubi` will always download the latest version, which can lead to surprises,
+especially if you are running the tools you download in CI.
 
 ## Why This Is Useful
 
@@ -159,8 +166,8 @@ for your platform is quite handy.
 Yes, this can be done in half a dozen lines of shell on Unix systems, but do you know how to do the
 equivalent in Powershell?
 
-Once you have `ubi` installed, you can use it to install any of these single-binary tools available
-on GitHub, on Linux, macOS, and Windows.
+Once you have `ubi` installed, you can use it to install any of these single-binary tools on Linux,
+macOS, and Windows.
 
 ### Is This Better Than Installing from Source?
 
