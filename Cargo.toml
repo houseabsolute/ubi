@@ -21,28 +21,28 @@ path = "src/main.rs"
 anyhow = "1.0.86"
 binstall-tar = "0.4.42"
 bzip2 = "0.4.4"
-clap = { version = "4.5.9", features = ["wrap_help"] }
+clap = { version = "4.5.16", features = ["wrap_help"] }
 document-features = "0.2"
 fern = { version = "0.6.2", features = ["colored"] }
-flate2 = "1.0.30"
+flate2 = "1.0.33"
 itertools = "0.13.0"
-lazy-regex = "3.1.0"
+lazy-regex = "3.3.0"
 log = "0.4.22"
 platforms = "=3.2.0"
-regex = "1.10.5"
-reqwest = { version = "0.12.5", default-features = false, features = ["gzip", "json"] }
+regex = "1.10.6"
+reqwest = { version = "0.12.7", default-features = false, features = ["gzip", "json"] }
 result = "1.0.0"
-serde = { version = "1.0.204", features = ["derive"] }
+serde = { version = "1.0.209", features = ["derive"] }
 strum = { version = "0.26.3", features = ["derive"] }
-tempfile = "3.10.1"
+tempfile = "3.12.0"
 test-case = "3.3.1"
 thiserror = "1.0.63"
-tokio = { version = "1.38.1", default-features = false, features = ["macros", "rt"] }
+tokio = { version = "1.40.0", default-features = false, features = ["macros", "rt"] }
 url = { version = "2.5.2", features = ["serde"] }
 xz = "0.1.0"
 # This disables all the features that require C compilation, which greatly
 # simplifies cross-platform builds.
-zip = { version = "2.1.5", default-features = false, features = [
+zip = { version = "2.2.0", default-features = false, features = [
     "aes-crypto",
     "bzip2",
     "deflate",
@@ -66,7 +66,7 @@ native-tls-vendored = ["reqwest/native-tls-vendored"]
 allow-branch = ["master"]
 
 [dev-dependencies]
-mockito = "1.4.0"
+mockito = "1.5.0"
 
 # workaround for https://github.com/cross-rs/cross/issues/1345
 [package.metadata.cross.target.x86_64-unknown-netbsd]
