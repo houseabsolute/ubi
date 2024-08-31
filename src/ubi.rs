@@ -19,6 +19,14 @@
 //!
 //!     Ok(())
 //! }
+//! ```
+//!
+//! ## Features
+//!
+//! This crate offers several features to control the TLS dependency used by `reqwest`:
+//!
+#![doc = document_features::document_features!()]
+
 mod arch;
 mod extension;
 mod fetcher;

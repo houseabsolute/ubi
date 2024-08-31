@@ -28,6 +28,22 @@ jobs:
             target: x86_64-unknown-linux-musl
             bin: ubi
             name: ubi-Linux-x86_64-musl.tar.gz
+          - os_name: Linux-x86_64 (rustls-native-roots)
+            os: ubuntu-20.04
+            target: x86_64-unknown-linux-musl
+            bin: ubi
+            features: rustls-tls-native-roots
+          - os_name: Linux-x86_64 (native-tls)
+            os: ubuntu-20.04
+            # We need to use gnu or we cannot link against openssl.
+            target: x86_64-unknown-linux-gnu
+            bin: ubi
+            features: native-tls
+          - os_name: Linux-x86_64 (native-tls-vendored)
+            os: ubuntu-20.04
+            target: x86_64-unknown-linux-musl
+            bin: ubi
+            features: native-tls-vendored
           - os_name: Linux-aarch64
             os: ubuntu-20.04
             target: aarch64-unknown-linux-musl
@@ -110,6 +126,25 @@ jobs:
           - stable
           - beta
           - nightly
+        exclude:
+          - platform:
+              features: rustls-tls-native-roots
+            toolchain: beta
+          - platform:
+              features: rustls-tls-native-roots
+            toolchain: nightly
+          - platform:
+              features: native-tls
+            toolchain: beta
+          - platform:
+              features: native-tls
+            toolchain: nightly
+          - platform:
+              features: native-tls-vendored
+            toolchain: beta
+          - platform:
+              features: native-tls-vendored
+            toolchain: nightly
     steps:
       - uses: actions/checkout@v4
       - name: Cache cargo & target directories
@@ -120,18 +155,27 @@ jobs:
         run: |
           git config --global user.email "jdoe@example.com"
           git config --global user.name "J. Doe"
-      - name: Set "--features" flag
-        id: set-features-flag
+      - name: Set "--features" flag value
+        id: set-features-flag-value
+        shell: bash
         run: |
-          printf 'features-flag="--features %s"\n' "${{ matrix.platform.features }}" >> "$GITHUB_OUTPUT"
-        if: matrix.platform.features != ''
+          if [ -n "${{ matrix.platform.features }}" ]; then
+              echo "features=${{ matrix.platform.features }}" >> "$GITHUB_OUTPUT"
+          else 
+              echo "features=default" >> "$GITHUB_OUTPUT"
+          fi
+          cat "$GITHUB_OUTPUT"
+      - name: Maybe install SSL packages
+        run: sudo apt-get update --yes && sudo apt-get install --yes pkg-config openssl libssl-dev
+        if: matrix.platform.features == 'native-tls'
       - name: Build binary
         uses: houseabsolute/actions-rust-cross@v0
         with:
           command: "build"
           target: ${{ matrix.platform.target }}
           toolchain: ${{ matrix.toolchain }}
-          args: "--locked --release"
+          args:
+            "--locked --release --features ${{ steps.set-features-flag-value.outputs.features }}"
           strip: true
       - name: Run tests
         uses: houseabsolute/actions-rust-cross@v0
@@ -139,7 +183,8 @@ jobs:
           command: "test"
           target: ${{ matrix.platform.target }}
           toolchain: ${{ matrix.toolchain }}
-          args: "--locked --release"
+          args:
+            "--locked --release  --features ${{ steps.set-features-flag-value.outputs.features }}"
         if: ${{ !matrix.platform.skip_tests }}
       - name: Package as archive
         shell: bash
@@ -152,6 +197,7 @@ jobs:
           fi
           cd -
         if: |
+          matrix.name != '' &&
           matrix.toolchain == 'stable' &&
           ( startsWith( github.ref, 'refs/tags/v' ) ||
             github.ref == 'refs/tags/test-release' )
@@ -160,10 +206,14 @@ jobs:
         with:
           name: ubi-${{ matrix.platform.os_name }}
           path: "ubi-*"
-        if: matrix.toolchain == 'stable' && github.ref == 'refs/tags/test-release'
+        if: |
+          matrix.name != '' &&
+          matrix.toolchain == 'stable' &&
+          github.ref == 'refs/tags/test-release'
       - name: Generate SHA-256
         run: shasum -a 256 ${{ matrix.platform.name }}
         if: |
+          matrix.name != '' &&
           matrix.toolchain == 'stable' &&
           matrix.platform.os == 'macOS-latest' &&
           ( startsWith( github.ref, 'refs/tags/v' ) ||
@@ -174,4 +224,7 @@ jobs:
           draft: true
           files: "ubi*"
           body_path: Changes.md
-        if: matrix.toolchain == 'stable' && startsWith( github.ref, 'refs/tags/v' )
+        if: |
+          matrix.name != '' &&
+          matrix.toolchain == 'stable' &&
+          startsWith( github.ref, 'refs/tags/v' )

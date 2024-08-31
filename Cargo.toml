@@ -22,6 +22,7 @@ anyhow = "1.0.86"
 binstall-tar = "0.4.42"
 bzip2 = "0.4.4"
 clap = { version = "4.5.9", features = ["wrap_help"] }
+document-features = "0.2"
 fern = { version = "0.6.2", features = ["colored"] }
 flate2 = "1.0.30"
 itertools = "0.13.0"
@@ -29,11 +30,7 @@ lazy-regex = "3.1.0"
 log = "0.4.22"
 platforms = "=3.2.0"
 regex = "1.10.5"
-reqwest = { version = "0.12.5", default-features = false, features = [
-    "gzip",
-    "json",
-    "rustls-tls",
-] }
+reqwest = { version = "0.12.5", default-features = false, features = ["gzip", "json"] }
 result = "1.0.0"
 serde = { version = "1.0.204", features = ["derive"] }
 strum = { version = "0.26.3", features = ["derive"] }
@@ -53,6 +50,17 @@ zip = { version = "2.1.5", default-features = false, features = [
     "lzma",
     "zstd",
 ] }
+
+[features]
+default = ["rustls-tls"]
+## enables the `rustls-tls` feature for the `reqwest` crate.
+rustls-tls = ["reqwest/rustls-tls"]
+## enables the `rustls-tls-native-roots` feature for the `reqwest` crate.
+rustls-tls-native-roots = ["reqwest/rustls-tls-native-roots"]
+## enables the `native-tls` feature for the `reqwest` crate.
+native-tls = ["reqwest/native-tls"]
+## enables the `native-tls-vendored` feature for the `reqwest` crate.
+native-tls-vendored = ["reqwest/native-tls-vendored"]
 
 [workspace.metadata.release]
 allow-branch = ["master"]

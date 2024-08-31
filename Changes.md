@@ -1,3 +1,16 @@
+## 0.1.2
+
+- Added several cargo features to control which crates `reqwest` uses for TLS. The features are:
+
+  - **`rustls-tls`** _(enabled by default)_ — enables the `rustls-tls` feature for the `reqwest`
+    crate.
+  - **`rustls-tls-native-roots`** — enables the `rustls-tls-native-roots` feature for the `reqwest`
+    crate.
+  - **`native-tls`** — enables the `native-tls` feature for the `reqwest` crate.
+  - **`native-tls-vendored`** — enables the `native-tls-vendored` feature for the `reqwest` crate.
+
+  Requested by @jdx. GH #62.
+
 ## 0.1.1 - 2024-07-21
 
 - Fix documentation links to link to the library docs, not the CLI docs.
