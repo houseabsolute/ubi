@@ -1,4 +1,4 @@
-## 0.1.2
+## 0.1.2 - 2024-08-31
 
 - Added several cargo features to control which crates `reqwest` uses for TLS. The features are:
 
