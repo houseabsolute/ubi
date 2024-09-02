@@ -15,19 +15,19 @@ too.
 
 ```
 [dependencies]
-ubi = "0.1.0"
+ubi = "x.y.z"
 ```
 
 See the [`ubi` docs on docs.rs](https://docs.rs/ubi/latest/ubi/) for more details.
 
-## Installing It
+## Installing the CLI Tool
 
-You can install it by hand by downloading the latest
+You can install the CLI tool by hand by downloading the latest
 [release from the releases page](https://github.com/houseabsolute/ubi/releases).
 
 There are also bootstrap installer scripts that provide a half-assed implementation of `ubi`:
 
-### Linux and macOS
+### Linux, macOS, FreeBSD, and NetBSD
 
 ```
 curl --silent --location \
