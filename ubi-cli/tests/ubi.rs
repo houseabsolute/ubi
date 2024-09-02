@@ -54,19 +54,10 @@ impl PreservableTempdir {
 #[allow(clippy::too_many_lines)]
 fn integration_tests() -> Result<()> {
     let cargo = make_exe_pathbuf(&["cargo"]);
-
-    let features = if env::var("CARGO_FEATURE_RUSTLS_TLS_NATIVE_ROOTS").unwrap_or_default() == "1" {
-        "rustls-tls-native-roots"
-    } else if env::var("CARGO_FEATURE_NATIVE_TLS").unwrap_or_default() == "1" {
-        "native-tls"
-    } else if env::var("CARGO_FEATURE_NATIVE_TLS_VENDORED").unwrap_or_default() == "1" {
-        "native-tls-vendored"
-    } else {
-        "default"
-    };
-    run_command(&cargo, &["build", "--features", features])?;
+    run_command(&cargo, &["build"])?;
 
     let mut ubi = env::current_dir()?;
+    ubi.push("..");
     ubi.push("target");
     ubi.push("debug");
     ubi.push(if cfg!(windows) { "ubi.exe" } else { "ubi" });

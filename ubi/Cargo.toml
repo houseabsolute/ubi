@@ -1,0 +1,50 @@
+[package]
+name = "ubi"
+version.workspace = true
+authors.workspace = true
+description = "The Universal Binary Installer library"
+repository.workspace = true
+readme.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+binstall-tar.workspace = true
+bzip2.workspace = true
+clap.workspace = true
+document-features.workspace = true
+fern.workspace = true
+flate2.workspace = true
+itertools.workspace = true
+lazy-regex.workspace = true
+log.workspace = true
+platforms.workspace = true
+regex.workspace = true
+reqwest.workspace = true
+result.workspace = true
+serde.workspace = true
+strum.workspace = true
+tempfile.workspace = true
+test-case.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+url.workspace = true
+xz.workspace = true
+zip.workspace = true
+
+[features]
+default = ["rustls-tls"]
+## enables the `rustls-tls` feature for the `reqwest` crate.
+rustls-tls = ["reqwest/rustls-tls"]
+## enables the `rustls-tls-native-roots` feature for the `reqwest` crate.
+rustls-tls-native-roots = ["reqwest/rustls-tls-native-roots"]
+## enables the `native-tls` feature for the `reqwest` crate.
+native-tls = ["reqwest/native-tls"]
+## enables the `native-tls-vendored` feature for the `reqwest` crate.
+native-tls-vendored = ["reqwest/native-tls-vendored"]
+
+[dev-dependencies]
+mockito.workspace = true
+test-case.workspace = true
+tokio.workspace = true

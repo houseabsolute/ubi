@@ -1,4 +1,5 @@
-//! A library (and CLI tool) for downloading and installing pre-built binaries from GitHub.
+//! A library for downloading and installing pre-built binaries from GitHub.
+//!
 //! UBI stands for "Universal Binary Installer". It downloads and installs pre-built binaries from
 //! GitHub releases. It is designed to be used in shell scripts and other automation.
 //!

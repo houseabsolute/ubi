@@ -1,0 +1,22 @@
+[package]
+name = "ubi-cli"
+version.workspace = true
+authors.workspace = true
+description = "The Universal Binary Installer CLI tool"
+repository.workspace = true
+readme.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+log.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+ubi = { version = "0.2.0", path = "../ubi" }
+
+[[bin]]
+name = "ubi"
+path = "src/main.rs"
