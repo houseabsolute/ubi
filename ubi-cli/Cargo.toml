@@ -20,3 +20,6 @@ ubi = { version = "0.2.0", path = "../ubi", features = ["default", "logging"] }
 [[bin]]
 name = "ubi"
 path = "src/main.rs"
+
+[package.metadata.release]
+tag-name = "v{{version}}"
