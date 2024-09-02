@@ -124,26 +124,18 @@ jobs:
             name: ubi-Darwin-aarch64.tar.gz
         toolchain:
           - stable
-          - beta
-          - nightly
-        exclude:
+        include:
           - platform:
-              features: rustls-tls-native-roots
+              os_name: Linux-x86_64
+              os: ubuntu-20.04
+              target: x86_64-unknown-linux-musl
+              bin: ubi
             toolchain: beta
           - platform:
-              features: rustls-tls-native-roots
-            toolchain: nightly
-          - platform:
-              features: native-tls
-            toolchain: beta
-          - platform:
-              features: native-tls
-            toolchain: nightly
-          - platform:
-              features: native-tls-vendored
-            toolchain: beta
-          - platform:
-              features: native-tls-vendored
+              os_name: Linux-x86_64
+              os: ubuntu-20.04
+              target: x86_64-unknown-linux-musl
+              bin: ubi
             toolchain: nightly
     steps:
       - uses: actions/checkout@v4
