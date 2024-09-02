@@ -1,3 +1,9 @@
+## 0.2.0 - 2024-09-02
+
+- For this release, the library and CLI code have been split into two crates. The library code now
+  has fewer dependencies, as there were a few dependencies that were only needed for the CLI code,
+  notably `clap`, `fern`, and `tokio`.
+
 ## 0.1.2 - 2024-08-31
 
 - Added several cargo features to control which crates `reqwest` uses for TLS. The features are:
