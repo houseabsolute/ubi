@@ -21,6 +21,7 @@ cmd = [
 ok_exit_codes = 0
 lint_failure_exit_codes = 101
 expect_stderr = true
+labels = ["default"]
 
 [commands."clippy --fix"]
 type = "tidy"
@@ -43,6 +44,7 @@ cmd = [
 ok_exit_codes = 0
 lint_failure_exit_codes = 101
 expect_stderr = true
+labels = ["default"]
 
 [commands.rustfmt]
 type = "both"
@@ -51,6 +53,7 @@ cmd = ["rustfmt", "--edition", "2021"]
 lint_flags = "--check"
 ok_exit_codes = [0]
 lint_failure_exit_codes = [1]
+labels = ["default", "fast-tidy"]
 
 [commands.omegasort-gitignore]
 type = "both"
@@ -61,6 +64,7 @@ tidy_flags = "--in-place"
 ok_exit_codes = 0
 lint_failure_exit_codes = 1
 expect_stderr = true
+labels = ["default", "fast-tidy"]
 
 [commands.prettier]
 type = "both"
@@ -78,6 +82,7 @@ tidy_flags = "--write"
 ok_exit_codes = 0
 lint_failure_exit_codes = 1
 ignore_stderr = "Code style issues"
+labels = ["default", "fast-tidy"]
 
 [commands.shellcheck]
 type = "lint"
@@ -94,6 +99,7 @@ lint_flags = "--diff"
 tidy_flags = "--write"
 ok_exit_codes = 0
 lint_failure_exit_codes = 1
+labels = ["default", "fast-tidy"]
 
 [commands.typos]
 type = "lint"
@@ -112,3 +118,4 @@ lint_flags = "--check"
 ok_exit_codes = 0
 lint_failure_exit_codes = 1
 ignore_stderr = "INFO taplo.+"
+labels = ["default", "fast-tidy"]

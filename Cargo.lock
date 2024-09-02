@@ -1372,12 +1372,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "result"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "194d8e591e405d1eecf28819740abed6d719d1a2db87fc0bcdedee9a26d55560"
-
-[[package]]
 name = "ring"
 version = "0.17.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1897,7 +1891,6 @@ dependencies = [
  "anyhow",
  "binstall-tar",
  "bzip2",
- "clap",
  "document-features",
  "fern",
  "flate2",
@@ -1908,7 +1901,6 @@ dependencies = [
  "platforms",
  "regex",
  "reqwest",
- "result",
  "serde",
  "strum",
  "tempfile",

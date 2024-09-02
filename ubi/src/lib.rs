@@ -40,17 +40,12 @@ use crate::{
     release::Download,
 };
 use anyhow::{anyhow, Result};
-use fern::{
-    colors::{Color, ColoredLevelConfig},
-    Dispatch,
-};
 use log::debug;
 use platforms::{Platform, PlatformReq, OS};
 use reqwest::{
     header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION, USER_AGENT},
     Client, StatusCode,
 };
-use result::OptionResultExt;
 use std::{
     env,
     fs::{create_dir_all, File},
@@ -235,7 +230,11 @@ impl<'a> Ubi<'a> {
         platform: &'a Platform,
         github_api_url_base: Option<String>,
     ) -> Result<Ubi<'a>> {
-        let url = url.map(Url::parse).invert()?;
+        let url = if let Some(u) = url {
+            Some(Url::parse(u)?)
+        } else {
+            None
+        };
         let project_name = Self::parse_project_name(project, url.as_ref())?;
         let exe = Self::exe_name(exe, &project_name, platform);
         let install_path = Self::install_path(install_dir, &exe)?;
@@ -408,12 +407,19 @@ impl<'a> Ubi<'a> {
     }
 }
 
+#[cfg(any(test, feature = "logging"))]
+use fern::{
+    colors::{Color, ColoredLevelConfig},
+    Dispatch,
+};
+
 /// This function initializes logging for the application. It's public for the sake of the `ubi`
 /// binary, but it lives in the library crate so that test code can also enable logging.
 ///
 /// # Errors
 ///
 /// This can return a `log::SetLoggerError` error.
+#[cfg(any(test, feature = "logging"))]
 pub fn init_logger(level: log::LevelFilter) -> Result<(), log::SetLoggerError> {
     let line_colors = ColoredLevelConfig::new()
         .error(Color::Red)

@@ -12,9 +12,8 @@ edition.workspace = true
 anyhow.workspace = true
 binstall-tar.workspace = true
 bzip2.workspace = true
-clap.workspace = true
 document-features.workspace = true
-fern.workspace = true
+fern = { workspace = true, optional = true }
 flate2.workspace = true
 itertools.workspace = true
 lazy-regex.workspace = true
@@ -22,13 +21,10 @@ log.workspace = true
 platforms.workspace = true
 regex.workspace = true
 reqwest.workspace = true
-result.workspace = true
 serde.workspace = true
 strum.workspace = true
 tempfile.workspace = true
-test-case.workspace = true
 thiserror.workspace = true
-tokio.workspace = true
 url.workspace = true
 xz.workspace = true
 zip.workspace = true
@@ -43,8 +39,10 @@ rustls-tls-native-roots = ["reqwest/rustls-tls-native-roots"]
 native-tls = ["reqwest/native-tls"]
 ## enables the `native-tls-vendored` feature for the `reqwest` crate.
 native-tls-vendored = ["reqwest/native-tls-vendored"]
+logging = ["dep:fern"]
 
 [dev-dependencies]
+fern.workspace = true
 mockito.workspace = true
 test-case.workspace = true
 tokio.workspace = true
