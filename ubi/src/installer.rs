@@ -9,7 +9,7 @@ use std::{
     io::{Read, Write},
     path::{Path, PathBuf},
 };
-use xz::read::XzDecoder;
+use xz2::read::XzDecoder;
 use zip::ZipArchive;
 
 #[cfg(target_family = "unix")]
