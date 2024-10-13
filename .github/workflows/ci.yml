@@ -6,8 +6,8 @@ env:
   RUST_BACKTRACE: 1
 jobs:
   test:
-    name: ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
-    runs-on: ${{ matrix.platform.os }}
+    name: ${{ matrix.platform.os-name }} with rust ${{ matrix.toolchain }}
+    runs-on: ${{ matrix.platform.runs-on }}
     strategy:
       fail-fast: false
       matrix:
@@ -17,88 +17,88 @@ jobs:
           # - sparc64-unknown-linux-gnu - cannot compile openssl-sys
           # - x86_64-unknown-illumos - weird error compiling openssl - "bin/sh: 1: granlib: not found"
 
-          - os_name: FreeBSD-x86_64
-            os: ubuntu-20.04
+          - os-name: FreeBSD-x86_64
+            runs-on: ubuntu-20.04
             target: x86_64-unknown-freebsd
             skip_tests: true
-          - os_name: Linux-x86_64
-            os: ubuntu-20.04
+          - os-name: Linux-x86_64
+            runs-on: ubuntu-20.04
             target: x86_64-unknown-linux-musl
-          - os_name: Linux-x86_64 (rustls-native-roots)
-            os: ubuntu-20.04
+          - os-name: Linux-x86_64 (rustls-native-roots)
+            runs-on: ubuntu-20.04
             target: x86_64-unknown-linux-musl
             features: rustls-tls-native-roots
-          - os_name: Linux-x86_64 (native-tls)
-            os: ubuntu-20.04
+          - os-name: Linux-x86_64 (native-tls)
+            runs-on: ubuntu-20.04
             # We need to use gnu or we cannot link against openssl.
             target: x86_64-unknown-linux-gnu
             features: native-tls
-          - os_name: Linux-x86_64 (native-tls-vendored)
-            os: ubuntu-20.04
+          - os-name: Linux-x86_64 (native-tls-vendored)
+            runs-on: ubuntu-20.04
             target: x86_64-unknown-linux-musl
             features: native-tls-vendored
-          - os_name: Linux-aarch64
-            os: ubuntu-20.04
+          - os-name: Linux-aarch64
+            runs-on: ubuntu-20.04
             target: aarch64-unknown-linux-musl
-          - os_name: Linux-arm
-            os: ubuntu-20.04
+          - os-name: Linux-arm
+            runs-on: ubuntu-20.04
             target: arm-unknown-linux-musleabi
-          - os_name: Linux-i686
-            os: ubuntu-20.04
+          - os-name: Linux-i686
+            runs-on: ubuntu-20.04
             target: i686-unknown-linux-musl
             skip_tests: true
-          - os_name: Linux-powerpc
-            os: ubuntu-20.04
+          - os-name: Linux-powerpc
+            runs-on: ubuntu-20.04
             target: powerpc-unknown-linux-gnu
             skip_tests: true
-          - os_name: Linux-powerpc64
-            os: ubuntu-20.04
+          - os-name: Linux-powerpc64
+            runs-on: ubuntu-20.04
             target: powerpc64-unknown-linux-gnu
             skip_tests: true
-          - os_name: Linux-powerpc64le
-            os: ubuntu-20.04
+          - os-name: Linux-powerpc64le
+            runs-on: ubuntu-20.04
             target: powerpc64le-unknown-linux-gnu
             skip_tests: true
-          - os_name: Linux-riscv64
-            os: ubuntu-20.04
+          - os-name: Linux-riscv64
+            runs-on: ubuntu-20.04
             target: riscv64gc-unknown-linux-gnu
-          - os_name: Linux-s390x
-            os: ubuntu-20.04
+          - os-name: Linux-s390x
+            runs-on: ubuntu-20.04
             target: s390x-unknown-linux-gnu
             skip_tests: true
-          - os_name: NetBSD-x86_64
-            os: ubuntu-20.04
+          - os-name: NetBSD-x86_64
+            runs-on: ubuntu-20.04
             target: x86_64-unknown-netbsd
             skip_tests: true
-          - os_name: Windows-aarch64
-            os: windows-latest
+          - os-name: Windows-aarch64
+            runs-on: windows-latest
             target: aarch64-pc-windows-msvc
             skip_tests: true
-          - os_name: Windows-i686
-            os: windows-latest
+          - os-name: Windows-i686
+            runs-on: windows-latest
             target: i686-pc-windows-msvc
             skip_tests: true
-          - os_name: Windows-x86_64
-            os: windows-latest
+          - os-name: Windows-x86_64
+            runs-on: windows-latest
             target: x86_64-pc-windows-msvc
-          - os_name: macOS-x86_64
-            os: macOS-latest
+          - os-name: macOS-x86_64
+            runs-on: macOS-latest
             target: x86_64-apple-darwin
-          - os_name: macOS-aarch64
-            os: macOS-latest
+          - os-name: macOS-aarch64
+            runs-on: macOS-latest
             target: aarch64-apple-darwin
         toolchain:
           - stable
         include:
           - platform:
-              os_name: Linux-x86_64
-              os: ubuntu-20.04
+              os-name: Linux-x86_64
+              runs-on: ubuntu-20.04
               target: x86_64-unknown-linux-musl
               bin: ubi
             toolchain: beta
           - platform:
-              os_name: Linux-x86_64
-              os: ubuntu-20.04
+              os-name: Linux-x86_64
+              runs-on: ubuntu-20.04
               target: x86_64-unknown-linux-musl
               bin: ubi
             toolchain: nightly
