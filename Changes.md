@@ -5,6 +5,10 @@
   there were multiple artifacts that matched the platform OS and architecture, which would not work
   on musl-based platforms like Alpine Linux. Reported by @Burner. GH #70.
 
+- Fixed a bug in the handling of release artifact names with version numbers in them that look like
+  extensions. This caused `ubi` to fail when trying to install `shfmt` 3.10.0, and probably many
+  other tools. Reported by !jimeh (Jim Myhrberg). GH #67.
+
 ## 0.2.0 - 2024-09-02
 
 - For this release, the library and CLI code have been split into two crates. The library code now
