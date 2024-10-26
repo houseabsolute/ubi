@@ -7,7 +7,7 @@
 
 - Fixed a bug in the handling of release artifact names with version numbers in them that look like
   extensions. This caused `ubi` to fail when trying to install `shfmt` 3.10.0, and probably many
-  other tools. Reported by !jimeh (Jim Myhrberg). GH #67.
+  other tools. Reported by @jimeh (Jim Myhrberg). GH #67.
 
 ## 0.2.0 - 2024-09-02
 
