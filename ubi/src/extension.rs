@@ -1,3 +1,4 @@
+use crate::os::all_oses_re;
 use anyhow::Result;
 use itertools::Itertools;
 use lazy_regex::regex;
@@ -71,6 +72,11 @@ impl Extension {
             return Ok(None);
         }
 
+        if extension_is_platform(ext_str) {
+            debug!("the extension {ext_str:?} is a platform name, ignoring");
+            return Ok(None);
+        }
+
         Err(ExtensionError::UnknownExtension {
             path: path.to_string(),
             ext: ext_str.to_string_lossy().to_string(),
@@ -99,6 +105,10 @@ fn extension_is_part_of_version(path: &str, ext_str: &OsStr) -> bool {
     // If the extension starts with the last part of the version then it's not
     // a real extension.
     ext_str == dot_num.as_str()
+}
+
+fn extension_is_platform(ext_str: &OsStr) -> bool {
+    all_oses_re().is_match(ext_str.to_string_lossy().as_ref())
 }
 
 #[cfg(test)]

@@ -9,6 +9,10 @@
   extensions. This caused `ubi` to fail when trying to install `shfmt` 3.10.0, and probably many
   other tools. Reported by @jimeh (Jim Myhrberg). GH #67.
 
+- Work around release artifacts that put the platform name after a period, so it looks like an
+  extension. This is the case with `direnv`, at least with the v2.35.0 release, which has releast
+  artifacts like "direnv.linux-amd64". Reported by @jimeh (Jim Myhrberg). GH #67.
+
 ## 0.2.0 - 2024-09-02
 
 - For this release, the library and CLI code have been split into two crates. The library code now

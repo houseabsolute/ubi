@@ -5,6 +5,7 @@ use crate::{
         x86_64_re,
     },
     extension::Extension,
+    os::{freebsd_re, fuchsia, illumos_re, linux_re, macos_re, netbsd_re, solaris_re, windows_re},
     release::Asset,
 };
 use anyhow::{anyhow, Result};
@@ -351,17 +352,17 @@ impl<'a> AssetPicker<'a> {
             // commented out here.
             //
             //OS::Dragonfly => regex!(r"(?i:(?:\b|_)dragonfly(?:\b|_))"),
-            OS::FreeBSD => regex!(r"(?i:(?:\b|_)freebsd(?:\b|_))"),
-            OS::Fuchsia => regex!(r"(?i:(?:\b|_)fuchsia(?:\b|_))"),
+            OS::FreeBSD => freebsd_re(),
+            OS::Fuchsia => fuchsia(),
             //OS::Haiku => regex!(r"(?i:(?:\b|_)haiku(?:\b|_))"),
-            OS::IllumOS => regex!(r"(?i:(?:\b|_)illumos(?:\b|_))"),
-            OS::Linux => regex!(r"(?i:(?:\b|_)linux(?:\b|_|32|64))"),
-            OS::MacOS => regex!(r"(?i:(?:\b|_)(?:darwin|macos|osx)(?:\b|_))"),
-            OS::NetBSD => regex!(r"(?i:(?:\b|_)netbsd(?:\b|_))"),
+            OS::IllumOS => illumos_re(),
+            OS::Linux => linux_re(),
+            OS::MacOS => macos_re(),
+            OS::NetBSD => netbsd_re(),
             //OS::OpenBSD => regex!(r"(?i:(?:\b|_)openbsd(?:\b|_))"),
-            OS::Solaris => regex!(r"(?i:(?:\b|_)solaris(?:\b|_))"),
+            OS::Solaris => solaris_re(),
             //OS::VxWorks => regex!(r"(?i:(?:\b|_)vxworks(?:\b|_))"),
-            OS::Windows => regex!(r"(?i:(?:\b|_)win(?:32|64|dows)?(?:\b|_))"),
+            OS::Windows => windows_re(),
             _ => unreachable!(
                 "Cannot determine what type of compiled binary to use for this platform"
             ),

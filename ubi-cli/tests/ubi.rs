@@ -402,6 +402,15 @@ fn integration_tests() -> Result<()> {
         make_exe_pathbuf(&["bin", "yt-dlp"]),
     )?;
 
+    // This project releases bare binaries with the platform name looking like an extension,
+    // e..g. "direnv.darwin-amd64".
+    run_test(
+        td.path(),
+        ubi.as_ref(),
+        &["--project", "direnv/direnv", "--tag", "v2.35.0"],
+        make_exe_pathbuf(&["bin", "direnv"]),
+    )?;
+
     Ok(())
 }
 

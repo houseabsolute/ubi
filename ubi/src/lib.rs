@@ -32,6 +32,7 @@ mod arch;
 mod extension;
 mod fetcher;
 mod installer;
+mod os;
 mod picker;
 mod release;
 
