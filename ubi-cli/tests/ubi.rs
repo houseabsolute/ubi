@@ -76,15 +76,15 @@ fn integration_tests() -> Result<()> {
         run_test(
             td.path(),
             ubi.as_ref(),
-            &["--project", "houseabsolute/precious", "--tag", "v0.0.6"],
+            &["--project", "houseabsolute/precious", "--tag", "v0.7.2"],
             precious_bin.clone(),
         )?;
         match run_command(precious_bin.as_ref(), &["--version"]) {
             Ok((stdout, _)) => {
                 assert!(stdout.is_some(), "got stdout from precious");
                 assert!(
-                    stdout.unwrap().contains("precious 0.0.6"),
-                    "downloaded version 0.0.6"
+                    stdout.unwrap().contains("precious 0.7.2"),
+                    "downloaded version 0.7.2"
                 );
             }
             Err(e) => return Err(e),
@@ -226,7 +226,10 @@ fn integration_tests() -> Result<()> {
         }
     }
 
-    // This project's 22.08.1 release has an xz-compressed tarball.
+    // This project's 22.08.1 release has an xz-compressed tarball. This project's Linux release
+    // does not work on a musl platform. Strictly speaking, this test can be run when the _target_
+    // is musl but the platform is not, but it's easiest to skip it with a `cfg` directive.
+    #[cfg(not(target_env = "musl"))]
     {
         let hx_bin = make_exe_pathbuf(&["bin", "hx"]);
         run_test(

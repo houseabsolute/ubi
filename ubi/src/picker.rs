@@ -18,14 +18,19 @@ use regex::Regex;
 pub(crate) struct AssetPicker<'a> {
     matching: Option<&'a str>,
     platform: &'a Platform,
+    is_musl: bool,
 }
 
 impl<'a> AssetPicker<'a> {
-    pub(crate) fn new(matching: Option<&'a str>, platform: &'a Platform) -> Self {
-        Self { matching, platform }
+    pub(crate) fn new(matching: Option<&'a str>, platform: &'a Platform, is_musl: bool) -> Self {
+        Self {
+            matching,
+            platform,
+            is_musl,
+        }
     }
 
-    pub(crate) fn pick_asset(&self, assets: Vec<Asset>) -> Result<Asset> {
+    pub(crate) fn pick_asset(&mut self, assets: Vec<Asset>) -> Result<Asset> {
         debug!("filtering out assets that do not have a valid extension");
         let mut assets: Vec<_> = assets
             .into_iter()
@@ -45,19 +50,30 @@ impl<'a> AssetPicker<'a> {
 
         let all_names = assets.iter().map(|a| &a.name).join(", ");
 
-        let os_matches = self.os_matches(assets);
-        if os_matches.is_empty() {
+        let mut matches = self.os_matches(assets);
+        if matches.is_empty() {
             return Err(anyhow!(
                 "could not find a release for this OS ({}) from {all_names}",
-                self.platform,
+                self.platform.target_os,
             ));
         }
 
-        let matches = self.arch_matches(os_matches);
+        matches = self.arch_matches(matches);
         if matches.is_empty() {
             return Err(anyhow!(
-                "could not find a release for this OS and architecture ({}) from {all_names}",
-                self.platform,
+                "could not find a release for this OS ({}) and architecture ({}) from {all_names}",
+                self.platform.target_os,
+                self.platform.target_arch,
+            ));
+        }
+
+        matches = self.libc_matches(matches);
+        if matches.is_empty() {
+            return Err(anyhow!(
+                "could not find a release for this OS ({}), architecture ({}), and libc ({}) from {all_names}",
+                self.platform.target_os,
+                self.platform.target_arch,
+                self.libc_name(),
             ));
         }
 
@@ -138,7 +154,42 @@ impl<'a> AssetPicker<'a> {
         matches
     }
 
-    fn pick_asset_from_matches(&self, mut matches: Vec<Asset>) -> Result<Asset> {
+    fn libc_matches(&mut self, matches: Vec<Asset>) -> Vec<Asset> {
+        if !self.is_musl {
+            return matches;
+        }
+
+        debug!("filtering out glibc assets since this is a musl platform");
+
+        let mut libc_matches: Vec<Asset> = vec![];
+        for asset in &matches {
+            debug!("checking for glibc in asset name = {}", asset.name);
+            if asset.name.contains("-gnu") || asset.name.contains("-glibc") {
+                debug!("indicates glibc and is not compatible with a musl platform");
+                continue;
+            } else if asset.name.contains("-musl") {
+                debug!("indicates musl");
+            } else {
+                debug!("name does not indicate the libc it was compiled against");
+            }
+
+            libc_matches.push(asset.clone());
+        }
+
+        libc_matches
+    }
+
+    fn libc_name(&mut self) -> &'static str {
+        if self.is_musl {
+            "musl"
+        } else if self.platform.target_os == OS::Linux {
+            "glibc"
+        } else {
+            "native"
+        }
+    }
+
+    fn pick_asset_from_matches(&mut self, mut matches: Vec<Asset>) -> Result<Asset> {
         if matches.len() == 1 {
             debug!("only found one candidate asset");
             return Ok(matches.remove(0));
@@ -160,6 +211,8 @@ impl<'a> AssetPicker<'a> {
         if let Some(asset) = asset {
             return Ok(asset);
         }
+
+        let filtered = self.maybe_filter_for_musl_platform(filtered);
 
         debug!(
             "cannot disambiguate multiple asset names, picking the first one after sorting by name"
@@ -258,6 +311,33 @@ impl<'a> AssetPicker<'a> {
         (matches, None)
     }
 
+    fn maybe_filter_for_musl_platform(&mut self, matches: Vec<Asset>) -> Vec<Asset> {
+        if !self.is_musl {
+            return matches;
+        }
+
+        let asset_names = matches.iter().map(|a| a.name.as_str()).collect::<Vec<_>>();
+        debug!(
+            "found multiple candidate assets, filtering for musl binaries in {:?}",
+            asset_names,
+        );
+
+        if !matches.iter().any(|a| a.name.contains("musl")) {
+            debug!("no musl assets found, falling back to all assets");
+            return matches;
+        }
+
+        let musl = matches
+            .into_iter()
+            .filter(|a| a.name.contains("musl"))
+            .collect::<Vec<_>>();
+        debug!(
+            "found musl assets: {}",
+            musl.iter().map(|a| a.name.as_str()).join(",")
+        );
+        musl
+    }
+
     fn os_matcher(&self) -> &'static Lazy<Regex> {
         debug!("current OS = {}", self.platform.target_os);
 
@@ -336,9 +416,10 @@ mod test {
     fn pick_asset_from_matches_64_bit_platform() -> Result<()> {
         let req = PlatformReq::from_str("x86_64-unknown-linux-musl")?;
         let platform = req.matching_platforms().next().unwrap();
-        let picker = AssetPicker {
+        let mut picker = AssetPicker {
             matching: None,
             platform,
+            is_musl: false,
         };
 
         {
@@ -383,9 +464,10 @@ mod test {
             );
         }
 
-        let picker = AssetPicker {
+        let mut picker = AssetPicker {
             matching: Some("musl"),
             platform,
+            is_musl: false,
         };
 
         {
@@ -431,9 +513,10 @@ mod test {
     fn pick_asset_from_matches_32_bit_platform() -> Result<()> {
         let req = PlatformReq::from_str("i686-unknown-linux-gnu")?;
         let platform = req.matching_platforms().next().unwrap();
-        let picker = AssetPicker {
+        let mut picker = AssetPicker {
             matching: None,
             platform,
+            is_musl: false,
         };
 
         {
@@ -445,9 +528,10 @@ mod test {
             assert_eq!(picked_asset, assets[0], "only one asset, so pick that one");
         }
 
-        let picker = AssetPicker {
+        let mut picker = AssetPicker {
             matching: Some("musl"),
             platform,
+            is_musl: false,
         };
 
         {
@@ -476,9 +560,10 @@ mod test {
         //init_logger(log::LevelFilter::Debug)?;
         let req = PlatformReq::from_str("aarch64-apple-darwin")?;
         let platform = req.matching_platforms().next().unwrap();
-        let picker = AssetPicker {
+        let mut picker = AssetPicker {
             matching: None,
             platform,
+            is_musl: false,
         };
 
         {
@@ -517,6 +602,65 @@ mod test {
             assert_eq!(
                 picked_asset, assets[0],
                 "pick the x86-64 asset on macOS ARM if no aarch64 asset is available"
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn pick_asset_from_matches_musl() -> Result<()> {
+        //init_logger(log::LevelFilter::Debug)?;
+        let req = PlatformReq::from_str("aarch64-apple-darwin")?;
+        let platform = req.matching_platforms().next().unwrap();
+        let mut picker = AssetPicker {
+            matching: None,
+            platform,
+            is_musl: true,
+        };
+
+        {
+            let assets = vec![Asset {
+                name: "project-linux-amd64.tar.gz".to_string(),
+                url: Url::parse("https://example.com")?,
+            }];
+            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
+            assert_eq!(picked_asset, assets[0], "only one asset, so pick that one");
+        }
+
+        {
+            let assets = vec![
+                Asset {
+                    name: "project-linux-gnu.tar.gz".to_string(),
+                    url: Url::parse("https://example.com")?,
+                },
+                Asset {
+                    name: "project-linux-musl.tar.gz".to_string(),
+                    url: Url::parse("https://example.com")?,
+                },
+            ];
+            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
+            assert_eq!(
+                picked_asset, assets[1],
+                "pick the musl asset over gnu on a musl platform"
+            );
+        }
+
+        {
+            let assets = vec![
+                Asset {
+                    name: "project-linux-amd64.tar.gz".to_string(),
+                    url: Url::parse("https://example.com")?,
+                },
+                Asset {
+                    name: "project-linux-amd64-musl.tar.gz".to_string(),
+                    url: Url::parse("https://example.com")?,
+                },
+            ];
+            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
+            assert_eq!(
+                picked_asset, assets[1],
+                "pick the musl asset over unspecified libc on a musl platform"
             );
         }
 

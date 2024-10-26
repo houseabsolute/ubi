@@ -37,7 +37,7 @@ async fn main() {
         }
     };
     let status = match make_ubi(&matches, &ubi_exe_path) {
-        Ok((u, post_run)) => match u.install_binary().await {
+        Ok((mut u, post_run)) => match u.install_binary().await {
             Ok(()) => {
                 if let Some(post_run) = post_run {
                     post_run();

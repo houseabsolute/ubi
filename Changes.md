@@ -1,3 +1,10 @@
+## 0.2.1
+
+- When running on Linux, `ubi` now checks to see if the platform is using `musl` and will prefer a
+  release artifact with "musl" in the name. Previously, it would usually pick a glibc artifact if
+  there were multiple artifacts that matched the platform OS and architecture, which would not work
+  on musl-based platforms like Alpine Linux. Reported by @Burner. GH #70.
+
 ## 0.2.0 - 2024-09-02
 
 - For this release, the library and CLI code have been split into two crates. The library code now

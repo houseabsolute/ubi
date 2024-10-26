@@ -55,6 +55,7 @@ use std::{
 };
 use tempfile::tempdir;
 use url::Url;
+use which::which;
 
 // The version of the `ubi` crate.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -201,9 +202,28 @@ impl<'a> UbiBuilder<'a> {
             self.exe,
             self.github_token,
             platform,
+            platform_is_musl(platform),
             self.github_api_url_base,
         )
     }
+}
+
+fn platform_is_musl(platform: &Platform) -> bool {
+    if platform.target_os != OS::Linux {
+        return false;
+    }
+
+    let Ok(ls) = which("ls") else {
+        return false;
+    };
+    let Ok(ldd) = which("ldd") else {
+        return false;
+    };
+
+    let Ok(output) = std::process::Command::new(ldd).arg(ls).output() else {
+        return false;
+    };
+    output.status.success() && String::from_utf8_lossy(&output.stdout).contains("musl")
 }
 
 /// `Ubi` is the core of this library, and is used to download and install a binary. Use the
@@ -228,6 +248,7 @@ impl<'a> Ubi<'a> {
         exe: Option<&str>,
         github_token: Option<&str>,
         platform: &'a Platform,
+        is_musl: bool,
         github_api_url_base: Option<String>,
     ) -> Result<Ubi<'a>> {
         let url = if let Some(u) = url {
@@ -245,7 +266,7 @@ impl<'a> Ubi<'a> {
                 url,
                 github_api_url_base,
             ),
-            asset_picker: AssetPicker::new(matching, platform),
+            asset_picker: AssetPicker::new(matching, platform, is_musl),
             installer: Installer::new(install_path, exe),
             reqwest_client: Self::reqwest_client(github_token)?,
         })
@@ -355,13 +376,13 @@ impl<'a> Ubi<'a> {
     /// * Unable to find an executable with the right name in a downloaded archive.
     /// * Unable to write the executable to the specified directory.
     /// * Unable to set executable permissions on the installed binary.
-    pub async fn install_binary(&self) -> Result<()> {
+    pub async fn install_binary(&mut self) -> Result<()> {
         let asset = self.asset().await?;
         let download = self.download_asset(&self.reqwest_client, asset).await?;
         self.installer.install(&download)
     }
 
-    async fn asset(&self) -> Result<Asset> {
+    async fn asset(&mut self) -> Result<Asset> {
         let assets = self
             .asset_fetcher
             .fetch_assets(&self.reqwest_client)
@@ -712,7 +733,7 @@ mod test {
                 let platform = req.matching_platforms().next().unwrap();
 
                 if let Some(expect_ubi) = t.expect_ubi {
-                    let ubi = Ubi::new(
+                    let mut ubi = Ubi::new(
                         Some("houseabsolute/ubi"),
                         None,
                         None,
@@ -721,6 +742,7 @@ mod test {
                         None,
                         None,
                         platform,
+                        false,
                         Some(server.url()),
                     )?;
                     let asset = ubi.asset().await?;
@@ -740,7 +762,7 @@ mod test {
                 }
 
                 if let Some(expect_omegasort) = t.expect_omegasort {
-                    let ubi = Ubi::new(
+                    let mut ubi = Ubi::new(
                         Some("houseabsolute/omegasort"),
                         None,
                         None,
@@ -749,6 +771,7 @@ mod test {
                         None,
                         None,
                         platform,
+                        false,
                         Some(server.url()),
                     )?;
                     let asset = ubi.asset().await?;
@@ -1079,7 +1102,7 @@ mod test {
                 let req = PlatformReq::from_str(p)
                     .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
                 let platform = req.matching_platforms().next().unwrap();
-                let ubi = Ubi::new(
+                let mut ubi = Ubi::new(
                     Some("protocolbuffers/protobuf"),
                     None,
                     None,
@@ -1088,6 +1111,7 @@ mod test {
                     None,
                     None,
                     platform,
+                    false,
                     Some(server.url()),
                 )?;
                 let asset = ubi.asset().await?;
@@ -1210,7 +1234,7 @@ mod test {
                 let req = PlatformReq::from_str(p)
                     .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
                 let platform = req.matching_platforms().next().unwrap();
-                let ubi = Ubi::new(
+                let mut ubi = Ubi::new(
                     Some("FiloSottile/mkcert"),
                     None,
                     None,
@@ -1219,6 +1243,7 @@ mod test {
                     None,
                     None,
                     platform,
+                    false,
                     Some(server.url()),
                 )?;
                 let asset = ubi.asset().await?;
@@ -1312,7 +1337,7 @@ mod test {
                 let req = PlatformReq::from_str(p)
                     .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
                 let platform = req.matching_platforms().next().unwrap();
-                let ubi = Ubi::new(
+                let mut ubi = Ubi::new(
                     Some("stedolan/jq"),
                     None,
                     None,
@@ -1321,6 +1346,7 @@ mod test {
                     None,
                     None,
                     platform,
+                    false,
                     Some(server.url()),
                 )?;
                 let asset = ubi.asset().await?;
@@ -1391,7 +1417,7 @@ mod test {
             let req = PlatformReq::from_str(p)
                 .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
             let platform = req.matching_platforms().next().unwrap();
-            let ubi = Ubi::new(
+            let mut ubi = Ubi::new(
                 Some("test/multiple-matches"),
                 None,
                 None,
@@ -1400,6 +1426,7 @@ mod test {
                 None,
                 None,
                 platform,
+                false,
                 Some(server.url()),
             )?;
             let asset = ubi.asset().await?;
@@ -1443,7 +1470,7 @@ mod test {
         let req = PlatformReq::from_str(p)
             .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
         let platform = req.matching_platforms().next().unwrap();
-        let ubi = Ubi::new(
+        let mut ubi = Ubi::new(
             Some("test/macos"),
             None,
             None,
@@ -1452,6 +1479,7 @@ mod test {
             None,
             None,
             platform,
+            false,
             Some(server.url()),
         )?;
 
@@ -1540,7 +1568,7 @@ mod test {
             let req = PlatformReq::from_str(p)
                 .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
             let platform = req.matching_platforms().next().unwrap();
-            let ubi = Ubi::new(
+            let mut ubi = Ubi::new(
                 Some("test/os-without-arch"),
                 None,
                 None,
@@ -1549,6 +1577,7 @@ mod test {
                 None,
                 None,
                 platform,
+                false,
                 Some(server.url()),
             )?;
             let asset = ubi.asset().await?;
@@ -1573,7 +1602,7 @@ mod test {
             let req = PlatformReq::from_str(p)
                 .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
             let platform = req.matching_platforms().next().unwrap();
-            let ubi = Ubi::new(
+            let mut ubi = Ubi::new(
                 Some("test/os-without-arch"),
                 None,
                 None,
@@ -1582,6 +1611,7 @@ mod test {
                 None,
                 None,
                 platform,
+                false,
                 Some(server.url()),
             )?;
             let asset = ubi.asset().await;
