@@ -29,6 +29,7 @@ serde = { version = "1.0.210", features = ["derive"] }
 strum = { version = "0.26.3", features = ["derive"] }
 tempfile = "3.13.0"
 test-case = "3.3.1"
+test-log = "0.2.16"
 thiserror = "1.0.64"
 tokio = { version = "1.40.0", default-features = false, features = ["macros", "rt"] }
 url = { version = "2.5.2", features = ["serde"] }

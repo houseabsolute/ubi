@@ -411,6 +411,7 @@ mod test {
     use super::*;
     use platforms::PlatformReq;
     use std::str::FromStr;
+    use test_log::test;
     use url::Url;
 
     #[test]

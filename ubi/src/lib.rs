@@ -429,7 +429,7 @@ impl<'a> Ubi<'a> {
     }
 }
 
-#[cfg(any(test, feature = "logging"))]
+#[cfg(feature = "logging")]
 use fern::{
     colors::{Color, ColoredLevelConfig},
     Dispatch,
@@ -441,7 +441,7 @@ use fern::{
 /// # Errors
 ///
 /// This can return a `log::SetLoggerError` error.
-#[cfg(any(test, feature = "logging"))]
+#[cfg(feature = "logging")]
 pub fn init_logger(level: log::LevelFilter) -> Result<(), log::SetLoggerError> {
     let line_colors = ColoredLevelConfig::new()
         .error(Color::Red)
@@ -479,6 +479,7 @@ mod test {
     use platforms::PlatformReq;
     use reqwest::header::ACCEPT;
     use std::str::FromStr;
+    use test_log::test;
 
     #[test]
     fn parse_project_name() -> Result<()> {
@@ -560,11 +561,9 @@ mod test {
         Ok(())
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     #[allow(clippy::too_many_lines)]
     async fn asset_picking() -> Result<()> {
-        //init_logger(log::LevelFilter::Debug)?;
-
         struct Test {
             platforms: &'static [&'static str],
             expect_ubi: Option<(u32, &'static str)>,
@@ -1030,12 +1029,10 @@ mod test {
 }
 "#;
 
-    #[tokio::test]
+    #[test(tokio::test)]
     // The protobuf repo has some odd release naming. This tests that the
     // matcher handles it.
     async fn matching_unusual_names() -> Result<()> {
-        //init_logger(log::LevelFilter::Debug)?;
-
         struct Test {
             platforms: &'static [&'static str],
             expect: &'static str,
@@ -1185,10 +1182,8 @@ mod test {
 "#;
 
     // Reported in https://github.com/houseabsolute/ubi/issues/34
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn mkcert_matching() -> Result<()> {
-        //init_logger(log::LevelFilter::Debug)?;
-
         struct Test {
             platforms: &'static [&'static str],
             expect: &'static str,
@@ -1296,10 +1291,8 @@ mod test {
 }"#;
 
     // Reported in https://github.com/houseabsolute/ubi/issues/34
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn jq_matching() -> Result<()> {
-        //init_logger(log::LevelFilter::Debug)?;
-
         struct Test {
             platforms: &'static [&'static str],
             expect: &'static str,
@@ -1398,10 +1391,8 @@ mod test {
   ]
 }"#;
 
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn multiple_matches() -> Result<()> {
-        //init_logger(log::LevelFilter::Debug)?;
-
         let platforms = ["x86_64-pc-windows-gnu", "i686-pc-windows-gnu"];
 
         let mut server = Server::new_async().await;
@@ -1454,9 +1445,8 @@ mod test {
   ]
 }"#;
 
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn macos_arm() -> Result<()> {
-        //init_logger(log::LevelFilter::Debug)?;
         let mut server = Server::new_async().await;
         let m1 = server
             .mock("GET", "/repos/test/macos/releases/latest")
@@ -1550,10 +1540,8 @@ mod test {
   ]
 }"#;
 
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn os_without_arch() -> Result<()> {
-        //init_logger(log::LevelFilter::Debug)?;
-
         {
             let mut server = Server::new_async().await;
             let m1 = server

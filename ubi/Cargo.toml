@@ -46,4 +46,5 @@ logging = ["dep:fern"]
 fern.workspace = true
 mockito.workspace = true
 test-case.workspace = true
+test-log.workspace = true
 tokio.workspace = true
