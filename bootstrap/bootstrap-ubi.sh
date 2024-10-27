@@ -155,6 +155,8 @@ else
     unzip "$LOCAL_FILE"
 fi
 
+chmod +x ubi
+
 rm -rf -- "$TEMPDIR"
 
 echo ""
