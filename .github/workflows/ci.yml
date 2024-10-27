@@ -5,7 +5,7 @@ env:
   GITHUB_TOKEN: ${{ github.token }}
   RUST_BACKTRACE: 1
 jobs:
-  test:
+  test-matrix:
     name: ${{ matrix.platform.os-name }} with rust ${{ matrix.toolchain }}
     runs-on: ${{ matrix.platform.runs-on }}
     strategy:
@@ -149,3 +149,25 @@ jobs:
           executable-name: ubi
           target: ${{ matrix.platform.target }}
         if: matrix.toolchain == 'stable' && matrix.platform.features == ''
+
+  test-alpine:
+    name: Alpine Linux
+    runs-on: ubuntu-20.04
+    container:
+      image: rust:alpine
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      volumes:
+        - "${{ github.workspace }}:/workspace"
+      options: "--workdir /workspace"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install packages on Alpine
+        shell: sh
+        run: |
+          apk update
+          # file is used in an integration test
+          apk add file musl-dev zstd-dev
+      - name: Run tests
+        shell: sh
+        run: cargo test --locked
