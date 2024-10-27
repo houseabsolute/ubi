@@ -1,4 +1,4 @@
-$Filename = "ubi-Windows-x86_64.zip"
+$Filename = "ubi-Windows-msvc-x86_64.zip"
 
 $URL = "https://github.com/houseabsolute/ubi/releases/latest/download/$($Filename)"
 

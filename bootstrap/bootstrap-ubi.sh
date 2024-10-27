@@ -30,7 +30,7 @@ if [ -z "$FILENAME" ]; then
         OS="Linux"
         ;;
     Darwin)
-        OS="Darwin"
+        OS="macOS"
         ;;
     FreeBSD)
         OS="FreeBSD"
@@ -40,6 +40,7 @@ if [ -z "$FILENAME" ]; then
         ;;
     MINGW*)
         OS="Windows"
+        LIBC="-msvc"
         EXT="zip"
         ;;
     *)
@@ -54,7 +55,7 @@ if [ -z "$FILENAME" ]; then
     ARCH=$(uname -m)
     case "$ARCH" in
     i386 | i486 | i586 | i686)
-        CPU="i786"
+        CPU="i686"
         if [ "$OS" = "Linux" ]; then
             LIBC="-musl"
         fi
@@ -68,11 +69,11 @@ if [ -z "$FILENAME" ]; then
     arm | armv5* | armv6* | armv7*)
         CPU="arm"
         if [ "$OS" = "Linux" ]; then
-            LIBC="-musl"
+            LIBC="-musleabi"
         fi
         ;;
     aarch64 | arm64)
-        CPU="aarch64"
+        CPU="arm64"
         if [ "$OS" = "Linux" ]; then
             LIBC="-musl"
         fi
@@ -103,6 +104,9 @@ if [ -z "$FILENAME" ]; then
         ;;
     powerpc64le | ppc64le)
         CPU="powerpc64le"
+        if [ "$OS" = "Linux" ]; then
+            LIBC="-gnu"
+        fi
         ;;
     riscv64 | rv64gc)
         CPU="riscv64gc"
@@ -122,7 +126,7 @@ if [ -z "$FILENAME" ]; then
         ;;
     esac
 
-    FILENAME="ubi-$OS-$CPU$LIBC.$EXT"
+    FILENAME="ubi-$OS$LIBC-$CPU.$EXT"
 fi
 
 if [ -z "$TAG" ]; then
