@@ -1,4 +1,4 @@
-## 0.2.1
+## 0.2.1 - 2024-10-27
 
 - When running on Linux, `ubi` now checks to see if the platform is using `musl` and will prefer a
   release artifact with "musl" in the name. Previously, it would usually pick a glibc artifact if
