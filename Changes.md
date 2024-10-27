@@ -4,11 +4,9 @@
   release artifact with "musl" in the name. Previously, it would usually pick a glibc artifact if
   there were multiple artifacts that matched the platform OS and architecture, which would not work
   on musl-based platforms like Alpine Linux. Reported by @Burner. GH #70.
-
 - Fixed a bug in the handling of release artifact names with version numbers in them that look like
   extensions. This caused `ubi` to fail when trying to install `shfmt` 3.10.0, and probably many
   other tools. Reported by @jimeh (Jim Myhrberg). GH #67.
-
 - Work around release artifacts that put the platform name after a period, so it looks like an
   extension. This is the case with `direnv`, at least with the v2.35.0 release, which has releast
   artifacts like "direnv.linux-amd64". Reported by @jimeh (Jim Myhrberg). GH #67.
