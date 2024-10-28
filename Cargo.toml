@@ -3,7 +3,7 @@ authors = ["Dave Rolsky <autarch@urth.org>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
-repository = "https://github.com/houseabsolute/precious"
+repository = "https://github.com/houseabsolute/ubi"
 version = "0.2.1"
 
 [workspace]
