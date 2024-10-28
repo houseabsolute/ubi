@@ -712,7 +712,7 @@ mod test {
                 expect_omegasort: None,
             },
             Test {
-                platforms: &["x86_64-pc-solaris", "x86_64-sun-solaris"],
+                platforms: &["x86_64-pc-solaris"],
                 expect_ubi: Some((6, "ubi-Solaris-x86_64.tar.gz")),
                 expect_omegasort: Some((6, "omegasort_0.0.7_Solaris_x86_64.tar.gz")),
             },
