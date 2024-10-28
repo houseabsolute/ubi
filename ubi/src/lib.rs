@@ -72,6 +72,7 @@ pub struct UbiBuilder<'a> {
     exe: Option<&'a str>,
     github_token: Option<&'a str>,
     platform: Option<&'a Platform>,
+    is_musl: Option<bool>,
     github_api_url_base: Option<String>,
 }
 
@@ -156,6 +157,15 @@ impl<'a> UbiBuilder<'a> {
         self
     }
 
+    /// Set whether or not the platform uses musl as its libc. This is only relevant for Linux
+    /// platforms. If this isn't set then it will be determined based on the current platform's
+    /// libc. You cannot set this to `true` on a non-Linux platform.
+    #[must_use]
+    pub fn is_musl(mut self, is_musl: bool) -> Self {
+        self.is_musl = Some(is_musl);
+        self
+    }
+
     /// Set the base URL for the GitHub API. This is useful for testing or if you want to operate
     /// against a GitHub Enterprise installation.
     #[must_use]
@@ -194,6 +204,13 @@ impl<'a> UbiBuilder<'a> {
                 ))?
         };
 
+        if self.is_musl.unwrap_or_default() && platform.target_os != OS::Linux {
+            return Err(anyhow!(
+                "You cannot set is_musl to true on a non-Linux platform - the current platform is {}",
+                platform.target_os,
+            ));
+        }
+
         Ubi::new(
             self.project,
             self.tag,
@@ -203,7 +220,10 @@ impl<'a> UbiBuilder<'a> {
             self.exe,
             self.github_token,
             platform,
-            platform_is_musl(platform),
+            match self.is_musl {
+                Some(m) => m,
+                None => platform_is_musl(platform),
+            },
             self.github_api_url_base,
         )
     }

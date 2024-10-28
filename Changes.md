@@ -1,3 +1,7 @@
+## 0.2.2
+
+- Added a `is_musl` method to the `UbiBuilder` struct to allow setting this manually.
+
 ## 0.2.1 - 2024-10-27
 
 - When running on Linux, `ubi` now checks to see if the platform is using `musl` and will prefer a
