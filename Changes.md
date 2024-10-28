@@ -1,6 +1,8 @@
 ## 0.2.2
 
 - Added a `is_musl` method to the `UbiBuilder` struct to allow setting this manually.
+- Fix handling of file "extensions" that just contain the OS and architecture, like ".linux.amd64".
+  Implemented by @jdx (Jeff Dickey). GH #71.
 
 ## 0.2.1 - 2024-10-27
 

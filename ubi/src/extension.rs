@@ -1,8 +1,10 @@
+use crate::arch::ALL_ARCHES_RE;
 use crate::os::ALL_OSES_RE;
 use anyhow::Result;
 use itertools::Itertools;
-use lazy_regex::regex;
+use lazy_regex::{regex, Lazy};
 use log::debug;
+use regex::Regex;
 use std::{ffi::OsStr, path::Path};
 use strum::{EnumIter, IntoEnumIterator};
 use thiserror::Error;
@@ -108,7 +110,17 @@ fn extension_is_part_of_version(path: &str, ext_str: &OsStr) -> bool {
 }
 
 fn extension_is_platform(ext_str: &OsStr) -> bool {
-    ALL_OSES_RE.is_match(ext_str.to_string_lossy().as_ref())
+    static PLATFORM_RE: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            &[ALL_OSES_RE.as_str(), ALL_ARCHES_RE.as_str()]
+                .iter()
+                .map(|r| format!("(?:{r})"))
+                .join("|"),
+        )
+        .unwrap()
+    });
+
+    PLATFORM_RE.is_match(ext_str.to_string_lossy().as_ref())
 }
 
 #[cfg(test)]
@@ -129,6 +141,7 @@ mod test {
     #[test_case("foo.zip", Ok(Some(Extension::Zip)))]
     #[test_case("foo", Ok(None))]
     #[test_case("foo_3.2.1_linux_amd64", Ok(None))]
+    #[test_case("foo_3.9.1.linux.amd64", Ok(None))]
     #[test_case("foo.bar", Err(ExtensionError::UnknownExtension { path: "foo.bar".to_string(), ext: "bar".to_string() }.into()))]
     fn from_path(path: &str, expect: Result<Option<Extension>>) {
         let ext = Extension::from_path(path);
