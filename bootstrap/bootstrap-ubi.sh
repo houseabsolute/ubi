@@ -19,6 +19,68 @@ if [ ! -d "$TARGET" ]; then
     exit 3
 fi
 
+# Old vs new file naming. This changes in v0.2.1 when I started using actions-rust-release to do
+# releases.
+#
+# v0.1.1/ubi-FreeBSD-x86_64.tar.gz
+# v0.2.1/ubi-FreeBSD-x86_64.tar.gz
+#
+# v0.1.1/ubi-Linux-powerpc-gnu.tar.gz
+# v0.2.1/ubi-Linux-gnu-powerpc.tar.gz
+#
+# v0.1.1/ubi-Linux-powerpc64-gnu.tar.gz
+# v0.2.1/ubi-Linux-gnu-powerpc64.tar.gz
+#
+# v0.1.1/ubi-Linux-powerpc64le.tar.gz
+# v0.2.1/ubi-Linux-gnu-powerpc64le.tar.gz
+#
+# v0.1.1/ubi-Linux-riscv64gc-gnu.tar.gz
+# v0.2.1/ubi-Linux-gnu-riscv64gc.tar.gz
+#
+# v0.1.1/ubi-Linux-s390x-gnu.tar.gz
+# v0.2.1/ubi-Linux-gnu-s390x.tar.gz
+#
+# v0.1.1/ubi-Linux-aarch64-musl.tar.gz
+# v0.2.1/ubi-Linux-musl-arm64.tar.gz
+#
+# v0.1.1/ubi-Linux-i686-musl.tar.gz
+# v0.2.1/ubi-Linux-musl-i686.tar.gz
+#
+# v0.1.1/ubi-Linux-x86_64-musl.tar.gz
+# v0.2.1/ubi-Linux-musl-x86_64.tar.gz
+#
+# v0.1.1/ubi-Linux-arm-musl.tar.gz
+# v0.2.1/ubi-Linux-musleabi-arm.tar.gz
+#
+# v0.1.1/ubi-Darwin-aarch64.tar.gz
+# v0.2.1/ubi-macOS-arm64.tar.gz
+#
+# v0.1.1/ubi-Darwin-x86_64.tar.gz
+# v0.2.1/ubi-macOS-x86_64.tar.gz
+#
+# v0.1.1/ubi-NetBSD-x86_64.tar.gz
+# v0.2.1/ubi-NetBSD-x86_64.tar.gz
+#
+# v0.1.1/ubi-Windows-aarch64.zip
+# v0.2.1/ubi-Windows-msvc-arm64.zip
+#
+# v0.1.1/ubi-Windows-i686.zip
+# v0.2.1/ubi-Windows-msvc-i686.zip
+#
+# v0.1.1/ubi-Windows-x86_64.zip
+# v0.2.1/ubi-Windows-msvc-x86_64.zip
+
+OLD_FILE_NAMING=""
+if [ -n "$TAG" ]; then
+    IFS="." read -r MAJOR MINOR PATCH <<EOF
+$TAG
+EOF
+    echo "$MAJOR $MINOR $PATCH"
+    if [ "$MAJOR" = "v0" ] && [ "$MINOR" -lt 2 ]; then
+        OLD_FILE_NAMING="true"
+    fi
+fi
+
 cd "$TARGET"
 
 if [ -z "$FILENAME" ]; then
@@ -30,7 +92,11 @@ if [ -z "$FILENAME" ]; then
         OS="Linux"
         ;;
     Darwin)
-        OS="macOS"
+        if [ -n "$OLD_FILE_NAMING" ]; then
+            OS="Darwin"
+        else
+            OS="macOS"
+        fi
         ;;
     FreeBSD)
         OS="FreeBSD"
@@ -40,7 +106,10 @@ if [ -z "$FILENAME" ]; then
         ;;
     MINGW*)
         OS="Windows"
-        LIBC="-msvc"
+        # Only 0.2.1+ include the libc in Windows filenames.
+        if [ -z "$OLD_FILE_NAMING" ]; then
+            LIBC="-msvc"
+        fi
         EXT="zip"
         ;;
     *)
@@ -69,11 +138,19 @@ if [ -z "$FILENAME" ]; then
     arm | armv5* | armv6* | armv7*)
         CPU="arm"
         if [ "$OS" = "Linux" ]; then
-            LIBC="-musleabi"
+            if [ -n "$OLD_FILE_NAMING" ]; then
+                LIBC="-musl"
+            else
+                LIBC="-musleabi"
+            fi
         fi
         ;;
     aarch64 | arm64)
-        CPU="arm64"
+        if [ -n "$OLD_FILE_NAMING" ]; then
+            CPU="aarch64"
+        else
+            CPU="arm64"
+        fi
         if [ "$OS" = "Linux" ]; then
             LIBC="-musl"
         fi
@@ -126,7 +203,11 @@ if [ -z "$FILENAME" ]; then
         ;;
     esac
 
-    FILENAME="ubi-$OS$LIBC-$CPU.$EXT"
+    if [ -n "$OLD_FILE_NAMING" ]; then
+        FILENAME="ubi-$OS-$CPU$LIBC.$EXT"
+    else
+        FILENAME="ubi-$OS$LIBC-$CPU.$EXT"
+    fi
 fi
 
 if [ -z "$TAG" ]; then
