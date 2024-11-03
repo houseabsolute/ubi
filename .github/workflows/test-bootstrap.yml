@@ -11,7 +11,8 @@ env:
 
 jobs:
   test-bootstrap:
-    name: ${{ matrix.platform.os_name }} - ${{ matrix.platform.script }}
+    name: |
+      ${{ matrix.platform.os_name }} - ${{ matrix.platform.script }} - ${{ ( matrix.tag == '' && 'no tag' ) || matrix.tag }}
     runs-on: ${{ matrix.platform.os }}
     strategy:
       fail-fast: false
@@ -32,6 +33,13 @@ jobs:
           # - os_name: Windows
           #   os: windows-latest
           #   script: bootstrap-ubi.sh
+        tag:
+          - ""
+          - v0.1.1
+        exclude:
+          - platform:
+              os: windows-latest
+            tag: v0.1.1
     steps:
       - uses: actions/checkout@v4
       - name: Run bootstrap script
@@ -40,7 +48,7 @@ jobs:
           set -e
           mkdir -p "$HOME/bin"
 
-          UBI_DEBUG_BOOTSTRAP=1 ./bootstrap/${{ matrix.platform.script }}
+          UBI_DEBUG_BOOTSTRAP=1 TAG="${{ matrix.tag }}" ./bootstrap/${{ matrix.platform.script }}
           if [ ! -x "$HOME/bin/ubi" ]; then
               echo "Running ./bootstrap/${{ matrix.platform.script }} did not install ubi!"
               exit 1
