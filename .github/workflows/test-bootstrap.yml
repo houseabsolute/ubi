@@ -63,6 +63,7 @@ jobs:
         shell: sh
         run: |
           set -e
+          set -x
 
           if [ $( id -u ) -eq 0 ]; then
               adduser -D github
