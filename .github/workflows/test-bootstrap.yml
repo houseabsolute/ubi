@@ -14,12 +14,23 @@ jobs:
     name: |
       ${{ matrix.platform.os_name }} - ${{ matrix.platform.script }} - ${{ ( matrix.tag == '' && 'no tag' ) || matrix.tag }}
     runs-on: ${{ matrix.platform.os }}
+    container: ${{ matrix.platform.container }}
     strategy:
       fail-fast: false
       matrix:
         platform:
           - os_name: Linux
             os: ubuntu-latest
+            script: bootstrap-ubi.sh
+          - os_name: Alpine Linux (ash)
+            os: ubuntu-latest
+            container:
+              image: alpine:latest
+              env:
+                GITHUB_TOKEN: ${{ github.token }}
+              volumes:
+                - "${{ github.workspace }}:/workspace"
+              options: "--workdir /workspace"
             script: bootstrap-ubi.sh
           - os_name: macOS
             os: macOS-latest
@@ -42,22 +53,22 @@ jobs:
             tag: v0.1.1
     steps:
       - uses: actions/checkout@v4
+      - name: Install curl and sudo on Alpine
+        shell: sh
+        run: |
+          apk update
+          apk add curl sudo
+        if: matrix.platform.container != null
       - name: Run bootstrap script
-        shell: bash
+        shell: sh
         run: |
           set -e
-          mkdir -p "$HOME/bin"
 
-          UBI_DEBUG_BOOTSTRAP=1 TAG="${{ matrix.tag }}" ./bootstrap/${{ matrix.platform.script }}
-          if [ ! -x "$HOME/bin/ubi" ]; then
-              echo "Running ./bootstrap/${{ matrix.platform.script }} did not install ubi!"
-              exit 1
-          fi
-
-          "$HOME/bin/ubi" --project houseabsolute/precious --in "$HOME/bin"
-          if [ ! -x "$HOME/bin/precious" ]; then
-              echo "Running ubi did not install precious!"
-              exit 1
+          if [ $( id -u ) -eq 0 ]; then
+              adduser -D github
+              sudo -u github ./bootstrap/test/test-bootstrap.sh "${{ matrix.platform.script }}" "${{ matrix.tag }}"
+          else
+              ./bootstrap/test/test-bootstrap.sh "${{ matrix.platform.script }}" "${{ matrix.tag }}"
           fi
 
           exit 0
