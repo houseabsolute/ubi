@@ -11,7 +11,7 @@ members = ["ubi", "ubi-cli"]
 resolver = "2"
 
 [workspace.dependencies]
-anyhow = "1.0.91"
+anyhow = "1.0.92"
 binstall-tar = "0.4.42"
 bzip2 = "0.4.4"
 clap = { version = "4.5.20", features = ["wrap_help"] }
@@ -22,18 +22,18 @@ itertools = "0.13.0"
 lazy-regex = "3.3.0"
 log = "0.4.22"
 mockito = "1.5.0"
-platforms = "3.4.1"
+platforms = "3.5.0"
 regex = "1.11.1"
-reqwest = { version = "0.12.8", default-features = false, features = ["gzip", "json"] }
-serde = { version = "1.0.213", features = ["derive"] }
+reqwest = { version = "0.12.9", default-features = false, features = ["gzip", "json"] }
+serde = { version = "1.0.214", features = ["derive"] }
 strum = { version = "0.26.3", features = ["derive"] }
 tempfile = "3.13.0"
 test-case = "3.3.1"
 test-log = "0.2.16"
-thiserror = "1.0.65"
+thiserror = "1.0.68"
 tokio = { version = "1.41.0", default-features = false, features = ["macros", "rt"] }
-url = { version = "2.5.2", features = ["serde"] }
-which = "6.0.3"
+url = { version = "2.5.3", features = ["serde"] }
+which = "7.0.0"
 xz2 = "0.1.7"
 # This disables all the features that require C compilation, which greatly
 # simplifies cross-platform builds.

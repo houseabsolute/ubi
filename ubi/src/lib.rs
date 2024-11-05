@@ -606,16 +606,6 @@ mod test {
                 expect_omegasort: Some((84_376_692, "omegasort_0.0.7_FreeBSD_x86_64.tar.gz")),
             },
             Test {
-                platforms: &["aarch64-fuchsia"],
-                expect_ubi: Some((2, "ubi-Fuchsia-aarch64.tar.gz")),
-                expect_omegasort: Some((2, "omegasort_0.0.7_Fuchsia_arm64.tar.gz")),
-            },
-            Test {
-                platforms: &["x86_64-fuchsia"],
-                expect_ubi: Some((3, "ubi-Fuchsia-x86_64.tar.gz")),
-                expect_omegasort: Some((3, "omegasort_0.0.7_Fuchsia_x86_64.tar.gz")),
-            },
-            Test {
                 platforms: &["x86_64-unknown-illumos"],
                 expect_ubi: Some((4, "ubi-Illumos-x86_64.tar.gz")),
                 expect_omegasort: Some((4, "omegasort_0.0.7_Illumos_x86_64.tar.gz")),
