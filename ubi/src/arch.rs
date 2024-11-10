@@ -346,7 +346,7 @@ pub(crate) fn x86_64_re() -> &'static Lazy<Regex> {
     )
 }
 
-pub(crate) fn all_arches_re() -> Regex {
+pub(crate) static ALL_ARCHES_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
         &[
             aarch64_re(),
@@ -369,4 +369,4 @@ pub(crate) fn all_arches_re() -> Regex {
         .join("|"),
     )
     .unwrap()
-}
+});

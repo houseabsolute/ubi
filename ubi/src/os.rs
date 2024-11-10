@@ -34,7 +34,7 @@ pub(crate) fn windows_re() -> &'static Lazy<Regex> {
     regex!(r"(?i:(?:\b|_)win(?:32|64|dows)?(?:\b|_))")
 }
 
-pub(crate) fn all_oses_re() -> Regex {
+pub(crate) static ALL_OSES_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
         &[
             freebsd_re(),
@@ -51,4 +51,4 @@ pub(crate) fn all_oses_re() -> Regex {
         .join("|"),
     )
     .unwrap()
-}
+});

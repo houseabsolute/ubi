@@ -1,8 +1,8 @@
 use crate::{
     arch::{
-        aarch64_re, all_arches_re, arm_re, macos_aarch64_re, mips64_re, mips64le_re, mips_re,
-        mipsle_re, ppc32_re, ppc64_re, ppc64le_re, riscv64_re, s390x_re, sparc64_re, x86_32_re,
-        x86_64_re,
+        aarch64_re, arm_re, macos_aarch64_re, mips64_re, mips64le_re, mips_re, mipsle_re, ppc32_re,
+        ppc64_re, ppc64le_re, riscv64_re, s390x_re, sparc64_re, x86_32_re, x86_64_re,
+        ALL_ARCHES_RE,
     },
     extension::Extension,
     os::{freebsd_re, fuchsia, illumos_re, linux_re, macos_re, netbsd_re, solaris_re, windows_re},
@@ -118,7 +118,7 @@ impl<'a> AssetPicker<'a> {
             if arch_matcher.is_match(&os_matches[0].name) {
                 debug!("matches our CPU architecture");
                 matches.push(os_matches.remove(0));
-            } else if all_arches_re().is_match(&os_matches[0].name) {
+            } else if ALL_ARCHES_RE.is_match(&os_matches[0].name) {
                 debug!("it matches a CPU architecture which is not ours");
             } else {
                 debug!("does not match any CPU architecture, so we will try it");
@@ -142,7 +142,7 @@ impl<'a> AssetPicker<'a> {
                 debug!("no assets matched our CPU architecture, will look for assets without an architecture");
                 for asset in os_matches {
                     debug!("matching against asset name = {}", asset.name);
-                    if all_arches_re().is_match(&asset.name) {
+                    if ALL_ARCHES_RE.is_match(&asset.name) {
                         debug!("matches a CPU architecture which is not ours");
                     } else {
                         debug!("does not match any CPU architecture, so we will try it");

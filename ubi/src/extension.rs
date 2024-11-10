@@ -1,4 +1,4 @@
-use crate::os::all_oses_re;
+use crate::os::ALL_OSES_RE;
 use anyhow::Result;
 use itertools::Itertools;
 use lazy_regex::regex;
@@ -108,7 +108,7 @@ fn extension_is_part_of_version(path: &str, ext_str: &OsStr) -> bool {
 }
 
 fn extension_is_platform(ext_str: &OsStr) -> bool {
-    all_oses_re().is_match(ext_str.to_string_lossy().as_ref())
+    ALL_OSES_RE.is_match(ext_str.to_string_lossy().as_ref())
 }
 
 #[cfg(test)]
