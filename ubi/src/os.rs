@@ -47,7 +47,7 @@ pub(crate) static ALL_OSES_RE: Lazy<Regex> = Lazy::new(|| {
             windows_re(),
         ]
         .iter()
-        .map(|r| format!("({})", r.as_str()))
+        .map(|r| format!("(?:{})", r.as_str()))
         .join("|"),
     )
     .unwrap()

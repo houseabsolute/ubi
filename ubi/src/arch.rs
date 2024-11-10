@@ -365,7 +365,7 @@ pub(crate) static ALL_ARCHES_RE: Lazy<Regex> = Lazy::new(|| {
             x86_64_re(),
         ]
         .iter()
-        .map(|r| format!("({})", r.as_str()))
+        .map(|r| format!("(?:{})", r.as_str()))
         .join("|"),
     )
     .unwrap()
