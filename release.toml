@@ -2,3 +2,4 @@ allow-branch = ["master"]
 shared-version = true
 sign-commit = true
 sign-tag = true
+tag-name = "v{{version}}"
