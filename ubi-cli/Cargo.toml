@@ -15,7 +15,7 @@ log.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
-ubi = { version = "0.2.1", path = "../ubi", features = ["default", "logging"] }
+ubi = { version = "0.2.2", path = "../ubi", features = ["default", "logging"] }
 
 [[bin]]
 name = "ubi"
