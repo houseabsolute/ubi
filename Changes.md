@@ -1,3 +1,10 @@
+## 0.2.3
+
+- Fixed the code to detect whether the filename includes a version number that looks like an
+  extension. If the filename ended with the version, like `foo-1.2.3`, then this was not handled
+  properly. It only worked if there something after the version as well, like
+  `foo-1.2.3-linux-amd64`.
+
 ## 0.2.2 - 2024-11-10
 
 - Added an `is_musl` method to the `UbiBuilder` struct to allow setting this manually.

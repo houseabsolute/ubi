@@ -90,13 +90,13 @@ impl Extension {
 fn extension_is_part_of_version(path: &str, ext_str: &OsStr) -> bool {
     let ext_str = ext_str.to_string_lossy().to_string();
 
-    let version_number_ext_re = regex!(r"^\.\d+");
-    if version_number_ext_re.is_match(&ext_str) {
+    let version_number_ext_re = regex!(r"^[0-9]+");
+    if !version_number_ext_re.is_match(&ext_str) {
         return false;
     }
 
-    // This matches something like "foo_3.2.1_linux_amd64" and captures ".1_linux_amd_64".
-    let version_number_re = regex!(r"\d+\.(\d+[^.]+)$");
+    // This matches something like "foo_3.2.1_linux_amd64" and captures "1_linux_amd64".
+    let version_number_re = regex!(r"[0-9]+\.([0-9]+[^.]*)$");
     let Some(caps) = version_number_re.captures(path) else {
         return false;
     };
@@ -142,6 +142,8 @@ mod test {
     #[test_case("foo", Ok(None))]
     #[test_case("foo_3.2.1_linux_amd64", Ok(None))]
     #[test_case("foo_3.9.1.linux.amd64", Ok(None))]
+    #[test_case("i386-linux-ghcup-0.1.30.0", Ok(None))]
+    #[test_case("i386-linux-ghcup-0.1.30.0-linux_amd64", Ok(None))]
     #[test_case("foo.bar", Err(ExtensionError::UnknownExtension { path: "foo.bar".to_string(), ext: "bar".to_string() }.into()))]
     fn from_path(path: &str, expect: Result<Option<Extension>>) {
         let ext = Extension::from_path(path);
