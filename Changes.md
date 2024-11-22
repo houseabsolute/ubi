@@ -1,4 +1,4 @@
-## 0.2.3
+## 0.2.3 - 2024-11-22
 
 - Fixed the code to detect whether the filename includes a version number that looks like an
   extension. If the filename ended with the version, like `foo-1.2.3`, then this was not handled
