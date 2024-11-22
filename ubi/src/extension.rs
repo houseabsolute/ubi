@@ -95,7 +95,7 @@ fn extension_is_part_of_version(path: &str, ext_str: &OsStr) -> bool {
         return false;
     }
 
-    // This matches something like "foo_3.2.1_linux_amd64" and captures ".1_".
+    // This matches something like "foo_3.2.1_linux_amd64" and captures ".1_linux_amd_64".
     let version_number_re = regex!(r"\d+\.(\d+[^.]+)$");
     let Some(caps) = version_number_re.captures(path) else {
         return false;
