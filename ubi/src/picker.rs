@@ -36,8 +36,8 @@ impl<'a> AssetPicker<'a> {
         let mut assets: Vec<_> = assets
             .into_iter()
             .filter(|a| {
-                if Extension::from_path(&a.name).is_err() {
-                    debug!("skipping asset with invalid extension: {}", a.name);
+                if let Err(e) = Extension::from_path(&a.name) {
+                    debug!("skipping asset with invalid extension, `{}`: {e}", a.name);
                     return false;
                 }
                 true
