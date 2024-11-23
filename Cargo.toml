@@ -11,33 +11,33 @@ members = ["ubi", "ubi-cli"]
 resolver = "2"
 
 [workspace.dependencies]
-anyhow = "1.0.92"
+anyhow = "1.0.93"
 binstall-tar = "0.4.42"
 bzip2 = "0.4.4"
-clap = { version = "4.5.20", features = ["wrap_help"] }
+clap = { version = "4.5.21", features = ["wrap_help"] }
 document-features = "0.2"
 fern = { version = "0.7.0", features = ["colored"] }
-flate2 = "1.0.34"
+flate2 = "1.0.35"
 itertools = "0.13.0"
 lazy-regex = "3.3.0"
 log = "0.4.22"
-mockito = "1.5.0"
+mockito = "1.6.1"
 platforms = "3.5.0"
 regex = "1.11.1"
 reqwest = { version = "0.12.9", default-features = false, features = ["gzip", "json"] }
-serde = { version = "1.0.214", features = ["derive"] }
+serde = { version = "1.0.215", features = ["derive"] }
 strum = { version = "0.26.3", features = ["derive"] }
-tempfile = "3.13.0"
+tempfile = "3.14.0"
 test-case = "3.3.1"
 test-log = "0.2.16"
-thiserror = "1.0.68"
-tokio = { version = "1.41.0", default-features = false, features = ["macros", "rt"] }
-url = { version = "2.5.3", features = ["serde"] }
+thiserror = "2.0.3"
+tokio = { version = "1.41.1", default-features = false, features = ["macros", "rt"] }
+url = { version = "2.5.4", features = ["serde"] }
 which = "7.0.0"
 xz2 = "0.1.7"
 # This disables all the features that require C compilation, which greatly
 # simplifies cross-platform builds.
-zip = { version = "2.2.0", default-features = false, features = [
+zip = { version = "2.2.1", default-features = false, features = [
     "aes-crypto",
     "bzip2",
     "deflate",
