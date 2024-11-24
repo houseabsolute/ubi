@@ -54,7 +54,7 @@ impl<'a> AssetPicker<'a> {
         let mut matches = self.os_matches(assets);
         if matches.is_empty() {
             return Err(anyhow!(
-                "could not find a release for this OS ({}) from {all_names}",
+                "could not find a release asset for this OS ({}) from {all_names}",
                 self.platform.target_os,
             ));
         }
@@ -62,7 +62,7 @@ impl<'a> AssetPicker<'a> {
         matches = self.arch_matches(matches);
         if matches.is_empty() {
             return Err(anyhow!(
-                "could not find a release for this OS ({}) and architecture ({}) from {all_names}",
+                "could not find a release asset for this OS ({}) and architecture ({}) from {all_names}",
                 self.platform.target_os,
                 self.platform.target_arch,
             ));
@@ -71,7 +71,7 @@ impl<'a> AssetPicker<'a> {
         matches = self.libc_matches(matches);
         if matches.is_empty() {
             return Err(anyhow!(
-                "could not find a release for this OS ({}), architecture ({}), and libc ({}) from {all_names}",
+                "could not find a release asset for this OS ({}), architecture ({}), and libc ({}) from {all_names}",
                 self.platform.target_os,
                 self.platform.target_arch,
                 self.libc_name(),
@@ -545,6 +545,64 @@ mod test {
 
         let picked_asset = picker.pick_asset(assets)?;
         assert_eq!(picked_asset.name, asset_names[expect_idx]);
+
+        Ok(())
+    }
+
+    #[test_case(
+        "x86_64-unknown-linux-gnu",
+        &["project-macOS-arm64.tar.gz", "project-Windows-i686-gnu.tar.gz"],
+        None,
+        "could not find a release asset for this OS (linux) from" ;
+        "x86_64-unknown-linux-gnu - no assets for this OS"
+    )]
+    #[test_case(
+        "i686-unknown-linux-gnu",
+        &["project-Linux-x86_64-gnu.tar.gz", "project-Windows-i686-gnu.tar.gz"],
+        None,
+        "could not find a release asset for this OS (linux) and architecture (x86) from" ;
+        "i686-unknown-linux-gnu - no assets for this arch"
+    )]
+    #[test_case(
+        "x86_64-unknown-linux-musl",
+        &["project-Linux-x86_64-gnu.tar.gz", "project-Windows-i686-gnu.tar.gz"],
+        None,
+        "could not find a release asset for this OS (linux), architecture (x86_64), and libc (musl) from" ;
+        "x86_64-unknown-linux-musl - only one Linux asset and it is gnu"
+    )]
+    fn pick_asset_errors(
+        platform_name: &str,
+        asset_names: &[&str],
+        matching: Option<&str>,
+        expect_err: &str,
+    ) -> Result<()> {
+        // It'd be nice to use `test_log` but that doesn't work with the test-case crate. See
+        // https://github.com/frondeus/test-case/pull/143.
+        //
+        // init_logger(log::LevelFilter::Debug)?;
+        let platform = Platform::find(platform_name).ok_or(anyhow!("invalid platform"))?;
+        let mut picker = AssetPicker {
+            matching,
+            platform,
+            is_musl: platform_name.contains("musl"),
+        };
+
+        let url = Url::parse("https://example.com")?;
+        let assets = asset_names
+            .iter()
+            .map(|name| Asset {
+                name: (*name).to_string(),
+                url: url.clone(),
+            })
+            .collect::<Vec<_>>();
+
+        let picked_asset = picker.pick_asset(assets);
+        assert!(picked_asset.is_err());
+        assert!(picked_asset
+            .err()
+            .map(|e| e.to_string())
+            .unwrap_or_default()
+            .starts_with(expect_err));
 
         Ok(())
     }
