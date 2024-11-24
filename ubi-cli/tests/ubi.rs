@@ -411,6 +411,22 @@ fn integration_tests() -> Result<()> {
         make_exe_pathbuf(&["bin", "direnv"]),
     )?;
 
+    // This project used just "mac" in the macOS release names, which `ubi` didn't look for until
+    // 0.2.4.
+    run_test(
+        td.path(),
+        ubi.as_ref(),
+        &[
+            "--project",
+            "wren-lang/wren-cli",
+            "--tag",
+            "0.4.0",
+            "--exe",
+            "wren_cli",
+        ],
+        make_exe_pathbuf(&["bin", "wren_cli"]),
+    )?;
+
     Ok(())
 }
 
