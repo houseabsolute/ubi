@@ -409,262 +409,135 @@ impl<'a> AssetPicker<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use platforms::PlatformReq;
-    use std::str::FromStr;
-    use test_log::test;
+    use test_case::test_case;
     use url::Url;
 
-    #[test]
-    fn pick_asset_from_matches_64_bit_platform() -> Result<()> {
-        let req = PlatformReq::from_str("x86_64-unknown-linux-musl")?;
-        let platform = req.matching_platforms().next().unwrap();
+    #[test_case(
+        "x86_64-unknown-linux-gnu",
+        &["project-Linux-x86_64.tar.gz"],
+        None,
+        0 ;
+        "x86_64-unknown-linux-gnu - only one asset"
+    )]
+    #[test_case(
+        "x86_64-unknown-linux-gnu",
+        &["project-Linux-i686.tar.gz", "project-Linux-x86_64.tar.gz"],
+        None,
+        1 ;
+        "x86_64-unknown-linux-gnu - pick x86-64 asset"
+    )]
+    #[test_case(
+        "x86_64-unknown-linux-gnu",
+        &["project-Linux-i686-gnu.tar.gz", "project-Linux-i686-musl.tar.gz"],
+        None,
+        0 ;
+        "x86_64-unknown-linux-gnu - pick first asset from two matching 32-bit assets"
+    )]
+    #[test_case(
+        "x86_64-unknown-linux-gnu",
+        &["project-Linux-x86_64-gnu.tar.gz", "project-Linux-x86_64-musl.tar.gz"],
+        Some("musl"),
+        1 ;
+        "x86_64-unknown-linux-gnu - pick asset with matching string when matching is set"
+    )]
+    #[test_case(
+        "x86_64-unknown-linux-gnu",
+        &["project-Linux-i686-gnu.tar.gz", "project-Linux-i686-musl.tar.gz"],
+        Some("musl"),
+        1 ;
+        "x86_64-unknown-linux-gnu - pick asset with matching string from two 32-bit assets when matching is set"
+    )]
+    #[test_case(
+        "i686-unknown-linux-gnu",
+        &["project-Linux-i686.tar.gz"],
+        None,
+        0 ;
+        "i686-unknown-linux-gnu - pick one asset"
+    )]
+    #[test_case(
+        "i686-unknown-linux-gnu",
+        &["project-Linux-i686-gnu.tar.gz", "project-Linux-i686-musl.tar.gz"],
+        Some("musl"),
+        1 ;
+        "i686-unknown-linux-gnu - pick asset with matching string when matching is set"
+    )]
+    #[test_case(
+        "aarch64-apple-darwin",
+        &["project-Macos-aarch64.tar.gz"],
+        None,
+        0 ;
+        "aarch64-apple-darwin - pick one asset"
+    )]
+    #[test_case(
+        "aarch64-apple-darwin",
+        &["project-Macos-x86-64.tar.gz", "project-Macos-aarch64.tar.gz"],
+        None,
+        1 ;
+        "aarch64-apple-darwin - pick the aarch64 asset on macOS ARM"
+    )]
+    #[test_case(
+        "aarch64-apple-darwin",
+        &["project-Macos-x86-64.tar.gz"],
+        None,
+        0 ;
+        "aarch64-apple-darwin - pick the x86-64 asset on macOS ARM if no aarch64 asset is available"
+    )]
+    #[test_case(
+        "x86_64-unknown-linux-musl",
+        &["project-Linux-x86_64.tar.gz"],
+        None,
+        0 ;
+        "x86_64-unknown-linux-musl - only one asset"
+    )]
+    #[test_case(
+        "x86_64-unknown-linux-musl",
+        &["project-Linux-x86_64-gnu.tar.gz", "project-Linux-x86_64-musl.tar.gz"],
+        None,
+        1 ;
+        "x86_64-unknown-linux-musl - pick the musl asset over gnu on a musl platform"
+    )]
+    #[test_case(
+        "x86_64-unknown-linux-musl",
+        &["project-Linux-x86_64-glibc.tar.gz", "project-Linux-x86_64-musl.tar.gz"],
+        None,
+        1 ;
+        "x86_64-unknown-linux-musl - pick the musl asset over glibc on a musl platform"
+    )]
+    #[test_case(
+        "x86_64-unknown-linux-musl",
+        &["project-Linux-x86_64.tar.gz", "project-Linux-x86_64-musl.tar.gz"],
+        None,
+        1 ;
+        "x86_64-unknown-linux-musl - pick the musl asset over unspecified libc on a musl platform"
+    )]
+    fn pick_asset(
+        platform_name: &str,
+        asset_names: &[&str],
+        matching: Option<&str>,
+        expect_idx: usize,
+    ) -> Result<()> {
+        // It'd be nice to use `test_log` but that doesn't work with the test-case crate. See
+        // https://github.com/frondeus/test-case/pull/143.
+        //
+        // init_logger(log::LevelFilter::Debug)?;
+        let platform = Platform::find(platform_name).ok_or(anyhow!("invalid platform"))?;
         let mut picker = AssetPicker {
-            matching: None,
+            matching,
             platform,
-            is_musl: false,
+            is_musl: platform_name.contains("musl"),
         };
 
-        {
-            let assets = vec![Asset {
-                name: "project-Linux-i686.tar.gz".to_string(),
-                url: Url::parse("https://example.com")?,
-            }];
-            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
-            assert_eq!(picked_asset, assets[0], "only one asset, so pick that one");
-        }
+        let url = Url::parse("https://example.com")?;
+        let assets = asset_names
+            .iter()
+            .map(|name| Asset {
+                name: (*name).to_string(),
+                url: url.clone(),
+            })
+            .collect::<Vec<_>>();
 
-        {
-            let assets = vec![
-                Asset {
-                    name: "project-Linux-x86_64.tar.gz".to_string(),
-                    url: Url::parse("https://example.com")?,
-                },
-                Asset {
-                    name: "project-Linux-i686.tar.gz".to_string(),
-                    url: Url::parse("https://example.com")?,
-                },
-            ];
-            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
-            assert_eq!(picked_asset, assets[0], "pick the x86_64 asset on x86_64");
-        }
-
-        {
-            let assets = vec![
-                Asset {
-                    name: "project-Linux-i686-gnu.tar.gz".to_string(),
-                    url: Url::parse("https://example.com")?,
-                },
-                Asset {
-                    name: "project-Linux-i686-musl.tar.gz".to_string(),
-                    url: Url::parse("https://example.com")?,
-                },
-            ];
-            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
-            assert_eq!(
-                picked_asset, assets[0],
-                "pick the first matching asset from two 32-bit assets"
-            );
-        }
-
-        let mut picker = AssetPicker {
-            matching: Some("musl"),
-            platform,
-            is_musl: false,
-        };
-
-        {
-            let assets = vec![
-                Asset {
-                    name: "project-Linux-x86_64-gnu.tar.gz".to_string(),
-                    url: Url::parse("https://example.com")?,
-                },
-                Asset {
-                    name: "project-Linux-x86_64-musl.tar.gz".to_string(),
-                    url: Url::parse("https://example.com")?,
-                },
-            ];
-            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
-            assert_eq!(
-                picked_asset, assets[1],
-                "pick the musl asset when matching is set"
-            );
-        }
-
-        {
-            let assets = vec![
-                Asset {
-                    name: "project-Linux-i686-gnu.tar.gz".to_string(),
-                    url: Url::parse("https://example.com")?,
-                },
-                Asset {
-                    name: "project-Linux-i686-musl.tar.gz".to_string(),
-                    url: Url::parse("https://example.com")?,
-                },
-            ];
-            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
-            assert_eq!(
-                picked_asset, assets[1],
-                "pick the musl asset from two 32-bit assets"
-            );
-        }
-
-        Ok(())
-    }
-
-    #[test]
-    fn pick_asset_from_matches_32_bit_platform() -> Result<()> {
-        let req = PlatformReq::from_str("i686-unknown-linux-gnu")?;
-        let platform = req.matching_platforms().next().unwrap();
-        let mut picker = AssetPicker {
-            matching: None,
-            platform,
-            is_musl: false,
-        };
-
-        {
-            let assets = vec![Asset {
-                name: "project-Linux-i686.tar.gz".to_string(),
-                url: Url::parse("https://example.com")?,
-            }];
-            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
-            assert_eq!(picked_asset, assets[0], "only one asset, so pick that one");
-        }
-
-        let mut picker = AssetPicker {
-            matching: Some("musl"),
-            platform,
-            is_musl: false,
-        };
-
-        {
-            let assets = vec![
-                Asset {
-                    name: "project-Linux-i686-gnu.tar.gz".to_string(),
-                    url: Url::parse("https://example.com")?,
-                },
-                Asset {
-                    name: "project-Linux-i686-musl.tar.gz".to_string(),
-                    url: Url::parse("https://example.com")?,
-                },
-            ];
-            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
-            assert_eq!(
-                picked_asset, assets[1],
-                "pick the musl asset when matching is set"
-            );
-        }
-
-        Ok(())
-    }
-
-    #[test]
-    fn pick_asset_from_matches_macos_arm() -> Result<()> {
-        //init_logger(log::LevelFilter::Debug)?;
-        let req = PlatformReq::from_str("aarch64-apple-darwin")?;
-        let platform = req.matching_platforms().next().unwrap();
-        let mut picker = AssetPicker {
-            matching: None,
-            platform,
-            is_musl: false,
-        };
-
-        {
-            let assets = vec![Asset {
-                name: "project-Macos-aarch64.tar.gz".to_string(),
-                url: Url::parse("https://example.com")?,
-            }];
-            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
-            assert_eq!(picked_asset, assets[0], "only one asset, so pick that one");
-        }
-
-        {
-            let assets = vec![
-                Asset {
-                    name: "project-Macos-x86-64.tar.gz".to_string(),
-                    url: Url::parse("https://example.com")?,
-                },
-                Asset {
-                    name: "project-Macos-aarch64.tar.gz".to_string(),
-                    url: Url::parse("https://example.com")?,
-                },
-            ];
-            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
-            assert_eq!(
-                picked_asset, assets[1],
-                "pick the aarch64 asset on macOS ARM"
-            );
-        }
-
-        {
-            let assets = vec![Asset {
-                name: "project-Macos-x86-64.tar.gz".to_string(),
-                url: Url::parse("https://example.com")?,
-            }];
-            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
-            assert_eq!(
-                picked_asset, assets[0],
-                "pick the x86-64 asset on macOS ARM if no aarch64 asset is available"
-            );
-        }
-
-        Ok(())
-    }
-
-    #[test]
-    fn pick_asset_from_matches_musl() -> Result<()> {
-        //init_logger(log::LevelFilter::Debug)?;
-        let req = PlatformReq::from_str("aarch64-apple-darwin")?;
-        let platform = req.matching_platforms().next().unwrap();
-        let mut picker = AssetPicker {
-            matching: None,
-            platform,
-            is_musl: true,
-        };
-
-        {
-            let assets = vec![Asset {
-                name: "project-linux-amd64.tar.gz".to_string(),
-                url: Url::parse("https://example.com")?,
-            }];
-            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
-            assert_eq!(picked_asset, assets[0], "only one asset, so pick that one");
-        }
-
-        {
-            let assets = vec![
-                Asset {
-                    name: "project-linux-gnu.tar.gz".to_string(),
-                    url: Url::parse("https://example.com")?,
-                },
-                Asset {
-                    name: "project-linux-musl.tar.gz".to_string(),
-                    url: Url::parse("https://example.com")?,
-                },
-            ];
-            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
-            assert_eq!(
-                picked_asset, assets[1],
-                "pick the musl asset over gnu on a musl platform"
-            );
-        }
-
-        {
-            let assets = vec![
-                Asset {
-                    name: "project-linux-amd64.tar.gz".to_string(),
-                    url: Url::parse("https://example.com")?,
-                },
-                Asset {
-                    name: "project-linux-amd64-musl.tar.gz".to_string(),
-                    url: Url::parse("https://example.com")?,
-                },
-            ];
-            let picked_asset = picker.pick_asset_from_matches(assets.clone())?;
-            assert_eq!(
-                picked_asset, assets[1],
-                "pick the musl asset over unspecified libc on a musl platform"
-            );
-        }
+        let picked_asset = picker.pick_asset(assets)?;
+        assert_eq!(picked_asset.name, asset_names[expect_idx]);
 
         Ok(())
     }
