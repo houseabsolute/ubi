@@ -213,8 +213,6 @@ impl<'a> AssetPicker<'a> {
             return Ok(asset);
         }
 
-        let filtered = self.maybe_filter_for_musl_platform(filtered);
-
         debug!(
             "cannot disambiguate multiple asset names, picking the first one after sorting by name"
         );
@@ -310,33 +308,6 @@ impl<'a> AssetPicker<'a> {
 
         debug!("did not find any ARM binaries");
         (matches, None)
-    }
-
-    fn maybe_filter_for_musl_platform(&mut self, matches: Vec<Asset>) -> Vec<Asset> {
-        if !self.is_musl {
-            return matches;
-        }
-
-        let asset_names = matches.iter().map(|a| a.name.as_str()).collect::<Vec<_>>();
-        debug!(
-            "found multiple candidate assets, filtering for musl binaries in {:?}",
-            asset_names,
-        );
-
-        if !matches.iter().any(|a| a.name.contains("musl")) {
-            debug!("no musl assets found, falling back to all assets");
-            return matches;
-        }
-
-        let musl = matches
-            .into_iter()
-            .filter(|a| a.name.contains("musl"))
-            .collect::<Vec<_>>();
-        debug!(
-            "found musl assets: {}",
-            musl.iter().map(|a| a.name.as_str()).join(",")
-        );
-        musl
     }
 
     fn os_matcher(&self) -> &'static Lazy<Regex> {
