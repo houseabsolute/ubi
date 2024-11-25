@@ -1,7 +1,8 @@
-## 0.2.4
+## 0.2.4 - 2024-11-24
 
-- Look for just "mac" or "Mac" in a filename on macOS. Previously, `ubi` would not treat a filename
-  like "foo-mac-x86-64.tar.gz" as a match for macOS. Reported by @jdx (Jeff Dickey). GH #79.
+- `ubi` will now look for just "mac" or "Mac" in a filename when running on macOS. Previously, `ubi`
+  would not treat a filename like "foo-mac-x86-64.tar.gz" as a match for macOS. Reported by @jdx
+  (Jeff Dickey). GH #79.
 
 ## 0.2.3 - 2024-11-22
 
