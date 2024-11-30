@@ -21,11 +21,12 @@ jobs:
         run: |
           git config --global user.email "jdoe@example.com"
           git config --global user.name "J. Doe"
-      - name: Run install-dev-tools.sh
+      - name: Install mise
         run: |
           set -e
-          mkdir $HOME/bin
-          ./dev/bin/install-dev-tools.sh
+          set -x
+          curl https://mise.run | sh
+          mise install
       - name: Run precious
         run: |
-          PATH=$PATH:$HOME/bin precious lint -a
+          mise exec -- precious lint -a
