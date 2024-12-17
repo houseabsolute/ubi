@@ -19,7 +19,7 @@ pub(crate) fn linux_re() -> &'static Lazy<Regex> {
 }
 
 pub(crate) fn macos_re() -> &'static Lazy<Regex> {
-    regex!(r"(?i:(?:\b|_)(?:darwin|mac(?:os)?|osx)(?:\b|_))")
+    regex!(r"(?i:(?:\b|_)(?:darwin|mac(?:osx?)?|osx)(?:\b|_))")
 }
 
 pub(crate) fn netbsd_re() -> &'static Lazy<Regex> {

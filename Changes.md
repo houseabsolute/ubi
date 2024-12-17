@@ -1,3 +1,8 @@
+## 0.2.5
+
+- When looking for macOS assets, `ubi` will now match against `macosx` in asset names, not just
+  `macos` and `osx`. Implemented by @kattouf (Vasiliy Kattouf). GH #80.
+
 ## 0.2.4 - 2024-11-24
 
 - `ubi` will now look for just "mac" or "Mac" in a filename when running on macOS. Previously, `ubi`

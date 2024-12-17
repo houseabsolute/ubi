@@ -448,6 +448,13 @@ mod test {
     )]
     #[test_case(
         "aarch64-apple-darwin",
+        &["project-Linux-x86-64.tar.gz", "project-Macosx-x86-64.tar.gz"],
+        None,
+        1 ;
+        "aarch64-apple-darwin - pick asset with 'macosx' in the name"
+    )]
+    #[test_case(
+        "aarch64-apple-darwin",
         &["project-Macos-x86-64.tar.gz", "project-Macos-aarch64.tar.gz"],
         None,
         1 ;
