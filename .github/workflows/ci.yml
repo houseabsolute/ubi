@@ -104,10 +104,6 @@ jobs:
             toolchain: nightly
     steps:
       - uses: actions/checkout@v4
-      - name: Cache cargo & target directories
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: "v2"
       - name: Configure Git
         run: |
           git config --global user.email "jdoe@example.com"
@@ -126,7 +122,7 @@ jobs:
         run: sudo apt-get update --yes && sudo apt-get install --yes pkg-config openssl libssl-dev
         if: matrix.platform.features == 'native-tls'
       - name: Build binary
-        uses: houseabsolute/actions-rust-cross@v0
+        uses: houseabsolute/actions-rust-cross@v1
         with:
           command: "build"
           target: ${{ matrix.platform.target }}
@@ -135,7 +131,7 @@ jobs:
             "--locked --release --features ${{ steps.set-features-flag-value.outputs.features }}"
           strip: true
       - name: Run tests
-        uses: houseabsolute/actions-rust-cross@v0
+        uses: houseabsolute/actions-rust-cross@v1
         with:
           command: "test"
           target: ${{ matrix.platform.target }}
