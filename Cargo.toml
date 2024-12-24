@@ -12,6 +12,7 @@ resolver = "2"
 
 [workspace.dependencies]
 anyhow = "1.0.93"
+async-trait = "0.1.50"
 binstall-tar = "0.4.42"
 bzip2 = "0.4.4"
 clap = { version = "4.5.21", features = ["wrap_help"] }

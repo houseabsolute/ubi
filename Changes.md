@@ -1,5 +1,10 @@
-## 0.2.5
+## 0.3.0
 
+- `ubi` now works with GitLab in addition to GitHub. For the command-line program, if the value you
+  pass to `--project` has a `gitlab.com` domain, like `https://gitlab.com/gitlab-org/cli`, this will
+  just work. If you just pass a project name, like `gitlab-org/cli`, then you will also need to pass
+  `--forge gitlab` in order to tell `ubi` to use gitlab. The library interface works the same way,
+  with a new `UbiBuilder::forge` method.
 - When looking for macOS assets, `ubi` will now match against `macosx` in asset names, not just
   `macos` and `osx`. Implemented by @kattouf (Vasiliy Kattouf). GH #80.
 

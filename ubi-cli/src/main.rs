@@ -4,9 +4,11 @@ use log::{debug, error};
 use std::{
     env,
     path::{Path, PathBuf},
+    str::FromStr,
 };
+use strum::VariantNames;
 use thiserror::Error;
-use ubi::{Ubi, UbiBuilder};
+use ubi::{ForgeType, Ubi, UbiBuilder};
 
 #[derive(Debug, Error)]
 enum UbiError {
@@ -75,11 +77,10 @@ fn cmd() -> Command {
                 .help("The tag to download. Defaults to the latest release."),
         )
         .arg(Arg::new("url").long("url").short('u').help(concat!(
-            "The url of the file to download. This can be provided",
-            " instead of a project or tag. This will not use the GitHub API,",
-            " so you will never hit the GitHub API limits. This means you",
-            " do not need to set a GITHUB_TOKEN env var except for",
-            " private repos.",
+            "The url of the file to download. This can be provided instead of a project or",
+            " tag. This will not use the forge site's API, so you will never hit its API",
+            " limits. With this parameter, you do not need to set a token env var except for",
+            " private repos."
         )))
         .arg(
             Arg::new("self-upgrade")
@@ -113,6 +114,18 @@ fn cmd() -> Command {
                     " multiple releases for an OS/arch that differ by compiler (MSVC vs. gcc)",
                     " or linked libc (glibc vs. musl). Note that this will be ignored if there",
                     " is only one matching release filename for your OS/arch.",
+                )),
+        )
+        .arg(
+            Arg::new("forge")
+                .long("forge")
+                .value_parser(clap::builder::PossibleValuesParser::new(
+                    ForgeType::VARIANTS,
+                ))
+                .help(concat!(
+                    "The forge to use. If this isn't set, then the value of --project or --url",
+                    " will be checked for gitlab.com. If this contains any other domain _or_ if it",
+                    " does not have a domain at all, then the default is GitHub.",
                 )),
         )
         .arg(
@@ -181,6 +194,9 @@ fn make_ubi<'a>(
     }
     if let Some(e) = matches.get_one::<String>("exe") {
         builder = builder.exe(e);
+    }
+    if let Some(ft) = matches.get_one::<String>("forge") {
+        builder = builder.forge(ForgeType::from_str(ft)?);
     }
 
     Ok((builder.build()?, None))

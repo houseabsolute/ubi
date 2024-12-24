@@ -10,6 +10,7 @@ edition.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+async-trait.workspace = true
 binstall-tar.workspace = true
 bzip2.workspace = true
 document-features.workspace = true

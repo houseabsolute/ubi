@@ -427,6 +427,50 @@ fn integration_tests() -> Result<()> {
         make_exe_pathbuf(&["bin", "wren_cli"]),
     )?;
 
+    run_test(
+        td.path(),
+        ubi.as_ref(),
+        &[
+            "--project",
+            "gitlab-org/cli",
+            "--exe",
+            "glab",
+            "--forge",
+            "gitlab",
+        ],
+        make_exe_pathbuf(&["bin", "glab"]),
+    )?;
+
+    run_test(
+        td.path(),
+        ubi.as_ref(),
+        &[
+            "--project",
+            "gitlab-org/cli",
+            "--tag",
+            "v1.49.0",
+            "--exe",
+            "glab",
+            "--forge",
+            "gitlab",
+        ],
+        make_exe_pathbuf(&["bin", "glab"]),
+    )?;
+
+    run_test(
+        td.path(),
+        ubi.as_ref(),
+        &[
+            "--project",
+            "https://gitlab.com/gitlab-org/cli/-/releases",
+            "--tag",
+            "v1.49.0",
+            "--exe",
+            "glab",
+        ],
+        make_exe_pathbuf(&["bin", "glab"]),
+    )?;
+
     Ok(())
 }
 
