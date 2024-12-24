@@ -4,9 +4,11 @@ use log::{debug, error};
 use std::{
     env,
     path::{Path, PathBuf},
+    str::FromStr,
 };
+use strum::VariantNames;
 use thiserror::Error;
-use ubi::{Ubi, UbiBuilder};
+use ubi::{ForgeType, Ubi, UbiBuilder};
 
 #[derive(Debug, Error)]
 enum UbiError {
@@ -116,6 +118,18 @@ fn cmd() -> Command {
                 )),
         )
         .arg(
+            Arg::new("forge")
+                .long("forge")
+                .value_parser(clap::builder::PossibleValuesParser::new(
+                    ForgeType::VARIANTS,
+                ))
+                .help(concat!(
+                    "The forge to use. If this isn't set, then the value of --url will be checked",
+                    " for gitlab.com. If --url contains any other domain _or_ if it is not, the",
+                    " default is GitHub.",
+                )),
+        )
+        .arg(
             Arg::new("verbose")
                 .short('v')
                 .long("verbose")
@@ -181,6 +195,9 @@ fn make_ubi<'a>(
     }
     if let Some(e) = matches.get_one::<String>("exe") {
         builder = builder.exe(e);
+    }
+    if let Some(ft) = matches.get_one::<String>("forge") {
+        builder = builder.forge(ForgeType::from_str(ft)?);
     }
 
     Ok((builder.build()?, None))

@@ -30,21 +30,24 @@
 
 mod arch;
 mod extension;
-mod fetcher;
+mod forge;
+mod github;
+mod gitlab;
 mod installer;
 mod os;
 mod picker;
 mod release;
 
+pub use crate::forge::ForgeType;
 use crate::{
-    fetcher::GitHubAssetFetcher, installer::Installer, picker::AssetPicker, release::Asset,
-    release::Download,
+    forge::Forge, github::GitHub, gitlab::GitLab, installer::Installer, picker::AssetPicker,
+    release::Asset, release::Download,
 };
 use anyhow::{anyhow, Result};
 use log::debug;
 use platforms::{Platform, PlatformReq, OS};
 use reqwest::{
-    header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION, USER_AGENT},
+    header::{HeaderMap, HeaderValue, ACCEPT, USER_AGENT},
     Client, StatusCode,
 };
 use std::{
@@ -71,9 +74,11 @@ pub struct UbiBuilder<'a> {
     matching: Option<&'a str>,
     exe: Option<&'a str>,
     github_token: Option<&'a str>,
+    gitlab_token: Option<&'a str>,
     platform: Option<&'a Platform>,
     is_musl: Option<bool>,
-    github_api_url_base: Option<String>,
+    url_base: Option<String>,
+    forge: Option<ForgeType>,
 }
 
 impl<'a> UbiBuilder<'a> {
@@ -149,6 +154,15 @@ impl<'a> UbiBuilder<'a> {
         self
     }
 
+    /// Set a GitLab token to use for API requests. If this is not set then this will be taken from
+    ////the `CI_JOB_TOKEN` or `GITLAB_TOKEN` env var if one of these is set. If both are set, then
+    /// the value `CI_JOB_TOKEN` will be used.
+    #[must_use]
+    pub fn gitlab_token(mut self, token: &'a str) -> Self {
+        self.gitlab_token = Some(token);
+        self
+    }
+
     /// Set the platform to download for. If not set it will be determined based on the current
     /// platform's OS/arch.
     #[must_use]
@@ -166,11 +180,21 @@ impl<'a> UbiBuilder<'a> {
         self
     }
 
-    /// Set the base URL for the GitHub API. This is useful for testing or if you want to operate
-    /// against a GitHub Enterprise installation.
+    /// Set the forge type to use for fetching assets and release information. This determines which
+    /// REST API is used to get information about releases and to download the release. If this isn't
+    /// set, then this will be determined from the hostname in the url, if that is set.  Otherwise,
+    /// the default is GitHub.
     #[must_use]
-    pub fn github_api_url_base(mut self, github_api_url_base: String) -> Self {
-        self.github_api_url_base = Some(github_api_url_base);
+    pub fn forge(mut self, forge: ForgeType) -> Self {
+        self.forge = Some(forge);
+        self
+    }
+
+    /// Set the base URL for the forge site's API. This is useful for testing or if you want to operate
+    /// against an Enterprise version of GitHub or GitLab,
+    #[must_use]
+    pub fn url_base(mut self, url_base: String) -> Self {
+        self.url_base = Some(url_base);
         self
     }
 
@@ -219,12 +243,14 @@ impl<'a> UbiBuilder<'a> {
             self.matching,
             self.exe,
             self.github_token,
+            self.gitlab_token,
             platform,
             match self.is_musl {
                 Some(m) => m,
                 None => platform_is_musl(platform),
             },
-            self.github_api_url_base,
+            self.url_base.as_deref(),
+            self.forge,
         )
     }
 }
@@ -251,7 +277,8 @@ fn platform_is_musl(platform: &Platform) -> bool {
 /// [`UbiBuilder`] struct to create a new `Ubi` instance.
 #[derive(Debug)]
 pub struct Ubi<'a> {
-    asset_fetcher: GitHubAssetFetcher,
+    forge: Box<dyn Forge>,
+    asset_url: Option<Url>,
     asset_picker: AssetPicker<'a>,
     installer: Installer,
     reqwest_client: Client,
@@ -268,37 +295,52 @@ impl<'a> Ubi<'a> {
         matching: Option<&'a str>,
         exe: Option<&str>,
         github_token: Option<&str>,
+        gitlab_token: Option<&str>,
         platform: &'a Platform,
         is_musl: bool,
-        github_api_url_base: Option<String>,
+        url_base: Option<&str>,
+        forge: Option<ForgeType>,
     ) -> Result<Ubi<'a>> {
-        let url = if let Some(u) = url {
-            Some(Url::parse(u)?)
-        } else {
-            None
-        };
-        let project_name = Self::parse_project_name(project, url.as_ref())?;
+        let url = url.map(Url::parse).transpose()?;
+        let (project_name, forge) = Self::parse_project_name(project, url.as_ref(), forge)?;
         let exe = Self::exe_name(exe, &project_name, platform);
         let install_path = Self::install_path(install_dir, &exe)?;
-        Ok(Ubi {
-            asset_fetcher: GitHubAssetFetcher::new(
+
+        let api_base = url_base.map(Url::parse).transpose()?;
+
+        let asset_fetcher: Box<dyn Forge> = match forge {
+            ForgeType::GitHub => Box::new(GitHub::new(
                 project_name,
-                tag.map(std::string::ToString::to_string),
-                url,
-                github_api_url_base,
-            ),
+                tag.map(String::from),
+                api_base,
+                github_token,
+            )),
+            ForgeType::GitLab => Box::new(GitLab::new(
+                project_name,
+                tag.map(String::from),
+                api_base,
+                gitlab_token,
+            )),
+        };
+        Ok(Ubi {
+            forge: asset_fetcher,
+            asset_url: url,
             asset_picker: AssetPicker::new(matching, platform, is_musl),
             installer: Installer::new(install_path, exe),
-            reqwest_client: Self::reqwest_client(github_token)?,
+            reqwest_client: Self::reqwest_client()?,
         })
     }
 
-    fn parse_project_name(project: Option<&str>, url: Option<&Url>) -> Result<String> {
+    fn parse_project_name(
+        project: Option<&str>,
+        url: Option<&Url>,
+        forge: Option<ForgeType>,
+    ) -> Result<(String, ForgeType)> {
         let (parsed, from) = if let Some(project) = project {
             if project.starts_with("http") {
                 (Url::parse(project)?, format!("--project {project}"))
             } else {
-                let base = Url::parse("https://github.com")?;
+                let base = forge.unwrap_or_default().url_base();
                 (base.join(project)?, format!("--project {project}"))
             }
         } else if let Some(u) = url {
@@ -318,7 +360,12 @@ impl<'a> Ubi<'a> {
         let (org, proj) = (parts[1], parts[2]);
         debug!("Parsed {from} = {org} / {proj}");
 
-        Ok(format!("{org}/{proj}"))
+        Ok((
+            format!("{org}/{proj}"),
+            // If the forge argument was not `None` this is kind of pointless, but it should never
+            // be _wrong_ in that case.
+            ForgeType::from_url(&parsed),
+        ))
     }
 
     fn exe_name(exe: Option<&str>, project_name: &str, platform: &Platform) -> String {
@@ -354,7 +401,7 @@ impl<'a> Ubi<'a> {
         Ok(path)
     }
 
-    fn reqwest_client(github_token: Option<&str>) -> Result<Client> {
+    fn reqwest_client() -> Result<Client> {
         let builder = Client::builder().gzip(true);
 
         let mut headers = HeaderMap::new();
@@ -362,20 +409,6 @@ impl<'a> Ubi<'a> {
             USER_AGENT,
             HeaderValue::from_str(&format!("ubi version {VERSION}"))?,
         );
-
-        let mut github_token = github_token.map(String::from);
-        if github_token.is_none() {
-            github_token = env::var("GITHUB_TOKEN").ok();
-        }
-
-        if let Some(token) = github_token {
-            debug!("adding GitHub token to GitHub requests");
-            let bearer = format!("Bearer {token}");
-            let mut auth_val = HeaderValue::from_str(&bearer)?;
-            auth_val.set_sensitive(true);
-            headers.insert(AUTHORIZATION, auth_val);
-        }
-
         Ok(builder.default_headers(headers).build()?)
     }
 
@@ -404,10 +437,14 @@ impl<'a> Ubi<'a> {
     }
 
     async fn asset(&mut self) -> Result<Asset> {
-        let assets = self
-            .asset_fetcher
-            .fetch_assets(&self.reqwest_client)
-            .await?;
+        if let Some(url) = &self.asset_url {
+            return Ok(Asset {
+                name: url.path().split('/').last().unwrap().to_string(),
+                url: url.clone(),
+            });
+        }
+
+        let assets = self.forge.fetch_assets(&self.reqwest_client).await?;
         let asset = self.asset_picker.pick_asset(assets)?;
         debug!("picked asset named {}", asset.name);
         Ok(asset)
@@ -416,10 +453,12 @@ impl<'a> Ubi<'a> {
     async fn download_asset(&self, client: &Client, asset: Asset) -> Result<Download> {
         debug!("downloading asset from {}", asset.url);
 
-        let req = client
+        let mut req_builder = client
             .get(asset.url.clone())
-            .header(ACCEPT, HeaderValue::from_str("application/octet-stream")?)
-            .build()?;
+            .header(ACCEPT, HeaderValue::from_str("application/octet-stream")?);
+        req_builder = self.forge.maybe_add_token_header(req_builder)?;
+        let req = req_builder.build()?;
+
         let mut resp = self.reqwest_client.execute(req).await?;
         if resp.status() != StatusCode::OK {
             let mut msg = format!("error requesting {}: {}", asset.url, resp.status());
@@ -512,20 +551,38 @@ mod test {
             format!("https://github.com/{org_and_repo}/actions/runs/4275745616"),
         ];
         for p in projects {
-            let project_name = Ubi::parse_project_name(Some(p), None)?;
+            let (project_name, forge_type) = Ubi::parse_project_name(Some(p), None, None)?;
             assert_eq!(
                 project_name, org_and_repo,
                 "got the right project from --project {p}",
             );
+            assert_eq!(forge_type, ForgeType::GitHub);
+
+            let (project_name, forge_type) =
+                Ubi::parse_project_name(Some(p), None, Some(ForgeType::GitHub))?;
+            assert_eq!(
+                project_name, org_and_repo,
+                "got the right project from --project {p}",
+            );
+            assert_eq!(forge_type, ForgeType::GitHub);
         }
 
         {
             let url = Url::parse("https://github.com/houseabsolute/precious/releases/download/v0.1.7/precious-Linux-x86_64-musl.tar.gz")?;
-            let project_name = Ubi::parse_project_name(None, Some(&url))?;
+            let (project_name, forge_type) = Ubi::parse_project_name(None, Some(&url), None)?;
             assert_eq!(
                 project_name, "houseabsolute/precious",
                 "got the right project from the --url",
             );
+            assert_eq!(forge_type, ForgeType::GitHub);
+
+            let (project_name, forge_type) =
+                Ubi::parse_project_name(None, Some(&url), Some(ForgeType::GitHub))?;
+            assert_eq!(
+                project_name, "houseabsolute/precious",
+                "got the right project from the --url",
+            );
+            assert_eq!(forge_type, ForgeType::GitHub);
         }
 
         Ok(())
@@ -743,18 +800,11 @@ mod test {
                 let platform = req.matching_platforms().next().unwrap();
 
                 if let Some(expect_ubi) = t.expect_ubi {
-                    let mut ubi = Ubi::new(
-                        Some("houseabsolute/ubi"),
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        platform,
-                        false,
-                        Some(server.url()),
-                    )?;
+                    let mut ubi = UbiBuilder::new()
+                        .project("houseabsolute/ubi")
+                        .platform(platform)
+                        .url_base(server.url())
+                        .build()?;
                     let asset = ubi.asset().await?;
                     let expect_ubi_url = Url::parse(&format!(
                         "https://api.github.com/repos/houseabsolute/ubi/releases/assets/{}",
@@ -772,18 +822,11 @@ mod test {
                 }
 
                 if let Some(expect_omegasort) = t.expect_omegasort {
-                    let mut ubi = Ubi::new(
-                        Some("houseabsolute/omegasort"),
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        platform,
-                        false,
-                        Some(server.url()),
-                    )?;
+                    let mut ubi = UbiBuilder::new()
+                        .project("houseabsolute/omegasort")
+                        .platform(platform)
+                        .url_base(server.url())
+                        .build()?;
                     let asset = ubi.asset().await?;
                     let expect_omegasort_url = Url::parse(&format!(
                         "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/{}",
@@ -1110,18 +1153,11 @@ mod test {
                 let req = PlatformReq::from_str(p)
                     .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
                 let platform = req.matching_platforms().next().unwrap();
-                let mut ubi = Ubi::new(
-                    Some("protocolbuffers/protobuf"),
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    platform,
-                    false,
-                    Some(server.url()),
-                )?;
+                let mut ubi = UbiBuilder::new()
+                    .project("protocolbuffers/protobuf")
+                    .platform(platform)
+                    .url_base(server.url())
+                    .build()?;
                 let asset = ubi.asset().await?;
                 assert_eq!(
                     asset.name, t.expect,
@@ -1240,18 +1276,11 @@ mod test {
                 let req = PlatformReq::from_str(p)
                     .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
                 let platform = req.matching_platforms().next().unwrap();
-                let mut ubi = Ubi::new(
-                    Some("FiloSottile/mkcert"),
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    platform,
-                    false,
-                    Some(server.url()),
-                )?;
+                let mut ubi = UbiBuilder::new()
+                    .project("FiloSottile/mkcert")
+                    .platform(platform)
+                    .url_base(server.url())
+                    .build()?;
                 let asset = ubi.asset().await?;
                 assert_eq!(
                     asset.name, t.expect,
@@ -1341,18 +1370,11 @@ mod test {
                 let req = PlatformReq::from_str(p)
                     .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
                 let platform = req.matching_platforms().next().unwrap();
-                let mut ubi = Ubi::new(
-                    Some("stedolan/jq"),
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    platform,
-                    false,
-                    Some(server.url()),
-                )?;
+                let mut ubi = UbiBuilder::new()
+                    .project("stedolan/jq")
+                    .platform(platform)
+                    .url_base(server.url())
+                    .build()?;
                 let asset = ubi.asset().await?;
                 assert_eq!(
                     asset.name, t.expect,
@@ -1419,18 +1441,11 @@ mod test {
             let req = PlatformReq::from_str(p)
                 .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
             let platform = req.matching_platforms().next().unwrap();
-            let mut ubi = Ubi::new(
-                Some("test/multiple-matches"),
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                platform,
-                false,
-                Some(server.url()),
-            )?;
+            let mut ubi = UbiBuilder::new()
+                .project("test/multiple-matches")
+                .platform(platform)
+                .url_base(server.url())
+                .build()?;
             let asset = ubi.asset().await?;
             let expect = "mm-i686-pc-windows-gnu.zip";
             assert_eq!(asset.name, expect, "picked {expect} as protobuf asset name");
@@ -1471,18 +1486,11 @@ mod test {
         let req = PlatformReq::from_str(p)
             .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
         let platform = req.matching_platforms().next().unwrap();
-        let mut ubi = Ubi::new(
-            Some("test/macos"),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            platform,
-            false,
-            Some(server.url()),
-        )?;
+        let mut ubi = UbiBuilder::new()
+            .project("test/macos")
+            .platform(platform)
+            .url_base(server.url())
+            .build()?;
 
         {
             let asset = ubi.asset().await?;
@@ -1567,18 +1575,11 @@ mod test {
             let req = PlatformReq::from_str(p)
                 .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
             let platform = req.matching_platforms().next().unwrap();
-            let mut ubi = Ubi::new(
-                Some("test/os-without-arch"),
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                platform,
-                false,
-                Some(server.url()),
-            )?;
+            let mut ubi = UbiBuilder::new()
+                .project("test/os-without-arch")
+                .platform(platform)
+                .url_base(server.url())
+                .build()?;
             let asset = ubi.asset().await?;
             let expect = "gvproxy-darwin";
             assert_eq!(asset.name, expect, "picked {expect} as protobuf asset name");
@@ -1601,18 +1602,11 @@ mod test {
             let req = PlatformReq::from_str(p)
                 .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
             let platform = req.matching_platforms().next().unwrap();
-            let mut ubi = Ubi::new(
-                Some("test/os-without-arch"),
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                platform,
-                false,
-                Some(server.url()),
-            )?;
+            let mut ubi = UbiBuilder::new()
+                .project("test/os-without-arch")
+                .platform(platform)
+                .url_base(server.url())
+                .build()?;
             let asset = ubi.asset().await;
             assert!(
                 asset.is_err(),
