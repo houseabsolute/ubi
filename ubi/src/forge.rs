@@ -1,4 +1,4 @@
-use crate::release::Asset;
+use crate::ubi::Asset;
 use anyhow::Result;
 use async_trait::async_trait;
 use reqwest::{

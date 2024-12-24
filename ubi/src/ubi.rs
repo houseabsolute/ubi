@@ -1,14 +1,13 @@
-use crate::{
-    forge::Forge, installer::Installer, picker::AssetPicker, release::Asset, release::Download,
-};
+use crate::{forge::Forge, installer::Installer, picker::AssetPicker};
 use anyhow::{anyhow, Result};
 use log::debug;
 use reqwest::{
     header::{HeaderValue, ACCEPT},
     Client, StatusCode,
 };
-use std::{fs::File, io::Write};
-use tempfile::tempdir;
+use serde::Deserialize;
+use std::{fs::File, io::Write, path::PathBuf};
+use tempfile::{tempdir, TempDir};
 use url::Url;
 
 /// `Ubi` is the core of this library, and is used to download and install a binary. Use the
@@ -20,6 +19,20 @@ pub struct Ubi<'a> {
     asset_picker: AssetPicker<'a>,
     installer: Installer,
     reqwest_client: Client,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+pub(crate) struct Asset {
+    pub(crate) name: String,
+    pub(crate) url: Url,
+}
+
+#[derive(Debug)]
+pub(crate) struct Download {
+    // We need to keep the temp dir around so that it's not deleted before
+    // we're done with it.
+    pub(crate) _temp_dir: TempDir,
+    pub(crate) archive_path: PathBuf,
 }
 
 impl<'a> Ubi<'a> {

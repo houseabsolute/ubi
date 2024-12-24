@@ -1,4 +1,4 @@
-use crate::{extension::Extension, release::Download};
+use crate::{extension::Extension, ubi::Download};
 use anyhow::{anyhow, Context, Result};
 use binstall_tar::Archive;
 use bzip2::read::BzDecoder;

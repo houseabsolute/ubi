@@ -40,7 +40,6 @@ mod gitlab;
 mod installer;
 mod os;
 mod picker;
-mod release;
 #[cfg(test)]
 mod test;
 mod ubi;

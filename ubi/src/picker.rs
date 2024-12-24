@@ -6,7 +6,7 @@ use crate::{
     },
     extension::Extension,
     os::{freebsd_re, fuchsia, illumos_re, linux_re, macos_re, netbsd_re, solaris_re, windows_re},
-    release::Asset,
+    ubi::Asset,
 };
 use anyhow::{anyhow, Result};
 use itertools::Itertools;

@@ -1,6 +1,6 @@
 use crate::{
     forge::{Forge, ForgeType},
-    release::Asset,
+    ubi::Asset,
 };
 use anyhow::Result;
 use async_trait::async_trait;
