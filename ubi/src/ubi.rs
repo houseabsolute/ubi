@@ -5,7 +5,7 @@ use reqwest::{
     header::{HeaderValue, ACCEPT},
     Client, StatusCode,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{fs::File, io::Write, path::PathBuf};
 use tempfile::{tempdir, TempDir};
 use url::Url;
@@ -21,7 +21,7 @@ pub struct Ubi<'a> {
     reqwest_client: Client,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub(crate) struct Asset {
     pub(crate) name: String,
     pub(crate) url: Url,
