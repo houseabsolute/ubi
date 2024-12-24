@@ -44,9 +44,10 @@ impl<'a> UbiBuilder<'a> {
     }
 
     /// Set the project to download from. This can either be just the org/name, like
-    /// `houseabsolute/precious`, or the complete GitHub URL to the project, like
-    /// `https://github.com/houseabsolute/precious`. It also accepts a URL to any page in the
-    /// project, like `https://github.com/houseabsolute/precious/releases`.
+    /// `houseabsolute/precious`, or the complete forge site URL to the project, like
+    /// `https://github.com/houseabsolute/precious` or `https://gitlab.com/gitlab-org/cli`. It also
+    /// accepts a URL to any page in the project, like
+    /// `https://github.com/houseabsolute/precious/releases`.
     ///
     /// You must set this or set `url`, but not both.
     #[must_use]
@@ -63,10 +64,10 @@ impl<'a> UbiBuilder<'a> {
         self
     }
 
-    /// Set the URL to download from. This can be provided instead of a project or tag. This will
-    /// not use the GitHub API, so you will never hit the GitHub API limits. That in turn means you
-    /// won't have to set a `GITHUB_TOKEN` env var except when downloading a release from a private
-    /// repo when the URL is set.
+    /// Set the URL to download from. This can be provided instead of a project or tag. This will not
+    /// use the forge site API, so you will never hit API limits. That in turn means you won't have
+    /// to set a token env var except when downloading a release from a private repo when the URL is
+    /// set.
     ///
     /// You must set this or set `project`, but not both.
     #[must_use]
@@ -110,8 +111,8 @@ impl<'a> UbiBuilder<'a> {
     }
 
     /// Set a GitLab token to use for API requests. If this is not set then this will be taken from
-    ////the `CI_JOB_TOKEN` or `GITLAB_TOKEN` env var if one of these is set. If both are set, then
-    /// the value `CI_JOB_TOKEN` will be used.
+    /// the `CI_JOB_TOKEN` or `GITLAB_TOKEN` env var, if one of these is set. If both are set, then
+    /// the value in `CI_JOB_TOKEN` will be used.
     #[must_use]
     pub fn gitlab_token(mut self, token: &'a str) -> Self {
         self.gitlab_token = Some(token);
@@ -146,7 +147,7 @@ impl<'a> UbiBuilder<'a> {
     }
 
     /// Set the base URL for the forge site's API. This is useful for testing or if you want to operate
-    /// against an Enterprise version of GitHub or GitLab,
+    /// against an Enterprise version of GitHub or GitLab.
     #[must_use]
     pub fn url_base(mut self, url_base: String) -> Self {
         self.url_base = Some(url_base);

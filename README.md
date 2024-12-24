@@ -1,6 +1,6 @@
 # The Universal Binary Installer Library and CLI Tool
 
-When I say "universal", I mean it downloads binaries from GitHub releases.
+When I say "universal", I mean it downloads binaries from GitHub or GitLab releases.
 
 When I say "binary", I mean it handles single-file executables like those created by most Go and
 Rust projects.
@@ -75,45 +75,52 @@ current directory.
 ## How to Use It
 
 ```
-USAGE:
-    ubi [OPTIONS]
+Usage: ubi [OPTIONS]
 
-OPTIONS:
-    -d, --debug                  Enable debugging output
-    -e, --exe <exe>              The name of this project's executable. By default this is the same
-                                 as the project name, so for houseabsolute/precious we look for
-                                 precious or precious.exe. When running on Windows the ".exe" suffix
-                                 will be added as needed.
-    -h, --help                   Print help information
-    -i, --in <in>                The directory in which the binary should be placed. Defaults to
-                                 ./bin.
-    -m, --matching <matching>    A string that will be matched against the release filename when
-                                 there are multiple files for your OS/arch, i.e. "gnu" or "musl".
-                                 Note that this will be ignored if there is only used when there is
-                                 only one matching release filename for your OS/arch
-    -p, --project <project>      The project you want to install, like houseabsolute/precious or
-                                 https://github.com/houseabsolute/precious.
-    -q, --quiet                  Suppresses most output
-        --self-upgrade           Use ubi to upgrade to the latest version of ubi. The --exe, --in,
-                                 --project, --tag, and --url args will be ignored.
-    -t, --tag <tag>              The tag to download. Defaults to the latest release.
-    -u, --url <url>              The url of the file to download. This can be provided instead of a
-                                 project or tag. This will not use the GitHub API, so you will never
-                                 hit the GitHub API limits. This means you do not need to set a
-                                 GITHUB_TOKEN env var except for private repos.
-    -v, --verbose                Enable verbose output
-    -V, --version                Print version information
+Options:
+  -p, --project <project>    The project you want to install, like houseabsolute/precious or
+                             https://github.com/houseabsolute/precious.
+  -t, --tag <tag>            The tag to download. Defaults to the latest release.
+  -u, --url <url>            The url of the file to download. This can be provided instead of a
+                             project or tag. This will not use the forge site's API, so you will
+                             never hit its API limits. With this parameter, you do not need to set a
+                             token env var except for private repos.
+      --self-upgrade         Use ubi to upgrade to the latest version of ubi. The --exe, --in,
+                             --project, --tag, and --url args will be ignored.
+  -i, --in <in>              The directory in which the binary should be placed. Defaults to ./bin.
+  -e, --exe <exe>            The name of this project's executable. By default this is the same as
+                             the project name, so for houseabsolute/precious we look for precious or
+                             precious.exe. When running on Windows the ".exe" suffix will be added
+                             as needed.
+  -m, --matching <matching>  A string that will be matched against the release filename when there
+                             are multiple matching files for your OS/arch. For example, there may be
+                             multiple releases for an OS/arch that differ by compiler (MSVC vs. gcc)
+                             or linked libc (glibc vs. musl). Note that this will be ignored if
+                             there is only one matching release filename for your OS/arch.
+      --forge <forge>        The forge to use. If this isn't set, then the value of --project or
+                             --url will be checked for gitlab.com. If this contains any other domain
+                             _or_ if it does not have a domain at all, then the default is GitHub.
+                             [possible values: github, gitlab]
+  -v, --verbose              Enable verbose output.
+  -d, --debug                Enable debugging output.
+  -q, --quiet                Suppresses most output.
+  -h, --help                 Print help
+  -V, --version              Print version
 ```
 
-## Using a GitHub Token
+## Using a Forge Token
 
-If the `GITHUB_TOKEN` environment variable is set, then this will be used for all API calls. This is
-required to download releases for a private project. If you are running `ubi` in a CI environment
-that runs jobs frequently, you may also need this, as GitHub has a very low rate limit for anonymous
-API requests.
+You can set a token for GitHub in the `GITHUB_TOKEN` environment variable. For GitLab, you can
+either use `CI_JOB_TOKEN` or `GITLAB_TOKEN`. The former is set in GitLab CI automatically, and it
+will be preferred if both are set.
 
-However, you can also use the `--url` option to bypass the GitHub API by providing the download link
-directly.
+If a token environment variable is set, then this will be used for all API calls. This is required
+to download releases for a private project. If you are running `ubi` against GitHub in a CI
+environment that runs jobs frequently, you may also need this, as GitHub has a very low rate limit
+for anonymous API requests.
+
+However, you can also use the `--url` option to bypass the forge site API by providing the download
+link directly.
 
 ## Upgrading `ubi`
 
@@ -126,12 +133,16 @@ On Windows, this leaves behind a file named `ubi-old.exe` that must be deleted m
 
 There are a few things you'll want to consider when using `ubi` in CI.
 
-First, there are
-[the GitHub API rate limits](https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting).
-This limit can be as low as 60 requests per hour per IP when not providing a `GITHUB_TOKEN`, so you
-will almost certainly want to provide this. When running in GitHub Actions you can use the
-`${{ secrets.GITHUB_TOKEN }}` syntax to set this env var, and in that case the rate limits are per
-repository.
+First, there are forge site API rate limits. See the
+[GitHub API rate limits documentation](https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting)
+and
+[GitLab API rate limits documentation](https://docs.gitlab.com/ee/user/gitlab_com/index.html#gitlabcom-specific-rate-limits).
+
+The GitHub limit can be as low as 60 requests per hour per IP when not providing a `GITHUB_TOKEN`,
+so you will almost certainly want to provide this if you are getting releases from GitHub.
+
+When running in GitHub Actions you can use the `${{ secrets.GITHUB_TOKEN }}` syntax to set this env
+var, and in that case the rate limits are per repository.
 
 ```yaml
 - name: Install UBI
@@ -150,6 +161,9 @@ repository.
   env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
+
+Similarly, the GitLab CI system sets a `CI_JOB_TOKEN` for all jobs. Make sure to pass this to UBI
+when you use it to install something from GitLab in CI.
 
 If you only run `ubi` on one platform, you can avoid hitting the GitHub API entirely by using the
 `--url` parameter. But if you run on multiple platforms this can be tedious to maintain and it

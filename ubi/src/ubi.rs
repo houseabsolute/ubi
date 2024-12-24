@@ -62,9 +62,9 @@ impl<'a> Ubi<'a> {
     ///
     /// There are a number of cases where an error can be returned:
     ///
-    /// * Network errors on requests to GitHub.
-    /// * You've reached the API limits for GitHub (try setting the `GITHUB_TOKEN` env var to
-    ///   increase these).
+    /// * Network errors on requests to the forge site (GitHub, GitLab, etc.).
+    /// * You've reached the API limits for the forge site (try setting the appropriate token env var
+    ///   to increase these).
     /// * Unable to find the requested project.
     /// * Unable to find a match for the platform on which the code is running.
     /// * Unable to unpack/uncompress the downloaded release file.
