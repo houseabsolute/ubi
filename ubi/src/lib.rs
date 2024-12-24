@@ -1,41 +1,3 @@
-//! A library for downloading and installing pre-built binaries from GitHub.
-//!
-//! UBI stands for "Universal Binary Installer". It downloads and installs pre-built binaries from
-//! GitHub releases. It is designed to be used in shell scripts and other automation.
-//!
-//! This project also ships a CLI tool named `ubi`. See [the project's GitHub
-//! repo](https://github.com/houseabsolute/ubi) for more details on installing and using this tool.
-//!
-//! ```ignore
-//! use ubi::UbiBuilder;
-//!
-//! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let ubi = UbiBuilder::new()
-//!         .project("houseabsolute/precious")
-//!         .install_dir("/usr/local/bin")
-//!         .build()?;
-//!
-//!     ubi.install_binary().await?;
-//!
-//!     Ok(())
-//! }
-//! ```
-//!
-//! ## Features
-//!
-//! This crate offers several features to control the TLS dependency used by `reqwest`:
-//!
-#![doc = document_features::document_features!()]
-
-mod arch;
-mod extension;
-mod fetcher;
-mod installer;
-mod os;
-mod picker;
-mod release;
-
 use crate::{
     fetcher::GitHubAssetFetcher, installer::Installer, picker::AssetPicker, release::Asset,
     release::Download,
@@ -57,6 +19,9 @@ use std::{
 use tempfile::tempdir;
 use url::Url;
 use which::which;
+use mockito::Server;
+
+const GITHUB_API_BASE: &str = "https://api.github.com";
 
 // The version of the `ubi` crate.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
