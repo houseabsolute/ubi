@@ -18,12 +18,12 @@ use regex::Regex;
 #[derive(Debug)]
 pub(crate) struct AssetPicker<'a> {
     matching: Option<&'a str>,
-    platform: &'a Platform,
+    platform: Platform,
     is_musl: bool,
 }
 
 impl<'a> AssetPicker<'a> {
-    pub(crate) fn new(matching: Option<&'a str>, platform: &'a Platform, is_musl: bool) -> Self {
+    pub(crate) fn new(matching: Option<&'a str>, platform: Platform, is_musl: bool) -> Self {
         Self {
             matching,
             platform,
@@ -70,11 +70,12 @@ impl<'a> AssetPicker<'a> {
 
         matches = self.libc_matches(matches);
         if matches.is_empty() {
+            let libc_name = self.libc_name();
             return Err(anyhow!(
                 "could not find a release asset for this OS ({}), architecture ({}), and libc ({}) from {all_names}",
                 self.platform.target_os,
                 self.platform.target_arch,
-                self.libc_name(),
+                libc_name,
             ));
         }
 
@@ -505,7 +506,9 @@ mod test {
         // https://github.com/frondeus/test-case/pull/143.
         //
         // init_logger(log::LevelFilter::Debug)?;
-        let platform = Platform::find(platform_name).ok_or(anyhow!("invalid platform"))?;
+        let platform = Platform::find(platform_name)
+            .ok_or(anyhow!("invalid platform"))?
+            .clone();
         let mut picker = AssetPicker {
             matching,
             platform,
@@ -558,7 +561,9 @@ mod test {
         // https://github.com/frondeus/test-case/pull/143.
         //
         // init_logger(log::LevelFilter::Debug)?;
-        let platform = Platform::find(platform_name).ok_or(anyhow!("invalid platform"))?;
+        let platform = Platform::find(platform_name)
+            .ok_or(anyhow!("invalid platform"))?
+            .clone();
         let mut picker = AssetPicker {
             matching,
             platform,
