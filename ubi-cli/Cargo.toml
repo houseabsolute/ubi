@@ -18,6 +18,9 @@ thiserror.workspace = true
 tokio.workspace = true
 ubi = { version = "0.2.4", path = "../ubi", features = ["default", "logging"] }
 
+[dev-dependencies]
+which.workspace = true
+
 [[bin]]
 name = "ubi"
 path = "src/main.rs"

@@ -9,6 +9,7 @@ use std::{
     process,
 };
 use tempfile::TempDir;
+use which::which;
 
 struct PreservableTempdir {
     td: Option<TempDir>,
@@ -61,6 +62,7 @@ fn integration_tests() -> Result<()> {
     ubi.push("target");
     ubi.push("debug");
     ubi.push(if cfg!(windows) { "ubi.exe" } else { "ubi" });
+    ubi = ubi.canonicalize()?;
 
     let td = PreservableTempdir::new()?;
 
@@ -73,21 +75,22 @@ fn integration_tests() -> Result<()> {
 
     {
         let precious_bin = make_exe_pathbuf(&["bin", "precious"]);
-        run_test(
+        if run_test(
             td.path(),
             ubi.as_ref(),
             &["--project", "houseabsolute/precious", "--tag", "v0.7.2"],
             precious_bin.clone(),
-        )?;
-        match run_command(precious_bin.as_ref(), &["--version"]) {
-            Ok((stdout, _)) => {
-                assert!(stdout.is_some(), "got stdout from precious");
-                assert!(
-                    stdout.unwrap().contains("precious 0.7.2"),
-                    "downloaded version 0.7.2"
-                );
+        )? {
+            match run_command(precious_bin.as_ref(), &["--version"]) {
+                Ok((stdout, _)) => {
+                    assert!(stdout.is_some(), "got stdout from precious");
+                    assert!(
+                        stdout.unwrap().contains("precious 0.7.2"),
+                        "downloaded version 0.7.2"
+                    );
+                }
+                Err(e) => return Err(e),
             }
-            Err(e) => return Err(e),
         }
     }
 
@@ -124,11 +127,11 @@ fn integration_tests() -> Result<()> {
     #[cfg(target_os = "linux")]
     {
         let precious_bin = make_exe_pathbuf(&["bin", "precious"]);
-        run_test(td.path(),
+        if run_test(td.path(),
             ubi.as_ref(),
             &["--url", "https://github.com/houseabsolute/precious/releases/download/v0.1.7/precious-Linux-x86_64-musl.tar.gz"],
             make_exe_pathbuf(&["bin", "precious"]),
-        )?;
+        )?{
         match run_command(precious_bin.as_ref(), &["--version"]) {
             Ok((stdout, _)) => {
                 assert!(stdout.is_some(), "got stdout from precious");
@@ -138,7 +141,7 @@ fn integration_tests() -> Result<()> {
                 );
             }
             Err(e) => return Err(e),
-        }
+        }}
     }
 
     run_test(
@@ -150,43 +153,45 @@ fn integration_tests() -> Result<()> {
 
     {
         let rust_analyzer_bin = make_exe_pathbuf(&["bin", "rust-analyzer"]);
-        run_test(
+        if run_test(
             td.path(),
             ubi.as_ref(),
             &["--project", "rust-analyzer/rust-analyzer"],
             rust_analyzer_bin.clone(),
-        )?;
-        match run_command(rust_analyzer_bin.as_ref(), &["--help"]) {
-            Ok((stdout, _)) => {
-                assert!(stdout.is_some(), "got stdout from rust-analyzer");
-                assert!(
-                    stdout
-                        .unwrap()
-                        .contains("LSP server for the Rust programming language"),
-                    "got expected --help output"
-                );
+        )? {
+            match run_command(rust_analyzer_bin.as_ref(), &["--help"]) {
+                Ok((stdout, _)) => {
+                    assert!(stdout.is_some(), "got stdout from rust-analyzer");
+                    assert!(
+                        stdout
+                            .unwrap()
+                            .contains("LSP server for the Rust programming language"),
+                        "got expected --help output"
+                    );
+                }
+                Err(e) => return Err(e),
             }
-            Err(e) => return Err(e),
         }
     }
 
     {
         let golangci_lint_bin = make_exe_pathbuf(&["bin", "golangci-lint"]);
-        run_test(
+        if run_test(
             td.path(),
             ubi.as_ref(),
             &["--project", "golangci/golangci-lint"],
             golangci_lint_bin.clone(),
-        )?;
-        match run_command(golangci_lint_bin.as_ref(), &["--version"]) {
-            Ok((stdout, _)) => {
-                assert!(stdout.is_some(), "got stdout from golangci-lint");
-                assert!(
-                    stdout.unwrap().contains("golangci-lint has version"),
-                    "got the expected stdout",
-                );
+        )? {
+            match run_command(golangci_lint_bin.as_ref(), &["--version"]) {
+                Ok((stdout, _)) => {
+                    assert!(stdout.is_some(), "got stdout from golangci-lint");
+                    assert!(
+                        stdout.unwrap().contains("golangci-lint has version"),
+                        "got the expected stdout",
+                    );
+                }
+                Err(e) => return Err(e),
             }
-            Err(e) => return Err(e),
         }
     }
 
@@ -204,25 +209,25 @@ fn integration_tests() -> Result<()> {
         #[cfg(target_family = "unix")]
         let old_stat = fs::metadata(ubi_copy.as_path())?;
 
-        run_test(
+        if run_test(
             td.path(),
             ubi_copy.as_ref(),
             &["--self-upgrade"],
             ubi_copy.clone(),
-        )?;
-
-        #[cfg(target_family = "unix")]
-        {
-            let new_stat = fs::metadata(ubi_copy)?;
-            // The "new" version will have an older modified time, since it's the
-            // creation time from the tarball/zip file entry, not the time it's
-            // written to disk after downloading.
-            let old_modified = old_stat.modified()?;
-            let new_modified = new_stat.modified()?;
-            assert!(
-                old_modified > new_modified,
-                "new version of ubi was downloaded ({old_modified:?} > {new_modified:?})",
-            );
+        )? {
+            #[cfg(target_family = "unix")]
+            {
+                let new_stat = fs::metadata(ubi_copy)?;
+                // The "new" version will have an older modified time, since it's the
+                // creation time from the tarball/zip file entry, not the time it's
+                // written to disk after downloading.
+                let old_modified = old_stat.modified()?;
+                let new_modified = new_stat.modified()?;
+                assert!(
+                    old_modified > new_modified,
+                    "new version of ubi was downloaded ({old_modified:?} > {new_modified:?})",
+                );
+            }
         }
     }
 
@@ -232,7 +237,7 @@ fn integration_tests() -> Result<()> {
     #[cfg(not(target_env = "musl"))]
     {
         let hx_bin = make_exe_pathbuf(&["bin", "hx"]);
-        run_test(
+        if run_test(
             td.path(),
             ubi.as_ref(),
             &[
@@ -244,16 +249,17 @@ fn integration_tests() -> Result<()> {
                 "22.08.1",
             ],
             hx_bin.clone(),
-        )?;
-        match run_command(hx_bin.as_ref(), &["--version"]) {
-            Ok((stdout, _)) => {
-                assert!(stdout.is_some(), "got stdout from hx");
-                assert!(
-                    stdout.unwrap().contains("22.08.1"),
-                    "got the expected stdout",
-                );
+        )? {
+            match run_command(hx_bin.as_ref(), &["--version"]) {
+                Ok((stdout, _)) => {
+                    assert!(stdout.is_some(), "got stdout from hx");
+                    assert!(
+                        stdout.unwrap().contains("22.08.1"),
+                        "got the expected stdout",
+                    );
+                }
+                Err(e) => return Err(e),
             }
-            Err(e) => return Err(e),
         }
     }
 
@@ -262,21 +268,22 @@ fn integration_tests() -> Result<()> {
     #[cfg(target_os = "linux")]
     {
         let prettycrontab_bin = make_exe_pathbuf(&["bin", "prettycrontab"]);
-        run_test(
+        if run_test(
             td.path(),
             ubi.as_ref(),
             &["--project", "mfontani/prettycrontab", "--tag", "v0.0.2"],
             prettycrontab_bin.clone(),
-        )?;
-        match run_command(prettycrontab_bin.as_ref(), &["-version"]) {
-            Ok((stdout, _)) => {
-                assert!(stdout.is_some(), "got stdout from prettycrontab");
-                assert!(
-                    stdout.unwrap().contains("v0.0.2"),
-                    "got the expected stdout",
-                );
+        )? {
+            match run_command(prettycrontab_bin.as_ref(), &["-version"]) {
+                Ok((stdout, _)) => {
+                    assert!(stdout.is_some(), "got stdout from prettycrontab");
+                    assert!(
+                        stdout.unwrap().contains("v0.0.2"),
+                        "got the expected stdout",
+                    );
+                }
+                Err(e) => return Err(e),
             }
-            Err(e) => return Err(e),
         }
     }
 
@@ -285,28 +292,29 @@ fn integration_tests() -> Result<()> {
     #[cfg(target_os = "linux")]
     {
         let tstdin_bin = make_exe_pathbuf(&["bin", "tstdin"]);
-        run_test(
+        if run_test(
             td.path(),
             ubi.as_ref(),
             &["--project", "mfontani/tstdin", "--tag", "v0.2.3"],
             tstdin_bin.clone(),
-        )?;
-        match run_command(tstdin_bin.as_ref(), &["-version"]) {
-            Ok((stdout, _)) => {
-                assert!(stdout.is_some(), "got stdout from tstdin");
-                assert!(
-                    stdout.unwrap().contains("v0.2.3"),
-                    "got the expected stdout",
-                );
+        )? {
+            match run_command(tstdin_bin.as_ref(), &["-version"]) {
+                Ok((stdout, _)) => {
+                    assert!(stdout.is_some(), "got stdout from tstdin");
+                    assert!(
+                        stdout.unwrap().contains("v0.2.3"),
+                        "got the expected stdout",
+                    );
+                }
+                Err(e) => return Err(e),
             }
-            Err(e) => return Err(e),
         }
     }
 
     #[cfg(target_os = "linux")]
     {
         let delta_bin = make_exe_pathbuf(&["bin", "delta"]);
-        run_test(
+        if run_test(
             td.path(),
             ubi.as_ref(),
             &[
@@ -318,29 +326,30 @@ fn integration_tests() -> Result<()> {
                 "musl",
             ],
             delta_bin.clone(),
-        )?;
-        match run_command(delta_bin.as_ref(), &["--version"]) {
-            Ok((stdout, _)) => {
-                assert!(stdout.is_some(), "got stdout from delta");
-                assert!(
-                    stdout.unwrap().contains("delta 0.13.0"),
-                    "got the expected stdout",
-                );
+        )? {
+            match run_command(delta_bin.as_ref(), &["--version"]) {
+                Ok((stdout, _)) => {
+                    assert!(stdout.is_some(), "got stdout from delta");
+                    assert!(
+                        stdout.unwrap().contains("delta 0.13.0"),
+                        "got the expected stdout",
+                    );
+                }
+                Err(e) => return Err(e),
             }
-            Err(e) => return Err(e),
-        }
-        match run_command(
-            &PathBuf::from("file"),
-            &[delta_bin.to_string_lossy().as_ref()],
-        ) {
-            Ok((stdout, _)) => {
-                assert!(stdout.is_some(), "got stdout from file");
-                assert!(
-                    stdout.unwrap().contains("statically linked"),
-                    "got the expected stdout",
-                );
+            match run_command(
+                &PathBuf::from("file"),
+                &[delta_bin.to_string_lossy().as_ref()],
+            ) {
+                Ok((stdout, _)) => {
+                    assert!(stdout.is_some(), "got stdout from file");
+                    assert!(
+                        stdout.unwrap().contains("statically linked"),
+                        "got the expected stdout",
+                    );
+                }
+                Err(e) => return Err(e),
             }
-            Err(e) => return Err(e),
         }
     }
 
@@ -371,22 +380,22 @@ fn integration_tests() -> Result<()> {
     #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
     {
         let ubi_bin = make_exe_pathbuf(&["bin", "ubi"]);
-        run_test(
+        if run_test(
             td.path(),
             ubi.as_ref(),
             &["--project", "houseabsolute/ubi", "--tag", "v0.0.27"],
             ubi_bin.clone(),
-        )?;
-
-        match run_command(ubi_bin.as_ref(), &["--version"]) {
-            Ok((stdout, _)) => {
-                assert!(stdout.is_some(), "got stdout from ubi");
-                assert!(
-                    stdout.unwrap().contains("ubi 0.0.27"),
-                    "got the expected stdout",
-                );
+        )? {
+            match run_command(ubi_bin.as_ref(), &["--version"]) {
+                Ok((stdout, _)) => {
+                    assert!(stdout.is_some(), "got stdout from ubi");
+                    assert!(
+                        stdout.unwrap().contains("ubi 0.0.27"),
+                        "got the expected stdout",
+                    );
+                }
+                Err(e) => return Err(e),
             }
-            Err(e) => return Err(e),
         }
     }
 
@@ -491,15 +500,20 @@ fn make_dir_pathbuf(path: &[&str]) -> PathBuf {
     pb
 }
 
-fn run_test(td: &Path, cmd: &Path, args: &[&str], mut expect: PathBuf) -> Result<()> {
-    for entry in fs::read_dir(td)? {
-        let entry = entry?;
-        if entry.metadata()?.is_dir() {
-            fs::remove_dir_all(entry.path())?;
-        } else {
-            fs::remove_file(entry.path())?;
+fn run_test(td: &Path, cmd: &Path, args: &[&str], expect: PathBuf) -> Result<bool> {
+    if let Ok(v) = env::var("UBI_TESTS_INTEGRATION_ONLY") {
+        if !v.is_empty() && !(args.len() > 1 && args[1].contains(&v)) {
+            println!(
+                "Skipping test for [{}] because it does not contain {v}",
+                args.join(" "),
+            );
+            return Ok(false);
         }
     }
+
+    println!("Running test [{}]", args.join(" "));
+
+    clean_tempdir(td)?;
     env::set_current_dir(td)?;
 
     let debug = matches!(env::var("UBI_TESTS_DEBUG"), Ok(v) if !(v.is_empty() || v == "0"));
@@ -508,45 +522,51 @@ fn run_test(td: &Path, cmd: &Path, args: &[&str], mut expect: PathBuf) -> Result
         args.push("--debug");
     }
 
-    match run_command(cmd, &args) {
-        Ok((stdout, stderr)) => {
-            if cfg!(windows) && args.contains(&"--self-upgrade") {
-                assert!(stdout
-                    .unwrap_or_default()
-                    .contains("The self-upgrade operation left an old binary behind that must be deleted manually"));
-            } else {
-                assert_eq!(
-                    stdout.unwrap_or_default(),
-                    String::new(),
-                    "no output to stdout",
-                );
-            }
-            if debug {
-                print!("{}", stderr.unwrap());
-            } else {
-                assert_eq!(
-                    stderr.unwrap_or_default(),
-                    String::new(),
-                    "no output to stderr",
-                );
-            }
+    check_command_result(cmd, &args, debug)?;
+    if let Err(e) = check_installed_binary(expect) {
+        dump_tree(td)?;
+        return Err(e);
+    }
+
+    Ok(true)
+}
+
+fn clean_tempdir(td: &Path) -> Result<()> {
+    for entry in fs::read_dir(td)? {
+        let entry = entry?;
+        if entry.metadata()?.is_dir() {
+            fs::remove_dir_all(entry.path())?;
+        } else {
+            fs::remove_file(entry.path())?;
         }
-        Err(e) => return Err(e),
     }
 
-    if cfg!(windows) && !expect.to_string_lossy().ends_with(".exe") {
-        expect.set_extension("exe");
+    Ok(())
+}
+
+fn check_command_result(cmd: &Path, args: &[&str], debug: bool) -> Result<()> {
+    let (stdout, stderr) = run_command(cmd, args)?;
+
+    if cfg!(windows) && args.contains(&"--self-upgrade") {
+        assert!(stdout.unwrap_or_default().contains(
+            "The self-upgrade operation left an old binary behind that must be deleted manually"
+        ));
+    } else {
+        assert_eq!(
+            stdout.unwrap_or_default(),
+            String::new(),
+            "no output to stdout",
+        );
     }
-
-    let expect_str = expect.to_string_lossy();
-
-    let meta = fs::metadata(&expect).context(format!("getting fs metadata for {expect_str}"))?;
-    assert!(meta.is_file(), "downloaded file into expected location");
-    #[cfg(target_family = "unix")]
-    assert!(
-        meta.permissions().mode() & 0o111 != 0,
-        "downloaded file is executable",
-    );
+    if debug {
+        print!("{}", stderr.unwrap());
+    } else {
+        assert_eq!(
+            stderr.unwrap_or_default(),
+            String::new(),
+            "no output to stderr",
+        );
+    }
 
     Ok(())
 }
@@ -633,4 +653,34 @@ fn signal_from_status(status: process::ExitStatus) -> i32 {
 #[cfg(target_family = "windows")]
 fn signal_from_status(_: process::ExitStatus) -> i32 {
     0
+}
+
+fn check_installed_binary(mut expect: PathBuf) -> Result<()> {
+    if cfg!(windows) && !expect.to_string_lossy().ends_with(".exe") {
+        expect.set_extension("exe");
+    }
+
+    let expect_str = expect.to_string_lossy();
+
+    let meta = fs::metadata(&expect).context(format!("getting fs metadata for {expect_str}"))?;
+    assert!(meta.is_file(), "downloaded file into expected location");
+    #[cfg(target_family = "unix")]
+    assert!(
+        meta.permissions().mode() & 0o111 != 0,
+        "downloaded file is executable",
+    );
+
+    Ok(())
+}
+
+fn dump_tree(td: &Path) -> Result<()> {
+    if let Ok(tree) = which("tree") {
+        let output = process::Command::new(tree)
+            .arg(td)
+            .output()
+            .context("running tree")?;
+        println!("{}", String::from_utf8_lossy(&output.stdout));
+    }
+
+    Ok(())
 }
