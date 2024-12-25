@@ -5,7 +5,8 @@ use bzip2::read::BzDecoder;
 use flate2::read::GzDecoder;
 use log::{debug, info};
 use std::{
-    fs::File,
+    ffi::OsStr,
+    fs::{create_dir_all, File},
     io::{Read, Write},
     path::{Path, PathBuf},
 };
@@ -19,24 +20,24 @@ use std::os::unix::fs::PermissionsExt;
 
 #[derive(Debug)]
 pub(crate) struct Installer {
-    install_path: PathBuf,
+    install_dir: PathBuf,
     exe: String,
 }
 
 impl Installer {
-    pub(crate) fn new(install_path: PathBuf, exe: String) -> Self {
-        Installer { install_path, exe }
+    pub(crate) fn new(install_dir: PathBuf, exe: String) -> Self {
+        Installer { install_dir, exe }
     }
 
     pub(crate) fn install(&self, download: &Download) -> Result<()> {
-        self.extract_binary(&download.archive_path)?;
-        self.make_binary_executable()?;
-        info!("Installed binary into {}", self.install_path.display());
+        let install_path = self.extract_binary(&download.archive_path)?;
+        Self::make_binary_executable(&install_path)?;
+        info!("Installed binary into {}", install_path.display());
 
         Ok(())
     }
 
-    fn extract_binary(&self, downloaded_file: &Path) -> Result<()> {
+    fn extract_binary(&self, downloaded_file: &Path) -> Result<PathBuf> {
         let filename = downloaded_file
             .file_name()
             .unwrap_or_else(|| {
@@ -65,18 +66,27 @@ impl Installer {
         }
     }
 
-    fn extract_zip(&self, downloaded_file: &Path) -> Result<()> {
+    fn extract_zip(&self, downloaded_file: &Path) -> Result<PathBuf> {
         debug!("extracting binary from zip file");
 
         let mut zip = ZipArchive::new(open_file(downloaded_file)?)?;
         for i in 0..zip.len() {
             let mut zf = zip.by_index(i)?;
             let path = PathBuf::from(zf.name());
-            if path.ends_with(&self.exe) {
-                let mut buffer: Vec<u8> = Vec::with_capacity(usize::try_from(zf.size())?);
-                zf.read_to_end(&mut buffer)?;
-                let mut file = File::create(&self.install_path)?;
-                return file.write_all(&buffer).map_err(Into::into);
+            if let Some(file_name) = path.file_name() {
+                if file_name.to_string_lossy().to_lowercase() == self.exe.to_lowercase() {
+                    create_dir_all(&self.install_dir)?;
+                    let install_path = self.install_path_for_exe(Some(file_name));
+                    debug!(
+                        "extracting zip entry to {}",
+                        self.install_dir.to_string_lossy(),
+                    );
+                    let mut buffer: Vec<u8> = Vec::with_capacity(usize::try_from(zf.size())?);
+                    zf.read_to_end(&mut buffer)?;
+                    let mut file = File::create(&install_path)?;
+                    file.write_all(&buffer)?;
+                    return Ok(install_path);
+                }
             }
         }
 
@@ -87,7 +97,7 @@ impl Installer {
         ))
     }
 
-    fn extract_tarball(&self, downloaded_file: &Path) -> Result<()> {
+    fn extract_tarball(&self, downloaded_file: &Path) -> Result<PathBuf> {
         debug!(
             "extracting binary from tarball at {}",
             downloaded_file.to_string_lossy(),
@@ -101,18 +111,13 @@ impl Installer {
                 continue;
             }
             debug!("found tarball entry with path {}", path.to_string_lossy());
-            if let Some(os_name) = path.file_name() {
-                if let Some(n) = os_name.to_str() {
-                    if n == self.exe {
-                        debug!(
-                            "extracting tarball entry to {}",
-                            self.install_path.to_string_lossy(),
-                        );
-                        return match entry.unpack(&self.install_path) {
-                            Ok(_) => Ok(()),
-                            Err(e) => Err(anyhow::Error::new(e)),
-                        };
-                    }
+            if let Some(file_name) = path.file_name() {
+                if file_name.to_string_lossy().to_lowercase() == self.exe.to_lowercase() {
+                    create_dir_all(&self.install_dir)?;
+                    let install_path = self.install_path_for_exe(Some(file_name));
+                    debug!("extracting tarball entry to {}", install_path.display());
+                    entry.unpack(&install_path)?;
+                    return Ok(install_path);
                 }
             }
         }
@@ -124,44 +129,68 @@ impl Installer {
         ))
     }
 
-    fn unbzip(&self, downloaded_file: &Path) -> Result<()> {
+    fn unbzip(&self, downloaded_file: &Path) -> Result<PathBuf> {
         debug!("uncompressing binary from bzip file");
         let reader = BzDecoder::new(open_file(downloaded_file)?);
         self.write_to_install_path(reader)
     }
 
-    fn ungzip(&self, downloaded_file: &Path) -> Result<()> {
+    fn ungzip(&self, downloaded_file: &Path) -> Result<PathBuf> {
         debug!("uncompressing binary from gzip file");
         let reader = GzDecoder::new(open_file(downloaded_file)?);
         self.write_to_install_path(reader)
     }
 
-    fn unxz(&self, downloaded_file: &Path) -> Result<()> {
+    fn unxz(&self, downloaded_file: &Path) -> Result<PathBuf> {
         debug!("uncompressing binary from xz file");
         let reader = XzDecoder::new(open_file(downloaded_file)?);
         self.write_to_install_path(reader)
     }
 
-    fn write_to_install_path(&self, mut reader: impl Read) -> Result<()> {
-        let mut writer = File::create(&self.install_path)
-            .with_context(|| format!("Cannot write to {}", self.install_path.to_string_lossy()))?;
+    fn write_to_install_path(&self, mut reader: impl Read) -> Result<PathBuf> {
+        create_dir_all(&self.install_dir)?;
+        let install_path = self.install_path_for_exe(None);
+
+        debug!(
+            "writing binary to final location at {}",
+            install_path.display(),
+        );
+        let mut writer = File::create(&install_path)
+            .with_context(|| format!("Cannot write to {}", install_path.display()))?;
         std::io::copy(&mut reader, &mut writer)?;
-        Ok(())
+
+        Ok(install_path)
     }
 
-    fn copy_executable(&self, exe_file: &Path) -> Result<()> {
-        debug!("copying binary to final location");
-        std::fs::copy(exe_file, &self.install_path)?;
+    fn copy_executable(&self, exe_file: &Path) -> Result<PathBuf> {
+        debug!(
+            "copying binary from {} to final location at {}",
+            exe_file.display(),
+            self.install_dir.display()
+        );
+        create_dir_all(&self.install_dir)?;
+        let install_path = self.install_path_for_exe(Some(exe_file.file_name().unwrap()));
+        std::fs::copy(exe_file, &install_path)?;
 
-        Ok(())
+        Ok(install_path)
     }
 
-    fn make_binary_executable(&self) -> Result<()> {
+    fn install_path_for_exe(&self, exe_file: Option<&OsStr>) -> PathBuf {
+        let mut path = self.install_dir.clone();
+        if let Some(exe) = exe_file {
+            path.push(exe);
+        } else {
+            path.push(&self.exe);
+        }
+        path
+    }
+
+    fn make_binary_executable(install_path: &Path) -> Result<()> {
         #[cfg(target_family = "windows")]
         return Ok(());
 
         #[cfg(target_family = "unix")]
-        match set_permissions(&self.install_path, Permissions::from_mode(0o755)) {
+        match set_permissions(install_path, Permissions::from_mode(0o755)) {
             Ok(()) => Ok(()),
             Err(e) => Err(anyhow::Error::new(e)),
         }
@@ -198,41 +227,67 @@ fn open_file(path: &Path) -> Result<File> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     #[cfg(target_family = "unix")]
     use std::os::unix::fs::PermissionsExt;
+    use std::{env, sync::Once};
     use tempfile::tempdir;
     use test_case::test_case;
 
-    #[test_case("test-data/project.bz", "project")]
-    #[test_case("test-data/project.bz2", "project")]
-    #[test_case("test-data/project.exe", "project")]
-    #[test_case("test-data/project.gz", "project")]
-    #[test_case("test-data/project.tar", "project")]
-    #[test_case("test-data/project.tar.bz", "project")]
-    #[test_case("test-data/project.tar.bz2", "project")]
-    #[test_case("test-data/project.tar.gz", "project")]
-    #[test_case("test-data/project.tar.xz", "project")]
-    #[test_case("test-data/project.xz", "project")]
-    #[test_case("test-data/project.zip", "project")]
-    #[test_case("test-data/project", "project")]
-    fn install(archive_path: &str, exe: &str) -> Result<()> {
-        //crate::ubi::init_logger(log::LevelFilter::Debug)?;
+    static INIT_LOGGING: Once = Once::new();
 
-        let td = tempdir()?;
-        let mut install_path = td.path().to_path_buf();
-        install_path.push("project");
-        let installer = Installer::new(install_path.clone(), exe.to_string());
-        installer.install(&Download {
-            // It doesn't matter what we use here. We're not actually going to
-            // put anything in this temp dir.
-            _temp_dir: tempdir()?,
-            archive_path: PathBuf::from(archive_path),
-        })?;
+    #[test_case("test-data/lc/project.bz"; "bz")]
+    #[test_case("test-data/lc/project.bz2"; "bz2")]
+    #[test_case("test-data/lc/project.exe"; "exe")]
+    #[test_case("test-data/lc/project.gz"; "gz")]
+    #[test_case("test-data/lc/project.tar"; "tar")]
+    #[test_case("test-data/lc/project.tar.bz"; "tar.bz")]
+    #[test_case("test-data/lc/project.tar.bz2"; "tar.bz2")]
+    #[test_case("test-data/lc/project.tar.gz"; "tar.gz")]
+    #[test_case("test-data/lc/project.tar.xz"; "tar.xz")]
+    #[test_case("test-data/lc/project.xz"; "xz")]
+    #[test_case("test-data/lc/project.zip"; "zip")]
+    #[test_case("test-data/lc/project"; "no extension")]
+    #[test_case("test-data/uc/Project.bz"; "bz uppercase")]
+    #[test_case("test-data/uc/Project.bz2"; "bz2 uppercase")]
+    #[test_case("test-data/uc/Project.exe"; "exe uppercase")]
+    #[test_case("test-data/uc/Project.gz"; "gz uppercase")]
+    #[test_case("test-data/uc/Project.tar"; "tar uppercase")]
+    #[test_case("test-data/uc/Project.tar.bz"; "tar.bz uppercase")]
+    #[test_case("test-data/uc/Project.tar.bz2"; "tar.bz2 uppercase")]
+    #[test_case("test-data/uc/Project.tar.gz"; "tar.gz uppercase")]
+    #[test_case("test-data/uc/Project.tar.xz"; "tar.xz uppercase")]
+    #[test_case("test-data/uc/Project.xz"; "xz uppercase")]
+    #[test_case("test-data/uc/Project.zip"; "zip uppercase")]
+    #[test_case("test-data/uc/Project"; "no extension uppercase")]
+    #[serial]
+    fn install(archive_path: &str) -> Result<()> {
+        INIT_LOGGING.call_once(|| {
+            if matches!(env::var("RUST_LOG"), Ok(v) if !v.is_empty()) {
+                crate::init_logger(log::LevelFilter::Debug).expect("failed to initialize logging");
+            }
+        });
 
-        assert!(install_path.exists());
-        assert!(install_path.is_file());
-        #[cfg(target_family = "unix")]
-        assert!(install_path.metadata()?.permissions().mode() & 0o111 != 0);
+        for exe in ["project", "Project"] {
+            let td = tempdir()?;
+            let install_dir = td.path().to_path_buf();
+
+            let installer = Installer::new(install_dir.clone(), exe.to_string());
+            installer.install(&Download {
+                // It doesn't matter what we use here. We're not actually going to
+                // put anything in this temp dir.
+                _temp_dir: tempdir()?,
+                archive_path: PathBuf::from(archive_path),
+            })?;
+
+            let mut install_path = install_dir.clone();
+            install_path.push(exe);
+
+            assert!(install_path.exists());
+            assert!(install_path.is_file());
+            #[cfg(target_family = "unix")]
+            assert!(install_path.metadata()?.permissions().mode() & 0o111 != 0);
+        }
 
         Ok(())
     }

@@ -14,7 +14,7 @@ use reqwest::{
     header::{HeaderMap, HeaderValue, USER_AGENT},
     Client,
 };
-use std::{env, fs::create_dir_all, path::PathBuf, str::FromStr};
+use std::{env, path::PathBuf, str::FromStr};
 use url::Url;
 use which::which;
 
@@ -93,9 +93,11 @@ impl<'a> UbiBuilder<'a> {
         self
     }
 
-    /// Set the name of the executable to look for in archive files. By default this is the same as
-    /// the project name, so for `houseabsolute/precious` we look for `precious` or
-    /// `precious.exe`. When running on Windows the ".exe" suffix will be added as needed.
+    /// Set the name of the executable to look for in archive files. By default, this is the same as
+    /// the project name, but matched case-insensitively. For example, with a project named
+    /// `houseabsolute/precious` it looks for `precious`, `precious.exe`, `Precious`, `PRECIOUS.exe`,
+    /// etc. When running on Windows the ".exe" suffix will be added as needed, so you should never
+    /// include this in the value passed to `exe`.
     #[must_use]
     pub fn exe(mut self, exe: &'a str) -> Self {
         self.exe = Some(exe);
@@ -180,14 +182,14 @@ impl<'a> UbiBuilder<'a> {
             parse_project_name(self.project, asset_url.as_ref(), self.forge.clone())?;
         let exe = exe_name(self.exe, &project_name, &platform);
         let forge = self.new_forge(project_name, &forge_type)?;
-        let install_path = install_path(self.install_dir, &exe)?;
+        let install_dir = install_dir(self.install_dir)?;
         let is_musl = self.is_musl.unwrap_or_else(|| platform_is_musl(&platform));
 
         Ok(Ubi::new(
             forge,
             asset_url,
             AssetPicker::new(self.matching, platform, is_musl),
-            Installer::new(install_path, exe),
+            Installer::new(install_dir, exe),
             reqwest_client()?,
         ))
     }
@@ -274,17 +276,15 @@ fn parse_project_name(
     ))
 }
 
-fn install_path(install_dir: Option<PathBuf>, exe: &str) -> Result<PathBuf> {
-    let mut path = if let Some(i) = install_dir {
+fn install_dir(install_dir: Option<PathBuf>) -> Result<PathBuf> {
+    let path = if let Some(i) = install_dir {
         i
     } else {
         let mut i = env::current_dir()?;
         i.push("bin");
         i
     };
-    create_dir_all(&path)?;
-    path.push(exe);
-    debug!("install path = {}", path.to_string_lossy());
+    debug!("install dir = {}", path.to_string_lossy());
     Ok(path)
 }
 

@@ -99,10 +99,11 @@ fn cmd() -> Command {
                 .help("The directory in which the binary should be placed. Defaults to ./bin."),
         )
         .arg(Arg::new("exe").long("exe").short('e').help(concat!(
-            "The name of this project's executable. By default this is the same as the",
-            " project name, so for houseabsolute/precious we look for precious or",
-            r#" precious.exe. When running on Windows the ".exe" suffix will be added"#,
-            " as needed.",
+            "The name of this project's executable. By default, this is the same as the project",
+            " name, but matched case-insensitively. For example, with a project named",
+            " `houseabsolute/precious` it looks for `precious`, `precious.exe`, `Precious`,",
+            r#" `PRECIOUS.exe`, etc. When running on Windows the ".exe" suffix will be added as"#,
+            " needed, so you should never include this in the value passed to `exe`.",
         )))
         .arg(
             Arg::new("matching")

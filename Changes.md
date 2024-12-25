@@ -7,6 +7,9 @@
   with a new `UbiBuilder::forge` method.
 - When looking for macOS assets, `ubi` will now match against `macosx` in asset names, not just
   `macos` and `osx`. Implemented by @kattouf (Vasiliy Kattouf). GH #80.
+- Matching an executable name in the downloaded release is now done case-insensitively. For example,
+  the project named `bscan/PerlNavigator` releases contain a file named `perlnavigator`. This is now
+  handled correctly without requiring you to pass `--exe perlnavigator`.
 
 ## 0.2.4 - 2024-11-24
 

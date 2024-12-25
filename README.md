@@ -88,10 +88,12 @@ Options:
       --self-upgrade         Use ubi to upgrade to the latest version of ubi. The --exe, --in,
                              --project, --tag, and --url args will be ignored.
   -i, --in <in>              The directory in which the binary should be placed. Defaults to ./bin.
-  -e, --exe <exe>            The name of this project's executable. By default this is the same as
-                             the project name, so for houseabsolute/precious we look for precious or
-                             precious.exe. When running on Windows the ".exe" suffix will be added
-                             as needed.
+  -e, --exe <exe>            The name of this project's executable. By default, this is the same as
+                             the project name, but case-insensitive. For example, with a project
+                             named `houseabsolute/precious` it looks for `precious`, `precious.exe`,
+                             `Precious`, `PRECIOUS.exe`, etc. When running on Windows the ".exe"
+                             suffix will be added as needed, so you should never include this in the
+                             value passed to `exe`.
   -m, --matching <matching>  A string that will be matched against the release filename when there
                              are multiple matching files for your OS/arch. For example, there may be
                              multiple releases for an OS/arch that differ by compiler (MSVC vs. gcc)
@@ -121,6 +123,25 @@ for anonymous API requests.
 
 However, you can also use the `--url` option to bypass the forge site API by providing the download
 link directly.
+
+## Installed Executable Naming
+
+If the release is in the form of a tarball or zip file, `ubi` will look in that archive file for a
+file that matches the value given for the `exe` field, if any. Otherwise it looks for a file with
+the same name as the project. In either case, does case-insensitive matching/
+
+The file it matches will be installed with whatever casing it has in the archive file. So if a
+project is named "SomeProject" and it releases a tarball that contains a "someproject" executable,
+`ubi` will find it and install it with that name.
+
+If the release is in the form of a bare executable or a compressed executable, then the installed
+executable will use the name of the project instead.
+
+This is a bit inconsistent, but it's how `ubi` has behaved since it was created, and I find this to
+be the sanest behavior. Some projects, for example `rust-analyzer`, provide releases as compressed
+executables with names like `rust-analyzer-x86_64-apple-darwin.gz` and
+`rust-analyzer-x86_64-unknown-linux-musl.gz`, so installing these as `rust-analyzer` seems like
+better behavior.
 
 ## Upgrading `ubi`
 

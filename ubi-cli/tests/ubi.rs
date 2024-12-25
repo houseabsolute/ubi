@@ -436,6 +436,15 @@ fn integration_tests() -> Result<()> {
         make_exe_pathbuf(&["bin", "wren_cli"]),
     )?;
 
+    // The executable in the release files is named "perlnavigator", but the project is
+    // "PerlNavigator". This tests that exe extraction is case-insensitive.
+    run_test(
+        td.path(),
+        ubi.as_ref(),
+        &["--project", "bscan/PerlNavigator", "--tag", "v0.8.15"],
+        make_exe_pathbuf(&["bin", "perlnavigator"]),
+    )?;
+
     run_test(
         td.path(),
         ubi.as_ref(),
