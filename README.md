@@ -122,6 +122,22 @@ for anonymous API requests.
 However, you can also use the `--url` option to bypass the forge site API by providing the download
 link directly.
 
+## Installed Executable Naming
+
+If the release is in the form of a tarball or zip file, `ubi` will look in that archive file for a
+file that matches the value given for the `exe` field, if any. Otherwise it looks for a file with
+the same name as the project. In either case, the file will be installed with the name it has in the
+archive file.
+
+If the release is in the form of a bare executable or a compressed executable, then the installed
+executable will use the name of the project instead.
+
+This is a bit inconsistent, but it's how `ubi` has behaved since it was created, and I find this to
+be the sanest behavior. Some projects, for example `rust-analyzer`, provide releases as compressed
+executables with names like `rust-analyzer-x86_64-apple-darwin.gz` and
+`rust-analyzer-x86_64-unknown-linux-musl.gz`, so installing these as `rust-analyzer` seems like
+better behavior.
+
 ## Upgrading `ubi`
 
 You can run `ubi --self-upgrade` to upgrade `ubi` using `ubi`. Note that you must have write
