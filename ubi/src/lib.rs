@@ -44,6 +44,9 @@
 //!
 //! ## How `ubi` Finds the Right Release Artifact
 //!
+//! <div class="warning">Note that the exact set of steps that are followed to find a release
+//! artifacts is not considered part of the API, and may change in any future release.</div>
+//!
 //! When you call [`Ubi::install_binary`], it looks at the release assets (downloadable files) for a
 //! project and tries to find the "right" asset for the platform it's running on. The matching logic
 //! currently works like this:
