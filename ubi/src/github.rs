@@ -106,23 +106,23 @@ mod tests {
 
     #[test(tokio::test)]
     #[serial]
-    async fn test_fetch_assets_without_token() -> Result<()> {
-        test_fetch_assets(None, None).await
+    async fn fetch_assets_without_token() -> Result<()> {
+        fetch_assets(None, None).await
     }
 
     #[test(tokio::test)]
     #[serial]
-    async fn test_fetch_assets_with_token() -> Result<()> {
-        test_fetch_assets(None, Some("ghp_fakeToken")).await
+    async fn fetch_assets_with_token() -> Result<()> {
+        fetch_assets(None, Some("ghp_fakeToken")).await
     }
 
     #[test(tokio::test)]
     #[serial]
-    async fn test_fetch_assets_with_tag() -> Result<()> {
-        test_fetch_assets(Some("v1.0.0"), None).await
+    async fn fetch_assets_with_tag() -> Result<()> {
+        fetch_assets(Some("v1.0.0"), None).await
     }
 
-    async fn test_fetch_assets(tag: Option<&str>, token: Option<&str>) -> Result<()> {
+    async fn fetch_assets(tag: Option<&str>, token: Option<&str>) -> Result<()> {
         let vars = env::vars();
         env::remove_var("GITHUB_TOKEN");
 
