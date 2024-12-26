@@ -21,6 +21,9 @@ pub(crate) struct GitHub {
     token: Option<String>,
 }
 
+unsafe impl Send for GitHub {}
+unsafe impl Sync for GitHub {}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct Release {
     pub(crate) assets: Vec<Asset>,

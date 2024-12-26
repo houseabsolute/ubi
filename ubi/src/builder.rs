@@ -193,7 +193,11 @@ impl<'a> UbiBuilder<'a> {
         ))
     }
 
-    fn new_forge(&self, project_name: String, forge_type: &ForgeType) -> Result<Box<dyn Forge>> {
+    fn new_forge(
+        &self,
+        project_name: String,
+        forge_type: &ForgeType,
+    ) -> Result<Box<dyn Forge + Send + Sync>> {
         let api_base = self.api_base_url.map(Url::parse).transpose()?;
         Ok(match forge_type {
             ForgeType::GitHub => Box::new(GitHub::new(

@@ -18,6 +18,9 @@ pub(crate) struct GitLab {
     token: Option<String>,
 }
 
+unsafe impl Send for GitLab {}
+unsafe impl Sync for GitLab {}
+
 #[derive(Debug, Deserialize, Serialize)]
 struct Release {
     assets: GitLabAssets,
