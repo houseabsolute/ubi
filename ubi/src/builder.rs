@@ -16,7 +16,6 @@ use reqwest::{
 };
 use std::{
     env,
-    fs::create_dir_all,
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -292,7 +291,6 @@ fn install_path(install_dir: Option<PathBuf>, exe: &str) -> Result<PathBuf> {
         i.push("bin");
         i
     };
-    create_dir_all(&path)?;
     path.push(exe);
     debug!("install path = {}", path.to_string_lossy());
     Ok(path)

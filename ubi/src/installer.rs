@@ -5,7 +5,7 @@ use bzip2::read::BzDecoder;
 use flate2::read::GzDecoder;
 use log::{debug, info};
 use std::{
-    fs::File,
+    fs::{create_dir_all, File},
     io::{Read, Write},
     path::{Path, PathBuf},
 };
@@ -75,8 +75,10 @@ impl Installer {
             if path.ends_with(&self.exe) {
                 let mut buffer: Vec<u8> = Vec::with_capacity(usize::try_from(zf.size())?);
                 zf.read_to_end(&mut buffer)?;
-                let mut file = File::create(&self.install_path)?;
-                return file.write_all(&buffer).map_err(Into::into);
+                self.create_install_dir()?;
+                return File::create(&self.install_path)?
+                    .write_all(&buffer)
+                    .map_err(Into::into);
             }
         }
 
@@ -108,10 +110,9 @@ impl Installer {
                             "extracting tarball entry to {}",
                             self.install_path.to_string_lossy(),
                         );
-                        return match entry.unpack(&self.install_path) {
-                            Ok(_) => Ok(()),
-                            Err(e) => Err(anyhow::Error::new(e)),
-                        };
+                        self.create_install_dir()?;
+                        entry.unpack(&self.install_path).unwrap();
+                        return Ok(());
                     }
                 }
             }
@@ -143,6 +144,7 @@ impl Installer {
     }
 
     fn write_to_install_path(&self, mut reader: impl Read) -> Result<()> {
+        self.create_install_dir()?;
         let mut writer = File::create(&self.install_path)
             .with_context(|| format!("Cannot write to {}", self.install_path.to_string_lossy()))?;
         std::io::copy(&mut reader, &mut writer)?;
@@ -151,9 +153,23 @@ impl Installer {
 
     fn copy_executable(&self, exe_file: &Path) -> Result<()> {
         debug!("copying binary to final location");
+        self.create_install_dir()?;
         std::fs::copy(exe_file, &self.install_path)?;
 
         Ok(())
+    }
+
+    fn create_install_dir(&self) -> Result<()> {
+        let Some(path) = self.install_path.parent() else {
+            return Err(anyhow!(
+                "install path at {} has no parent",
+                self.install_path.display()
+            ));
+        };
+
+        debug!("creating directory at {}", path.display());
+        create_dir_all(path)
+            .with_context(|| format!("could not create a directory at {}", path.display()))
     }
 
     fn make_binary_executable(&self) -> Result<()> {
@@ -200,6 +216,7 @@ mod tests {
     use super::*;
     #[cfg(target_family = "unix")]
     use std::os::unix::fs::PermissionsExt;
+    use std::sync::Once;
     use tempfile::tempdir;
     use test_case::test_case;
 
@@ -216,23 +233,32 @@ mod tests {
     #[test_case("test-data/project.zip", "project")]
     #[test_case("test-data/project", "project")]
     fn install(archive_path: &str, exe: &str) -> Result<()> {
-        //crate::ubi::init_logger(log::LevelFilter::Debug)?;
+        static INIT_LOGGING: Once = Once::new();
+        INIT_LOGGING.call_once(|| {
+            use env_logger;
+            let _ = env_logger::builder().is_test(true).try_init();
+        });
 
         let td = tempdir()?;
-        let mut install_path = td.path().to_path_buf();
-        install_path.push("project");
-        let installer = Installer::new(install_path.clone(), exe.to_string());
-        installer.install(&Download {
-            // It doesn't matter what we use here. We're not actually going to
-            // put anything in this temp dir.
-            _temp_dir: tempdir()?,
-            archive_path: PathBuf::from(archive_path),
-        })?;
+        let mut path_without_subdir = td.path().to_path_buf();
+        path_without_subdir.push("project");
+        let mut path_with_subdir = td.path().to_path_buf();
+        path_with_subdir.extend(&["subdir", "project"]);
 
-        assert!(install_path.exists());
-        assert!(install_path.is_file());
-        #[cfg(target_family = "unix")]
-        assert!(install_path.metadata()?.permissions().mode() & 0o111 != 0);
+        for install_path in [path_without_subdir, path_with_subdir] {
+            let installer = Installer::new(install_path.clone(), exe.to_string());
+            installer.install(&Download {
+                // It doesn't matter what we use here. We're not actually going to
+                // put anything in this temp dir.
+                _temp_dir: tempdir()?,
+                archive_path: PathBuf::from(archive_path),
+            })?;
+
+            assert!(install_path.exists());
+            assert!(install_path.is_file());
+            #[cfg(target_family = "unix")]
+            assert!(install_path.metadata()?.permissions().mode() & 0o111 != 0);
+        }
 
         Ok(())
     }

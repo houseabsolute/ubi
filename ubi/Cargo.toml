@@ -46,6 +46,7 @@ native-tls-vendored = ["reqwest/native-tls-vendored"]
 logging = ["dep:fern"]
 
 [dev-dependencies]
+env_logger.workspace = true
 fern.workspace = true
 mockito.workspace = true
 test-case.workspace = true

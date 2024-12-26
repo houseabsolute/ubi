@@ -2,6 +2,10 @@
 
 - The `UbiBuilder::install_dir` method now takes `AsRef<Path>` instead of `PathBuf`, which should
   make it more convenient to use.
+- Previously, `ubi` would create the install directory very early in its process, well before it had
+  something to install. This meant that if it failed to find an asset, couldn't download the asset,
+  or other errors happened, it would leave this directory behind. Now it creates this directory
+  immediately before writing the executable it found to disk.
 
 ## 0.3.0 - 2024-12-26
 
