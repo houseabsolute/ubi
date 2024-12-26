@@ -1,11 +1,7 @@
 use anyhow::{anyhow, Error, Result};
 use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command};
 use log::{debug, error};
-use std::{
-    env,
-    path::{Path, PathBuf},
-    str::FromStr,
-};
+use std::{env, path::Path, str::FromStr};
 use strum::VariantNames;
 use thiserror::Error;
 use ubi::{ForgeType, Ubi, UbiBuilder};
@@ -191,8 +187,8 @@ fn make_ubi<'a>(
     if let Some(u) = matches.get_one::<String>("url") {
         builder = builder.url(u);
     }
-    if let Some(i) = matches.get_one::<String>("in") {
-        builder = builder.install_dir(PathBuf::from(i));
+    if let Some(dir) = matches.get_one::<String>("in") {
+        builder = builder.install_dir(dir);
     }
     if let Some(m) = matches.get_one::<String>("matching") {
         builder = builder.matching(m);
@@ -246,17 +242,13 @@ fn validate_args(matches: &ArgMatches) -> Result<()> {
 }
 
 fn self_upgrade_ubi(ubi_exe_path: &Path) -> Result<(Ubi<'_>, Option<impl FnOnce()>)> {
-    let ubi = UbiBuilder::new()
-        .project("houseabsolute/ubi")
-        .install_dir(
-            ubi_exe_path
-                .parent()
-                .ok_or_else(|| {
-                    anyhow!("executable path `{}` has no parent", ubi_exe_path.display())
-                })?
-                .to_path_buf(),
-        )
-        .build()?;
+    let ubi =
+        UbiBuilder::new()
+            .project("houseabsolute/ubi")
+            .install_dir(ubi_exe_path.parent().ok_or_else(|| {
+                anyhow!("executable path `{}` has no parent", ubi_exe_path.display())
+            })?)
+            .build()?;
 
     let post_run = if cfg!(target_os = "windows") {
         let mut old_exe = ubi_exe_path.to_path_buf();

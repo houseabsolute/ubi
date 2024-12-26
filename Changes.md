@@ -1,3 +1,8 @@
+## 0.4.0
+
+- The `UbiBuilder::install_dir` method now takes `AsRef<Path>` instead of `PathBuf`, which should
+  make it more convenient to use.
+
 ## 0.3.0 - 2024-12-26
 
 - `ubi` now works with GitLab in addition to GitHub. For the command-line program, if the value you

@@ -14,7 +14,12 @@ use reqwest::{
     header::{HeaderMap, HeaderValue, USER_AGENT},
     Client,
 };
-use std::{env, fs::create_dir_all, path::PathBuf, str::FromStr};
+use std::{
+    env,
+    fs::create_dir_all,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 use url::Url;
 use which::which;
 
@@ -78,8 +83,8 @@ impl<'a> UbiBuilder<'a> {
 
     /// Set the directory to install the binary in. If not set, it will default to `./bin`.
     #[must_use]
-    pub fn install_dir(mut self, install_dir: PathBuf) -> Self {
-        self.install_dir = Some(install_dir);
+    pub fn install_dir<P: AsRef<Path>>(mut self, install_dir: P) -> Self {
+        self.install_dir = Some(install_dir.as_ref().to_path_buf());
         self
     }
 
