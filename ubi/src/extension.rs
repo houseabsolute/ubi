@@ -59,8 +59,8 @@ impl Extension {
             return Ok(None);
         };
 
-        // We need to try the longest extension first so that ".tar.gz"
-        // matches before ".gz" and so on for other compression formats.
+        // We need to try the longest extensions first so that ".tar.gz" matches before ".gz" and so
+        // on for other compression formats.
         if let Some(ext) = Extension::iter()
             .sorted_by(|a, b| Ord::cmp(&a.extension().len(), &b.extension().len()))
             .rev()
