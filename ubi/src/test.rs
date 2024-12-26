@@ -145,6 +145,7 @@ async fn asset_picking() -> Result<()> {
     ];
 
     let mut server = Server::new_async().await;
+    let url = server.url();
     let m1 = server
         .mock("GET", "/repos/houseabsolute/ubi/releases/latest")
         .match_header(ACCEPT.as_str(), "application/json")
@@ -173,7 +174,7 @@ async fn asset_picking() -> Result<()> {
                     .project("houseabsolute/ubi")
                     .platform(platform)
                     .is_musl(false)
-                    .url_base(server.url())
+                    .api_base_url(&url)
                     .build()?;
                 let asset = ubi.asset().await?;
                 let expect_ubi_url = Url::parse(&format!(
@@ -196,7 +197,7 @@ async fn asset_picking() -> Result<()> {
                     .project("houseabsolute/omegasort")
                     .platform(platform)
                     .is_musl(false)
-                    .url_base(server.url())
+                    .api_base_url(&url)
                     .build()?;
                 let asset = ubi.asset().await?;
                 let expect_omegasort_url = Url::parse(&format!(
@@ -510,6 +511,7 @@ async fn matching_unusual_names() -> Result<()> {
     ];
 
     let mut server = Server::new_async().await;
+    let url = server.url();
     let m1 = server
         .mock("GET", "/repos/protocolbuffers/protobuf/releases/latest")
         .match_header(ACCEPT.as_str(), "application/json")
@@ -527,7 +529,7 @@ async fn matching_unusual_names() -> Result<()> {
             let mut ubi = UbiBuilder::new()
                 .project("protocolbuffers/protobuf")
                 .platform(platform)
-                .url_base(server.url())
+                .api_base_url(&url)
                 .build()?;
             let asset = ubi.asset().await?;
             assert_eq!(
@@ -633,6 +635,7 @@ async fn mkcert_matching() -> Result<()> {
     ];
 
     let mut server = Server::new_async().await;
+    let url = server.url();
     let m1 = server
         .mock("GET", "/repos/FiloSottile/mkcert/releases/latest")
         .match_header(ACCEPT.as_str(), "application/json")
@@ -650,7 +653,7 @@ async fn mkcert_matching() -> Result<()> {
             let mut ubi = UbiBuilder::new()
                 .project("FiloSottile/mkcert")
                 .platform(platform)
-                .url_base(server.url())
+                .api_base_url(&url)
                 .build()?;
             let asset = ubi.asset().await?;
             assert_eq!(
@@ -727,6 +730,7 @@ async fn jq_matching() -> Result<()> {
     ];
 
     let mut server = Server::new_async().await;
+    let url = server.url();
     let m1 = server
         .mock("GET", "/repos/stedolan/jq/releases/latest")
         .match_header(ACCEPT.as_str(), "application/json")
@@ -744,7 +748,7 @@ async fn jq_matching() -> Result<()> {
             let mut ubi = UbiBuilder::new()
                 .project("stedolan/jq")
                 .platform(platform)
-                .url_base(server.url())
+                .api_base_url(&url)
                 .build()?;
             let asset = ubi.asset().await?;
             assert_eq!(
@@ -799,6 +803,7 @@ async fn multiple_matches() -> Result<()> {
     let platforms = ["x86_64-pc-windows-gnu", "i686-pc-windows-gnu"];
 
     let mut server = Server::new_async().await;
+    let url = server.url();
     let m1 = server
         .mock("GET", "/repos/test/multiple-matches/releases/latest")
         .match_header(ACCEPT.as_str(), "application/json")
@@ -815,7 +820,7 @@ async fn multiple_matches() -> Result<()> {
         let mut ubi = UbiBuilder::new()
             .project("test/multiple-matches")
             .platform(platform)
-            .url_base(server.url())
+            .api_base_url(&url)
             .build()?;
         let asset = ubi.asset().await?;
         let expect = "mm-i686-pc-windows-gnu.zip";
@@ -844,6 +849,7 @@ const MULTIPLE_MATCHES_RESPONSE: &str = r#"
 #[test(tokio::test)]
 async fn macos_arm() -> Result<()> {
     let mut server = Server::new_async().await;
+    let url = server.url();
     let m1 = server
         .mock("GET", "/repos/test/macos/releases/latest")
         .match_header(ACCEPT.as_str(), "application/json")
@@ -860,7 +866,7 @@ async fn macos_arm() -> Result<()> {
     let mut ubi = UbiBuilder::new()
         .project("test/macos")
         .platform(platform)
-        .url_base(server.url())
+        .api_base_url(&url)
         .build()?;
 
     {
@@ -933,6 +939,7 @@ const MACOS_RESPONSE2: &str = r#"
 async fn os_without_arch() -> Result<()> {
     {
         let mut server = Server::new_async().await;
+        let url = server.url();
         let m1 = server
             .mock("GET", "/repos/test/os-without-arch/releases/latest")
             .match_header(ACCEPT.as_str(), "application/json")
@@ -949,7 +956,7 @@ async fn os_without_arch() -> Result<()> {
         let mut ubi = UbiBuilder::new()
             .project("test/os-without-arch")
             .platform(platform)
-            .url_base(server.url())
+            .api_base_url(&url)
             .build()?;
         let asset = ubi.asset().await?;
         let expect = "gvproxy-darwin";
@@ -960,6 +967,7 @@ async fn os_without_arch() -> Result<()> {
 
     {
         let mut server = Server::new_async().await;
+        let url = server.url();
         let m1 = server
             .mock("GET", "/repos/test/os-without-arch/releases/latest")
             .match_header(ACCEPT.as_str(), "application/json")
@@ -976,7 +984,7 @@ async fn os_without_arch() -> Result<()> {
         let mut ubi = UbiBuilder::new()
             .project("test/os-without-arch")
             .platform(platform)
-            .url_base(server.url())
+            .api_base_url(&url)
             .build()?;
         let asset = ubi.asset().await;
         assert!(

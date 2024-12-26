@@ -32,7 +32,7 @@ pub struct UbiBuilder<'a> {
     gitlab_token: Option<&'a str>,
     platform: Option<&'a Platform>,
     is_musl: Option<bool>,
-    url_base: Option<String>,
+    api_base_url: Option<&'a str>,
     forge: Option<ForgeType>,
 }
 
@@ -146,11 +146,12 @@ impl<'a> UbiBuilder<'a> {
         self
     }
 
-    /// Set the base URL for the forge site's API. This is useful for testing or if you want to operate
-    /// against an Enterprise version of GitHub or GitLab.
+    /// Set the base URL for the forge site's API. This is useful for testing or if you want to
+    /// operate against an Enterprise version of GitHub or GitLab. This should be something like
+    /// `https://github.my-corp.example.com/api/v4`.
     #[must_use]
-    pub fn url_base(mut self, url_base: String) -> Self {
-        self.url_base = Some(url_base);
+    pub fn api_base_url(mut self, api_base_url: &'a str) -> Self {
+        self.api_base_url = Some(api_base_url);
         self
     }
 
@@ -193,7 +194,7 @@ impl<'a> UbiBuilder<'a> {
     }
 
     fn new_forge(&self, project_name: String, forge_type: &ForgeType) -> Result<Box<dyn Forge>> {
-        let api_base = self.url_base.as_deref().map(Url::parse).transpose()?;
+        let api_base = self.api_base_url.map(Url::parse).transpose()?;
         Ok(match forge_type {
             ForgeType::GitHub => Box::new(GitHub::new(
                 project_name,

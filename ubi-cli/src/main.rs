@@ -128,6 +128,11 @@ fn cmd() -> Command {
                     " does not have a domain at all, then the default is GitHub.",
                 )),
         )
+        .arg(Arg::new("api-base-url").long("api-base-url").help(concat!(
+            "The the base URL for the forge site's API. This is useful for testing or if",
+            " you want to operate against an Enterprise version of GitHub or GitLab. This",
+            " should be something like `https://github.my-corp.example.com/api/v4`.",
+        )))
         .arg(
             Arg::new("verbose")
                 .short('v')
@@ -197,6 +202,9 @@ fn make_ubi<'a>(
     }
     if let Some(ft) = matches.get_one::<String>("forge") {
         builder = builder.forge(ForgeType::from_str(ft)?);
+    }
+    if let Some(url) = matches.get_one::<String>("api-base-url") {
+        builder = builder.api_base_url(url);
     }
 
     Ok((builder.build()?, None))

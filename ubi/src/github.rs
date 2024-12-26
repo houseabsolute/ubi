@@ -17,7 +17,7 @@ use url::Url;
 pub(crate) struct GitHub {
     project_name: String,
     tag: Option<String>,
-    api_base: Url,
+    api_base_url: Url,
     token: Option<String>,
 }
 
@@ -42,7 +42,7 @@ impl Forge for GitHub {
         let owner = parts.next().unwrap();
         let repo = parts.next().unwrap();
 
-        let mut url = self.api_base.clone();
+        let mut url = self.api_base_url.clone();
         url.path_segments_mut()
             .expect("could not get path segments for url")
             .push("repos")
@@ -90,7 +90,7 @@ impl GitHub {
         Self {
             project_name,
             tag,
-            api_base: api_base.unwrap_or_else(|| ForgeType::GitHub.api_base()),
+            api_base_url: api_base.unwrap_or_else(|| ForgeType::GitHub.api_base()),
             token,
         }
     }
@@ -170,5 +170,20 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    #[test]
+    fn api_base_url() {
+        let github = GitHub::new(
+            "houseabsolute/ubi".to_string(),
+            None,
+            Some(Url::parse("https://github.example.com/api/v4").unwrap()),
+            None,
+        );
+        let url = github.release_info_url();
+        assert_eq!(
+            url.as_str(),
+            "https://github.example.com/api/v4/repos/houseabsolute/ubi/releases/latest"
+        );
     }
 }

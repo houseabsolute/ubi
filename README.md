@@ -78,34 +78,41 @@ current directory.
 Usage: ubi [OPTIONS]
 
 Options:
-  -p, --project <project>    The project you want to install, like houseabsolute/precious or
-                             https://github.com/houseabsolute/precious.
-  -t, --tag <tag>            The tag to download. Defaults to the latest release.
-  -u, --url <url>            The url of the file to download. This can be provided instead of a
-                             project or tag. This will not use the forge site's API, so you will
-                             never hit its API limits. With this parameter, you do not need to set a
-                             token env var except for private repos.
-      --self-upgrade         Use ubi to upgrade to the latest version of ubi. The --exe, --in,
-                             --project, --tag, and --url args will be ignored.
-  -i, --in <in>              The directory in which the binary should be placed. Defaults to ./bin.
-  -e, --exe <exe>            The name of this project's executable. By default this is the same as
-                             the project name, so for houseabsolute/precious we look for precious or
-                             precious.exe. When running on Windows the ".exe" suffix will be added
-                             as needed.
-  -m, --matching <matching>  A string that will be matched against the release filename when there
-                             are multiple matching files for your OS/arch. For example, there may be
-                             multiple releases for an OS/arch that differ by compiler (MSVC vs. gcc)
-                             or linked libc (glibc vs. musl). Note that this will be ignored if
-                             there is only one matching release filename for your OS/arch.
-      --forge <forge>        The forge to use. If this isn't set, then the value of --project or
-                             --url will be checked for gitlab.com. If this contains any other domain
-                             _or_ if it does not have a domain at all, then the default is GitHub.
-                             [possible values: github, gitlab]
-  -v, --verbose              Enable verbose output.
-  -d, --debug                Enable debugging output.
-  -q, --quiet                Suppresses most output.
-  -h, --help                 Print help
-  -V, --version              Print version
+  -p, --project <project>            The project you want to install, like houseabsolute/precious or
+                                     https://github.com/houseabsolute/precious.
+  -t, --tag <tag>                    The tag to download. Defaults to the latest release.
+  -u, --url <url>                    The url of the file to download. This can be provided instead
+                                     of a project or tag. This will not use the forge site's API, so
+                                     you will never hit its API limits. With this parameter, you do
+                                     not need to set a token env var except for private repos.
+      --self-upgrade                 Use ubi to upgrade to the latest version of ubi. The --exe,
+                                     --in, --project, --tag, and --url args will be ignored.
+  -i, --in <in>                      The directory in which the binary should be placed. Defaults to
+                                     ./bin.
+  -e, --exe <exe>                    The name of this project's executable. By default this is the
+                                     same as the project name, so for houseabsolute/precious we look
+                                     for precious or precious.exe. When running on Windows the
+                                     ".exe" suffix will be added as needed.
+  -m, --matching <matching>          A string that will be matched against the release filename when
+                                     there are multiple matching files for your OS/arch. For
+                                     example, there may be multiple releases for an OS/arch that
+                                     differ by compiler (MSVC vs. gcc) or linked libc (glibc vs.
+                                     musl). Note that this will be ignored if there is only one
+                                     matching release filename for your OS/arch.
+      --forge <forge>                The forge to use. If this isn't set, then the value of
+                                     --project or --url will be checked for gitlab.com. If this
+                                     contains any other domain _or_ if it does not have a domain at
+                                     all, then the default is GitHub. [possible values: github,
+                                     gitlab]
+      --api-base-url <api-base-url>  The the base URL for the forge site's API. This is useful for
+                                     testing or if you want to operate against an Enterprise version
+                                     of GitHub or GitLab. This should be something like
+                                     `https://github.my-corp.example.com/api/v4`.
+  -v, --verbose                      Enable verbose output.
+  -d, --debug                        Enable debugging output.
+  -q, --quiet                        Suppresses most output.
+  -h, --help                         Print help
+  -V, --version                      Print version
 ```
 
 ## Using a Forge Token
@@ -243,6 +250,11 @@ If you are downloading executables from repos you don't control _and_ you don't 
 parameter, then you should use the `--tag` parameter to specify the released version you want to
 install. Otherwise `ubi` will always download the latest version, which can lead to surprises,
 especially if you are running the tools you download in CI.
+
+## Using `ubi` with GitHub Enterprise or GitLab for Enterprise
+
+The command line tool takes an `--api-base-url` flag for this purpose. This should be the full URL
+to the root of the API, something like `https://github.my-corp.example.com/api/v4`.
 
 ## Why This Is Useful
 

@@ -14,7 +14,7 @@ use url::Url;
 pub(crate) struct GitLab {
     project_name: String,
     tag: Option<String>,
-    api_base: Url,
+    api_base_url: Url,
     token: Option<String>,
 }
 
@@ -41,7 +41,7 @@ impl Forge for GitLab {
     }
 
     fn release_info_url(&self) -> Url {
-        let mut url = self.api_base.clone();
+        let mut url = self.api_base_url.clone();
         url.path_segments_mut()
             .expect("could not get path segments for url")
             .push("projects")
@@ -92,7 +92,7 @@ impl GitLab {
         Self {
             project_name,
             tag,
-            api_base: api_base.unwrap_or_else(|| ForgeType::GitLab.api_base()),
+            api_base_url: api_base.unwrap_or_else(|| ForgeType::GitLab.api_base()),
             token,
         }
     }
@@ -175,5 +175,20 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    #[test]
+    fn api_base_url() {
+        let gitlab = GitLab::new(
+            "houseabsolute/ubi".to_string(),
+            None,
+            Some(Url::parse("https://gitlab.example.com/api/v4").unwrap()),
+            None,
+        );
+        let url = gitlab.release_info_url();
+        assert_eq!(
+            url.as_str(),
+            "https://gitlab.example.com/api/v4/projects/houseabsolute%2Fubi/releases/permalink/latest"
+        );
     }
 }

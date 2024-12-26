@@ -7,6 +7,9 @@
   with a new `UbiBuilder::forge` method.
 - When looking for macOS assets, `ubi` will now match against `macosx` in asset names, not just
   `macos` and `osx`. Implemented by @kattouf (Vasiliy Kattouf). GH #80.
+- Added a new `--api-url-base` CLI argument. Requested by Olaf Alders. GH #69.
+- Renamed the `UbiBuilder::url_base` method to `api_base_url` and changed it to take a `&str`
+  instead of a `String`, which is consistent with all the other builder methods.
 
 ## 0.2.4 - 2024-11-24
 
