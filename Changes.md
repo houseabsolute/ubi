@@ -4,11 +4,11 @@
   pass to `--project` has a `gitlab.com` domain, like `https://gitlab.com/gitlab-org/cli`, this will
   just work. If you just pass a project name, like `gitlab-org/cli`, then you will also need to pass
   `--forge gitlab` in order to tell `ubi` to use gitlab. The library interface works the same way,
-  with a new `UbiBuilder::forge` method.
+  with a new `UbiBuilder::forge` method. Requested by @SangeloDev. GH #51.
 - When looking for macOS assets, `ubi` will now match against `macosx` in asset names, not just
   `macos` and `osx`. Implemented by @kattouf (Vasiliy Kattouf). GH #80.
 - Added a new `--api-url-base` CLI argument. This should allow you to use `ubi` with Enterprise
-  installations of GitHub and GitLab. Requested by Olaf Alders. GH #69.
+  installations of GitHub and GitLab. Requested by @oalders (Olaf Alders). GH #69.
 - Renamed the `UbiBuilder::url_base` method to `api_base_url` and changed it to take a `&str`
   instead of a `String`, which is consistent with all the other builder methods.
 
