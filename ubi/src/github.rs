@@ -1,6 +1,6 @@
 use crate::{
+    assets::{Asset, Assets},
     forge::{Forge, ForgeType},
-    ubi::Asset,
 };
 use anyhow::Result;
 use async_trait::async_trait;
@@ -31,13 +31,15 @@ pub(crate) struct Release {
 
 #[async_trait]
 impl Forge for GitHub {
-    async fn fetch_assets(&self, client: &Client) -> Result<Vec<Asset>> {
+    async fn fetch_assets(&self, client: &Client) -> Result<Assets> {
         Ok(self
             .make_release_info_request(client)
             .await?
             .json::<Release>()
             .await?
-            .assets)
+            .assets
+            .into_iter()
+            .collect())
     }
 
     fn release_info_url(&self) -> Url {
@@ -164,7 +166,7 @@ mod tests {
 
         let client = Client::new();
         let got_assets = github.fetch_assets(&client).await?;
-        assert_eq!(got_assets, assets);
+        assert_eq!(got_assets, assets.into());
 
         m.assert_async().await;
 

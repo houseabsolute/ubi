@@ -1,11 +1,10 @@
-use crate::{forge::Forge, installer::Installer, picker::AssetPicker};
+use crate::{assets::Asset, forge::Forge, installer::Installer, picker::AssetPicker};
 use anyhow::{anyhow, Result};
 use log::debug;
 use reqwest::{
     header::{HeaderValue, ACCEPT},
     Client, StatusCode,
 };
-use serde::{Deserialize, Serialize};
 use std::{fs::File, io::Write, path::PathBuf};
 use tempfile::{tempdir, TempDir};
 use url::Url;
@@ -19,12 +18,6 @@ pub struct Ubi<'a> {
     asset_picker: AssetPicker<'a>,
     installer: Installer,
     reqwest_client: Client,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
-pub(crate) struct Asset {
-    pub(crate) name: String,
-    pub(crate) url: Url,
 }
 
 #[derive(Debug)]
@@ -85,10 +78,11 @@ impl<'a> Ubi<'a> {
             });
         }
 
-        let assets = self.forge.fetch_assets(&self.reqwest_client).await?;
-        let asset = self.asset_picker.pick_asset(assets)?;
-        debug!("picked asset named {}", asset.name);
-        Ok(asset)
+        let mut assets = self.forge.fetch_assets(&self.reqwest_client).await?;
+        let name = self.asset_picker.pick_asset(assets.keys())?.to_owned();
+        debug!("picked asset named {name}");
+        let (name, url) = assets.remove_entry(&name).unwrap();
+        Ok(Asset { name, url })
     }
 
     async fn download_asset(&self, client: &Client, asset: Asset) -> Result<Download> {

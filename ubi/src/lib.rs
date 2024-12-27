@@ -111,6 +111,7 @@
 #![doc = document_features::document_features!()]
 
 mod arch;
+mod assets;
 mod builder;
 mod extension;
 mod forge;

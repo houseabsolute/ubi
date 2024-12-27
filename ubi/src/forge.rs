@@ -1,4 +1,4 @@
-use crate::ubi::Asset;
+use crate::assets::Assets;
 use anyhow::Result;
 use async_trait::async_trait;
 use reqwest::{
@@ -22,7 +22,7 @@ pub enum ForgeType {
 
 #[async_trait]
 pub(crate) trait Forge: std::fmt::Debug {
-    async fn fetch_assets(&self, client: &Client) -> Result<Vec<Asset>>;
+    async fn fetch_assets(&self, client: &Client) -> Result<Assets>;
 
     fn release_info_url(&self) -> Url;
     fn maybe_add_token_header(&self, req_builder: RequestBuilder) -> Result<RequestBuilder>;

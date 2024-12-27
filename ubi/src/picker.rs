@@ -1,3 +1,5 @@
+use std::collections::hash_map::Keys;
+
 use crate::{
     arch::{
         aarch64_re, arm_re, macos_aarch64_re, mips64_re, mips64le_re, mips_re, mipsle_re, ppc32_re,
@@ -6,7 +8,6 @@ use crate::{
     },
     extension::Extension,
     os::{freebsd_re, fuchsia, illumos_re, linux_re, macos_re, netbsd_re, solaris_re, windows_re},
-    ubi::Asset,
 };
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
@@ -14,6 +15,7 @@ use lazy_regex::{regex, Lazy};
 use log::debug;
 use platforms::{Arch, Endian, Platform, OS};
 use regex::Regex;
+use url::Url;
 
 #[derive(Debug)]
 pub(crate) struct AssetPicker<'a> {
@@ -31,27 +33,27 @@ impl<'a> AssetPicker<'a> {
         }
     }
 
-    pub(crate) fn pick_asset(&mut self, assets: Vec<Asset>) -> Result<Asset> {
-        debug!("filtering out assets that do not have a valid extension");
-        let mut assets: Vec<_> = assets
-            .into_iter()
-            .filter(|a| {
-                if let Err(e) = Extension::from_path(&a.name) {
-                    debug!("skipping asset with invalid extension, `{}`: {e}", a.name);
+    pub(crate) fn pick_asset<'b>(&mut self, names: Keys<'b, String, Url>) -> Result<&'b str> {
+        debug!("filtering out asset names that do not have a valid extension");
+        let mut names = names
+            .filter(|name| {
+                if let Err(e) = Extension::from_path(name) {
+                    debug!("skipping asset name with invalid extension, `{name}`: {e}");
                     return false;
                 }
                 true
             })
-            .collect();
+            .map(std::convert::AsRef::as_ref)
+            .collect::<Vec<_>>();
 
-        if assets.len() == 1 {
-            debug!("there is only one asset to pick");
-            return Ok(assets.remove(0));
+        if names.len() == 1 {
+            debug!("there is only one asset  to pick");
+            return Ok(names.remove(0));
         }
 
-        let all_names = assets.iter().map(|a| &a.name).join(", ");
+        let all_names = names.iter().join(", ");
 
-        let mut matches = self.os_matches(assets);
+        let mut matches = self.os_matches(names);
         if matches.is_empty() {
             return Err(anyhow!(
                 "could not find a release asset for this OS ({}) from {all_names}",
@@ -80,24 +82,27 @@ impl<'a> AssetPicker<'a> {
         }
 
         let picked = self.pick_asset_from_matches(matches)?;
-        debug!("picked asset from matches named {}", picked.name);
+        debug!("picked asset from matches named {picked}");
         Ok(picked)
     }
 
-    fn os_matches(&self, assets: Vec<Asset>) -> Vec<Asset> {
+    fn os_matches<'b>(&self, names: Vec<&'b str>) -> Vec<&'b str> {
         let os_matcher = self.os_matcher();
-        debug!("matching assets against OS using {}", os_matcher.as_str());
+        debug!(
+            "matching asset names against OS using {}",
+            os_matcher.as_str()
+        );
 
-        let mut matches: Vec<Asset> = vec![];
+        let mut matches: Vec<&'b str> = vec![];
 
         // This could all be done much more simply with the iterator's .find()
         // method, but then there's no place to put all the debugging output.
-        for asset in assets {
-            debug!("matching OS against asset name = {}", asset.name);
+        for name in names {
+            debug!("matching OS against asset name = {name}");
 
-            if os_matcher.is_match(&asset.name) {
+            if os_matcher.is_match(name) {
                 debug!("matches our OS");
-                matches.push(asset);
+                matches.push(name);
             } else {
                 debug!("does not match our OS");
             }
@@ -106,48 +111,45 @@ impl<'a> AssetPicker<'a> {
         matches
     }
 
-    fn arch_matches(&self, mut os_matches: Vec<Asset>) -> Vec<Asset> {
+    fn arch_matches<'b>(&self, mut os_matches: Vec<&'b str>) -> Vec<&'b str> {
         let arch_matcher = self.arch_matcher();
         debug!(
-            "matching assets against CPU architecture using {}",
+            "matching asset names against CPU architecture using {}",
             arch_matcher.as_str(),
         );
 
-        let mut matches: Vec<Asset> = vec![];
+        let mut matches: Vec<&str> = vec![];
         if os_matches.len() == 1 {
             debug!("there is only one asset that matches our OS");
-            if arch_matcher.is_match(&os_matches[0].name) {
+            if arch_matcher.is_match(os_matches[0]) {
                 debug!("matches our CPU architecture");
                 matches.push(os_matches.remove(0));
-            } else if ALL_ARCHES_RE.is_match(&os_matches[0].name) {
+            } else if ALL_ARCHES_RE.is_match(os_matches[0]) {
                 debug!("it matches a CPU architecture which is not ours");
             } else {
                 debug!("does not match any CPU architecture, so we will try it");
                 matches.push(os_matches.remove(0));
             }
         } else {
-            for asset in &os_matches {
-                debug!(
-                    "matching CPU architecture against asset name = {}",
-                    asset.name,
-                );
-                if arch_matcher.is_match(&asset.name) {
+            for name in &os_matches {
+                debug!("matching CPU architecture against asset name = {name}",);
+                if arch_matcher.is_match(name) {
                     debug!("matches our CPU architecture");
-                    matches.push(asset.clone());
+                    matches.push(name);
                 } else {
                     debug!("does not match our CPU architecture");
                 }
             }
 
             if matches.is_empty() {
-                debug!("no assets matched our CPU architecture, will look for assets without an architecture");
-                for asset in os_matches {
-                    debug!("matching against asset name = {}", asset.name);
-                    if ALL_ARCHES_RE.is_match(&asset.name) {
+                debug!("no asset names matched our CPU architecture, will look for asset names without an architecture");
+                for name in os_matches {
+                    debug!("matching against asset name = {name}");
+                    if ALL_ARCHES_RE.is_match(name) {
                         debug!("matches a CPU architecture which is not ours");
                     } else {
                         debug!("does not match any CPU architecture, so we will try it");
-                        matches.push(asset);
+                        matches.push(name);
                     }
                 }
             }
@@ -156,26 +158,26 @@ impl<'a> AssetPicker<'a> {
         matches
     }
 
-    fn libc_matches(&mut self, matches: Vec<Asset>) -> Vec<Asset> {
+    fn libc_matches<'b>(&mut self, matches: Vec<&'b str>) -> Vec<&'b str> {
         if !self.is_musl {
             return matches;
         }
 
-        debug!("filtering out glibc assets since this is a musl platform");
+        debug!("filtering out glibc asset names since this is a musl platform");
 
-        let mut libc_matches: Vec<Asset> = vec![];
-        for asset in &matches {
-            debug!("checking for glibc in asset name = {}", asset.name);
-            if asset.name.contains("-gnu") || asset.name.contains("-glibc") {
+        let mut libc_matches: Vec<&str> = vec![];
+        for name in &matches {
+            debug!("checking for glibc in asset name = {}", name);
+            if name.contains("-gnu") || name.contains("-glibc") {
                 debug!("indicates glibc and is not compatible with a musl platform");
                 continue;
-            } else if asset.name.contains("-musl") {
+            } else if name.contains("-musl") {
                 debug!("indicates musl");
             } else {
                 debug!("name does not indicate the libc it was compiled against");
             }
 
-            libc_matches.push(asset.clone());
+            libc_matches.push(name);
         }
 
         libc_matches
@@ -191,7 +193,7 @@ impl<'a> AssetPicker<'a> {
         }
     }
 
-    fn pick_asset_from_matches(&mut self, mut matches: Vec<Asset>) -> Result<Asset> {
+    fn pick_asset_from_matches<'b>(&mut self, mut matches: Vec<&'b str>) -> Result<&'b str> {
         if matches.len() == 1 {
             debug!("only found one candidate asset");
             return Ok(matches.remove(0));
@@ -199,9 +201,9 @@ impl<'a> AssetPicker<'a> {
 
         let filtered = self.maybe_filter_for_64_bit_arch(matches);
 
-        let (mut filtered, asset) = self.maybe_filter_for_matching_string(filtered)?;
-        if let Some(asset) = asset {
-            return Ok(asset);
+        let (mut filtered, name) = self.maybe_filter_for_matching_string(filtered)?;
+        if let Some(name) = name {
+            return Ok(name);
         }
 
         if filtered.len() == 1 {
@@ -209,9 +211,9 @@ impl<'a> AssetPicker<'a> {
             return Ok(filtered.remove(0));
         }
 
-        let (filtered, asset) = self.maybe_pick_asset_for_macos_arm(filtered);
-        if let Some(asset) = asset {
-            return Ok(asset);
+        let (filtered, name) = self.maybe_pick_asset_for_macos_arm(filtered);
+        if let Some(name) = name {
+            return Ok(name);
         }
 
         debug!(
@@ -219,14 +221,10 @@ impl<'a> AssetPicker<'a> {
         );
         // We don't have any other criteria we could use to pick the right
         // one, and we want to pick the same one every time.
-        Ok(filtered
-            .into_iter()
-            .sorted_by_key(|a| a.name.clone())
-            .next()
-            .unwrap())
+        Ok(filtered.into_iter().sorted().next().unwrap())
     }
 
-    fn maybe_filter_for_64_bit_arch(&self, matches: Vec<Asset>) -> Vec<Asset> {
+    fn maybe_filter_for_64_bit_arch<'b>(&self, matches: Vec<&'b str>) -> Vec<&'b str> {
         if !matches!(
             self.platform.target_arch,
             Arch::AArch64
@@ -240,32 +238,32 @@ impl<'a> AssetPicker<'a> {
             return matches.into_iter().collect();
         }
 
-        let asset_names = matches.iter().map(|a| a.name.as_str()).collect::<Vec<_>>();
+        let names = matches.clone();
         debug!(
-            "found multiple candidate assets, filtering for 64-bit binaries in {:?}",
-            asset_names,
+            "found multiple candidate asset names, filtering for 64-bit binaries in {:?}",
+            names,
         );
 
-        if !matches.iter().any(|a| a.name.contains("64")) {
-            debug!("no 64-bit assets found, falling back to all assets");
+        if !matches.iter().any(|&a| a.contains("64")) {
+            debug!("no 64-bit asset names found, falling back to all asset names");
             return matches;
         }
 
         let sixty_four_bit = matches
             .into_iter()
-            .filter(|a| a.name.contains("64"))
+            .filter(|&a| a.contains("64"))
             .collect::<Vec<_>>();
         debug!(
-            "found 64-bit assets: {}",
-            sixty_four_bit.iter().map(|a| a.name.as_str()).join(",")
+            "found 64-bit asset names: {}",
+            sixty_four_bit.iter().join(",")
         );
         sixty_four_bit
     }
 
-    fn maybe_filter_for_matching_string(
+    fn maybe_filter_for_matching_string<'b>(
         &self,
-        matches: Vec<Asset>,
-    ) -> Result<(Vec<Asset>, Option<Asset>)> {
+        matches: Vec<&'b str>,
+    ) -> Result<(Vec<&'b str>, Option<&'b str>)> {
         if self.matching.is_none() {
             return Ok((matches, None));
         }
@@ -275,35 +273,34 @@ impl<'a> AssetPicker<'a> {
             r#"looking for an asset matching the string "{}" passed in --matching"#,
             m
         );
-        if let Some(asset) = matches.into_iter().find(|a| a.name.contains(m)) {
+        if let Some(name) = matches.into_iter().find(|&a| a.contains(m)) {
             debug!("found an asset matching the string");
-            return Ok((vec![], Some(asset)));
+            return Ok((vec![], Some(name)));
         }
 
         Err(anyhow!(
-            r#"could not find any assets containing our --matching string, "{}""#,
+            r#"could not find any asset names containing our --matching string, "{}""#,
             m,
         ))
     }
 
-    fn maybe_pick_asset_for_macos_arm(
+    fn maybe_pick_asset_for_macos_arm<'b>(
         &self,
-        mut matches: Vec<Asset>,
-    ) -> (Vec<Asset>, Option<Asset>) {
+        mut matches: Vec<&'b str>,
+    ) -> (Vec<&'b str>, Option<&'b str>) {
         if !self.running_on_macos_arm() {
             return (matches, None);
         }
 
-        let asset_names = matches.iter().map(|a| a.name.as_str()).collect::<Vec<_>>();
+        let names = matches.iter().collect::<Vec<_>>();
         debug!(
-            "found multiple candidate assets and running on macOS ARM, filtering for arm64 binaries in {:?}",
-            asset_names,
+            "found multiple candidate asset names and running on macOS ARM, filtering for arm64 binaries in {:?}",
+            names,
         );
 
         let arch_matcher = aarch64_re();
-
-        if let Some(idx) = matches.iter().position(|a| arch_matcher.is_match(&a.name)) {
-            debug!("found ARM binary named {}", matches[idx].name);
+        if let Some(idx) = matches.iter().position(|&a| arch_matcher.is_match(a)) {
+            debug!("found ARM binary named {}", matches[idx]);
             return (vec![], Some(matches.remove(idx)));
         }
 
@@ -380,6 +377,8 @@ impl<'a> AssetPicker<'a> {
 
 #[cfg(test)]
 mod test {
+    use crate::assets::{Asset, Assets};
+
     use super::*;
     use test_case::test_case;
     use url::Url;
@@ -518,14 +517,14 @@ mod test {
         let url = Url::parse("https://example.com")?;
         let assets = asset_names
             .iter()
-            .map(|name| Asset {
-                name: (*name).to_string(),
+            .map(|&name| Asset {
+                name: name.to_string(),
                 url: url.clone(),
             })
-            .collect::<Vec<_>>();
+            .collect::<Assets>();
 
-        let picked_asset = picker.pick_asset(assets)?;
-        assert_eq!(picked_asset.name, asset_names[expect_idx]);
+        let picked_asset = picker.pick_asset(assets.keys())?;
+        assert_eq!(picked_asset, asset_names[expect_idx]);
 
         Ok(())
     }
@@ -577,9 +576,9 @@ mod test {
                 name: (*name).to_string(),
                 url: url.clone(),
             })
-            .collect::<Vec<_>>();
+            .collect::<Assets>();
 
-        let picked_asset = picker.pick_asset(assets);
+        let picked_asset = picker.pick_asset(assets.keys());
         assert!(picked_asset.is_err());
         assert!(picked_asset
             .err()
