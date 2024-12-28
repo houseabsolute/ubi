@@ -113,6 +113,7 @@
 mod arch;
 mod assets;
 mod builder;
+mod checksums;
 mod extension;
 mod forge;
 mod github;

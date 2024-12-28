@@ -1,4 +1,10 @@
-use crate::{assets::Asset, forge::Forge, installer::Installer, picker::AssetPicker};
+use crate::{
+    assets::{Asset, Assets},
+    checksums,
+    forge::Forge,
+    installer::Installer,
+    picker::AssetPicker,
+};
 use anyhow::{anyhow, Result};
 use log::debug;
 use reqwest::{
@@ -25,7 +31,7 @@ pub(crate) struct Download {
     // We need to keep the temp dir around so that it's not deleted before
     // we're done with it.
     pub(crate) _temp_dir: TempDir,
-    pub(crate) archive_path: PathBuf,
+    pub(crate) path: PathBuf,
 }
 
 impl<'a> Ubi<'a> {
@@ -65,24 +71,47 @@ impl<'a> Ubi<'a> {
     /// * Unable to write the executable to the specified directory.
     /// * Unable to set executable permissions on the installed binary.
     pub async fn install_binary(&mut self) -> Result<()> {
-        let asset = self.asset().await?;
+        let (asset, checksum_asset) = self.asset().await?;
         let download = self.download_asset(&self.reqwest_client, asset).await?;
+        if let Some(checksum_asset) = checksum_asset {
+            let checksum_download = self
+                .download_asset(&self.reqwest_client, checksum_asset)
+                .await?;
+            checksums::verify(&download, &checksum_download)?;
+        } else {
+            debug!("did not find a checksum asset to download");
+        }
         self.installer.install(&download)
     }
 
-    pub(crate) async fn asset(&mut self) -> Result<Asset> {
+    pub(crate) async fn asset(&mut self) -> Result<(Asset, Option<Asset>)> {
         if let Some(url) = &self.asset_url {
-            return Ok(Asset {
-                name: url.path().split('/').last().unwrap().to_string(),
-                url: url.clone(),
-            });
+            return Ok((
+                Asset {
+                    name: url.path().split('/').last().unwrap().to_string(),
+                    url: url.clone(),
+                },
+                None,
+            ));
         }
 
         let mut assets = self.forge.fetch_assets(&self.reqwest_client).await?;
         let name = self.asset_picker.pick_asset(assets.keys())?.to_owned();
         debug!("picked asset named {name}");
         let (name, url) = assets.remove_entry(&name).unwrap();
-        Ok(Asset { name, url })
+        let checksum_asset = Self::maybe_find_checksum_asset(&name, assets);
+        Ok((Asset { name, url }, checksum_asset))
+    }
+
+    fn maybe_find_checksum_asset(name: &str, mut assets: Assets) -> Option<Asset> {
+        let checksum_name = checksums::find_checksum_asset_for(name, assets.keys());
+        match checksum_name {
+            Some(checksum_name) => {
+                let (name, url) = assets.remove_entry(&checksum_name).unwrap();
+                Some(Asset { name, url })
+            }
+            None => None,
+        }
     }
 
     async fn download_asset(&self, client: &Client, asset: Asset) -> Result<Download> {
@@ -105,12 +134,12 @@ impl<'a> Ubi<'a> {
         }
 
         let td = tempdir()?;
-        let mut archive_path = td.path().to_path_buf();
-        archive_path.push(&asset.name);
-        debug!("archive path is {}", archive_path.to_string_lossy());
+        let mut download_path = td.path().to_path_buf();
+        download_path.push(&asset.name);
+        debug!("archive path is {}", download_path.to_string_lossy());
 
         {
-            let mut downloaded_file = File::create(&archive_path)?;
+            let mut downloaded_file = File::create(&download_path)?;
             while let Some(c) = resp.chunk().await? {
                 downloaded_file.write_all(c.as_ref())?;
             }
@@ -118,7 +147,7 @@ impl<'a> Ubi<'a> {
 
         Ok(Download {
             _temp_dir: td,
-            archive_path,
+            path: download_path,
         })
     }
 }

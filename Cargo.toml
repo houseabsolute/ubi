@@ -13,9 +13,11 @@ resolver = "2"
 [workspace.dependencies]
 anyhow = "1.0.95"
 async-trait = "0.1.83"
+base16ct = { version = "0.2.0", features = ["alloc", "std"] }
 binstall-tar = "0.4.42"
 bzip2 = "0.5.0"
 clap = { version = "4.5.23", features = ["wrap_help"] }
+digest = { version = "0.10.7", features = ["std"] }
 document-features = "0.2"
 # Used in some test code which can't use test_log.
 env_logger = "0.11.6"
@@ -24,6 +26,7 @@ flate2 = "1.0.35"
 itertools = "0.13.0"
 lazy-regex = "3.3.0"
 log = "0.4.22"
+md-5 = "0.10.6"
 mockito = "1.6.1"
 platforms = "3.5.0"
 regex = "1.11.1"
@@ -31,6 +34,8 @@ reqwest = { version = "0.12.9", default-features = false, features = ["gzip", "j
 serde = { version = "1.0.216", features = ["derive"] }
 serde_json = "1.0.134"
 serial_test = "3.2.0"
+sha1 = "0.10.6"
+sha2 = "0.10.8"
 strum = { version = "0.26.3", features = ["derive"] }
 tempfile = "3.14.0"
 test-case = "3.3.1"

@@ -163,6 +163,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "base16ct"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c7f02d4ea65f2c1853089ffd8d2787bdbc63de2f0d29dedbcf8ccdfa0ccd4cf"
+
+[[package]]
 name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1162,6 +1168,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "md-5"
+version = "0.10.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d89e7ee0cfbedfc4da3340218492196241d89eefb6dab27de5df917a6d2e78cf"
+dependencies = [
+ "cfg-if",
+ "digest",
+]
+
+[[package]]
 name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1846,6 +1862,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "sha2"
+version = "0.10.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "793db75ad2bcafc3ffa7c68b215fee268f537982cd901d132f89c6343f3a3dc8"
+dependencies = [
+ "cfg-if",
+ "cpufeatures",
+ "digest",
+]
+
+[[package]]
 name = "sharded-slab"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2240,8 +2267,10 @@ version = "0.3.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "base16ct",
  "binstall-tar",
  "bzip2 0.5.0",
+ "digest",
  "document-features",
  "env_logger",
  "fern",
@@ -2249,6 +2278,7 @@ dependencies = [
  "itertools",
  "lazy-regex",
  "log",
+ "md-5",
  "mockito",
  "platforms",
  "regex",
@@ -2256,6 +2286,8 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
+ "sha1",
+ "sha2",
  "strum",
  "tempfile",
  "test-case",

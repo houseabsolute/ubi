@@ -12,11 +12,10 @@ use url::Url;
 
 #[derive(AsRefStr, Clone, Debug, Default, EnumString, PartialEq, Eq, VariantNames)]
 #[allow(clippy::module_name_repetitions)]
+#[strum(serialize_all = "lowercase")]
 pub enum ForgeType {
-    #[strum(serialize = "github")]
     #[default]
     GitHub,
-    #[strum(serialize = "gitlab")]
     GitLab,
 }
 

@@ -176,7 +176,7 @@ async fn asset_picking() -> Result<()> {
                     .is_musl(false)
                     .api_base_url(&url)
                     .build()?;
-                let asset = ubi.asset().await?;
+                let (asset, checksum_asset) = ubi.asset().await?;
                 let expect_ubi_url = Url::parse(&format!(
                     "https://api.github.com/repos/houseabsolute/ubi/releases/assets/{}",
                     expect_ubi.0
@@ -199,7 +199,7 @@ async fn asset_picking() -> Result<()> {
                     .is_musl(false)
                     .api_base_url(&url)
                     .build()?;
-                let asset = ubi.asset().await?;
+                let (asset, checksum_asset) = ubi.asset().await?;
                 let expect_omegasort_url = Url::parse(&format!(
                     "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/{}",
                     expect_omegasort.0
@@ -531,7 +531,7 @@ async fn matching_unusual_names() -> Result<()> {
                 .platform(platform)
                 .api_base_url(&url)
                 .build()?;
-            let asset = ubi.asset().await?;
+            let (asset, checksum_asset) = ubi.asset().await?;
             assert_eq!(
                 asset.name, t.expect,
                 "picked {} as protobuf asset name",
@@ -655,7 +655,7 @@ async fn mkcert_matching() -> Result<()> {
                 .platform(platform)
                 .api_base_url(&url)
                 .build()?;
-            let asset = ubi.asset().await?;
+            let (asset, checksum_asset) = ubi.asset().await?;
             assert_eq!(
                 asset.name, t.expect,
                 "picked {} as protobuf asset name",
@@ -750,7 +750,7 @@ async fn jq_matching() -> Result<()> {
                 .platform(platform)
                 .api_base_url(&url)
                 .build()?;
-            let asset = ubi.asset().await?;
+            let (asset, checksum_asset) = ubi.asset().await?;
             assert_eq!(
                 asset.name, t.expect,
                 "picked {} as protobuf asset name",
@@ -822,7 +822,7 @@ async fn multiple_matches() -> Result<()> {
             .platform(platform)
             .api_base_url(&url)
             .build()?;
-        let asset = ubi.asset().await?;
+        let (asset, checksum_asset) = ubi.asset().await?;
         let expect = "mm-i686-pc-windows-gnu.zip";
         assert_eq!(asset.name, expect, "picked {expect} as protobuf asset name");
     }
@@ -870,7 +870,7 @@ async fn macos_arm() -> Result<()> {
         .build()?;
 
     {
-        let asset = ubi.asset().await?;
+        let (asset, checksum_asset) = ubi.asset().await?;
         let expect = "bat-v0.23.0-x86_64-apple-darwin.tar.gz";
         assert_eq!(
             asset.name, expect,
@@ -891,7 +891,7 @@ async fn macos_arm() -> Result<()> {
         .await;
 
     {
-        let asset = ubi.asset().await?;
+        let (asset, checksum_asset) = ubi.asset().await?;
         let expect = "bat-v0.23.0-aarch64-apple-darwin.tar.gz";
         assert_eq!(
             asset.name, expect,
@@ -958,7 +958,7 @@ async fn os_without_arch() -> Result<()> {
             .platform(platform)
             .api_base_url(&url)
             .build()?;
-        let asset = ubi.asset().await?;
+        let (asset, checksum_asset) = ubi.asset().await?;
         let expect = "gvproxy-darwin";
         assert_eq!(asset.name, expect, "picked {expect} as protobuf asset name");
 

@@ -29,7 +29,7 @@ impl Installer {
     }
 
     pub(crate) fn install(&self, download: &Download) -> Result<()> {
-        self.extract_binary(&download.archive_path)?;
+        self.extract_binary(&download.path)?;
         self.make_binary_executable()?;
         info!("Installed binary into {}", self.install_path.display());
 
@@ -251,7 +251,7 @@ mod tests {
                 // It doesn't matter what we use here. We're not actually going to
                 // put anything in this temp dir.
                 _temp_dir: tempdir()?,
-                archive_path: PathBuf::from(archive_path),
+                path: PathBuf::from(archive_path),
             })?;
 
             assert!(install_path.exists());

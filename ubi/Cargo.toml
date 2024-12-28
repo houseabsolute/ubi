@@ -11,20 +11,25 @@ edition.workspace = true
 [dependencies]
 anyhow.workspace = true
 async-trait.workspace = true
+base16ct.workspace = true
 binstall-tar.workspace = true
 bzip2.workspace = true
+digest = { workspace = true, features = ["std"] }
 document-features.workspace = true
 fern = { workspace = true, optional = true }
 flate2.workspace = true
 itertools.workspace = true
 lazy-regex.workspace = true
 log.workspace = true
+md-5.workspace = true
 platforms.workspace = true
 regex.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serial_test.workspace = true
+sha1.workspace = true
+sha2.workspace = true
 strum.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
