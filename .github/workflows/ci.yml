@@ -20,7 +20,7 @@ jobs:
           - os-name: FreeBSD-x86_64
             runs-on: ubuntu-22.04
             target: x86_64-unknown-freebsd
-            skip_tests: true
+            skip-tests: true
           - os-name: Linux-x86_64
             runs-on: ubuntu-22.04
             target: x86_64-unknown-linux-musl
@@ -46,38 +46,38 @@ jobs:
           - os-name: Linux-i686
             runs-on: ubuntu-22.04
             target: i686-unknown-linux-musl
-            skip_tests: true
+            skip-tests: true
           - os-name: Linux-powerpc
             runs-on: ubuntu-22.04
             target: powerpc-unknown-linux-gnu
-            skip_tests: true
+            skip-tests: true
           - os-name: Linux-powerpc64
             runs-on: ubuntu-22.04
             target: powerpc64-unknown-linux-gnu
-            skip_tests: true
+            skip-tests: true
           - os-name: Linux-powerpc64le
             runs-on: ubuntu-22.04
             target: powerpc64le-unknown-linux-gnu
-            skip_tests: true
+            skip-tests: true
           - os-name: Linux-riscv64
             runs-on: ubuntu-22.04
             target: riscv64gc-unknown-linux-gnu
           - os-name: Linux-s390x
             runs-on: ubuntu-22.04
             target: s390x-unknown-linux-gnu
-            skip_tests: true
+            skip-tests: true
           - os-name: NetBSD-x86_64
             runs-on: ubuntu-22.04
             target: x86_64-unknown-netbsd
-            skip_tests: true
+            skip-tests: true
           - os-name: Windows-aarch64
             runs-on: windows-latest
             target: aarch64-pc-windows-msvc
-            skip_tests: true
+            skip-tests: true
           - os-name: Windows-i686
             runs-on: windows-latest
             target: i686-pc-windows-msvc
-            skip_tests: true
+            skip-tests: true
           - os-name: Windows-x86_64
             runs-on: windows-latest
             target: x86_64-pc-windows-msvc
@@ -134,7 +134,7 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           args:
             "--locked --release  --features ${{ steps.set-features-flag-value.outputs.features }}"
-        if: ${{ !matrix.platform.skip_tests }}
+        if: ${{ !matrix.platform.skip-tests }}
       - name: Publish artifacts and release
         uses: houseabsolute/actions-rust-release@v0
         with:
