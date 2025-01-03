@@ -1,5 +1,9 @@
 ## 0.4.0
 
+- The `ubi` CLI tool now takes an optional `--extract-all` argument. If this is passed, it will only
+  look for archive files and it will extract the entire contents of an archive it finds. There is
+  also a new corresponding `UbiBuilder::extract_all` method. Requested by @Entze (Lukas Grassauer).
+  GH #68.
 - The `UbiBuilder::install_dir` method now takes `AsRef<Path>` instead of `PathBuf`, which should
   make it more convenient to use.
 - Previously, `ubi` would create the install directory very early in its process, well before it had

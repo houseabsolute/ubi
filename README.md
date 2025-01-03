@@ -92,7 +92,17 @@ Options:
   -e, --exe <exe>                    The name of this project's executable. By default this is the
                                      same as the project name, so for houseabsolute/precious we look
                                      for precious or precious.exe. When running on Windows the
-                                     ".exe" suffix will be added as needed.
+                                     ".exe" suffix will be added as needed. You cannot pass
+                                     --extract-all when this is set
+      --extract-all                  Pass this to tell `ubi` to extract all files from the archive.
+                                     By default `ubi` will only extract an executable from an
+                                     archive file. But if this is true, it will simply unpack the
+                                     archive file in the specified directory. If all of the contents
+                                     of the archive file share a top-level directory, that directory
+                                     will be removed during unpacking. In other words, if an archive
+                                     contains `./project/some-file` and `./project/docs.md`, it will
+                                     extract them as `some-file` and `docs.md`. You cannot pass
+                                     --exe when this is set.
   -m, --matching <matching>          A string that will be matched against the release filename when
                                      there are multiple matching files for your OS/arch. For
                                      example, there may be multiple releases for an OS/arch that

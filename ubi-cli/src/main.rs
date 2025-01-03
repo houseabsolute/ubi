@@ -57,6 +57,7 @@ async fn main() {
 
 const MAX_TERM_WIDTH: usize = 100;
 
+#[allow(clippy::too_many_lines)]
 fn cmd() -> Command {
     Command::new("ubi")
         .version(env!("CARGO_PKG_VERSION"))
@@ -98,8 +99,22 @@ fn cmd() -> Command {
             "The name of this project's executable. By default this is the same as the",
             " project name, so for houseabsolute/precious we look for precious or",
             r#" precious.exe. When running on Windows the ".exe" suffix will be added"#,
-            " as needed.",
+            " as needed. You cannot pass --extract-all when this is set.",
         )))
+        .arg(
+            Arg::new("extract-all")
+                .long("extract-all")
+                .action(ArgAction::SetTrue)
+                .help(concat!(
+                    // Pass this to tell `ubi` to extract all files from the archive. By default
+                    // `ubi` will only extract an executable from an archive file. But if this is
+                    // true, it will simply unpack the archive file. If all of the contents of
+                    // the archive file share a top-level directory, that directory will be removed
+                    // during unpacking. In other words, if an archive contains
+                    // `./project/some-file` and `./project/docs.md`, it will extract them as
+                    // `some-file` and `docs.md`. You cannot pass --exe when this is set.
+                )),
+        )
         .arg(
             Arg::new("matching")
                 .long("matching")
@@ -195,6 +210,9 @@ fn make_ubi<'a>(
     }
     if let Some(e) = matches.get_one::<String>("exe") {
         builder = builder.exe(e);
+    }
+    if matches.get_flag("extract-all") {
+        builder = builder.extract_all();
     }
     if let Some(ft) = matches.get_one::<String>("forge") {
         builder = builder.forge(ForgeType::from_str(ft)?);

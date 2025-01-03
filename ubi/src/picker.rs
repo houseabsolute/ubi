@@ -20,36 +20,43 @@ pub(crate) struct AssetPicker<'a> {
     matching: Option<&'a str>,
     platform: Platform,
     is_musl: bool,
+    archive_only: bool,
 }
 
 impl<'a> AssetPicker<'a> {
-    pub(crate) fn new(matching: Option<&'a str>, platform: Platform, is_musl: bool) -> Self {
+    pub(crate) fn new(
+        matching: Option<&'a str>,
+        platform: Platform,
+        is_musl: bool,
+        archive_only: bool,
+    ) -> Self {
         Self {
             matching,
             platform,
             is_musl,
+            archive_only,
         }
     }
 
     pub(crate) fn pick_asset(&mut self, assets: Vec<Asset>) -> Result<Asset> {
-        debug!("filtering out assets that do not have a valid extension");
-        let mut assets: Vec<_> = assets
-            .into_iter()
-            .filter(|a| {
-                if let Err(e) = Extension::from_path(&a.name) {
-                    debug!("skipping asset with invalid extension, `{}`: {e}", a.name);
-                    return false;
-                }
-                true
-            })
-            .collect();
+        let all_names = assets.iter().map(|a| &a.name).join(", ");
+
+        let mut assets = self.filter_by_extension(assets);
+        if assets.is_empty() {
+            let filter = if self.archive_only {
+                "for archive files (tarball or zip)"
+            } else {
+                "for valid extensions"
+            };
+            return Err(anyhow!(
+                "could not find a release asset after filtering {filter} from {all_names}",
+            ));
+        }
 
         if assets.len() == 1 {
             debug!("there is only one asset to pick");
             return Ok(assets.remove(0));
         }
-
-        let all_names = assets.iter().map(|a| &a.name).join(", ");
 
         let mut matches = self.os_matches(assets);
         if matches.is_empty() {
@@ -82,6 +89,40 @@ impl<'a> AssetPicker<'a> {
         let picked = self.pick_asset_from_matches(matches)?;
         debug!("picked asset from matches named {}", picked.name);
         Ok(picked)
+    }
+
+    fn filter_by_extension(&self, assets: Vec<Asset>) -> Vec<Asset> {
+        debug!("filtering out assets that do not have a valid extension");
+        assets
+            .into_iter()
+            .filter(|a| match Extension::from_path(&a.name) {
+                Err(e) => {
+                    debug!("skipping asset with invalid extension: {e}");
+                    false
+                }
+                Ok(Some(ext)) => {
+                    debug!("found valid extension, `{}`", ext.extension());
+                    if self.archive_only {
+                        if ext.is_archive() {
+                            debug!("including this asset because it is an archive file");
+                            return true;
+                        }
+                        debug!("not including this asset because it is not an archive file");
+                        false
+                    } else {
+                        true
+                    }
+                }
+                Ok(None) => {
+                    debug!("found asset with no extension, `{}`", a.name);
+                    if self.archive_only {
+                        debug!("not including this asset because it is not an archive file");
+                        return false;
+                    }
+                    true
+                }
+            })
+            .collect()
     }
 
     fn os_matches(&self, assets: Vec<Asset>) -> Vec<Asset> {
@@ -502,10 +543,8 @@ mod test {
         matching: Option<&str>,
         expect_idx: usize,
     ) -> Result<()> {
-        // It'd be nice to use `test_log` but that doesn't work with the test-case crate. See
-        // https://github.com/frondeus/test-case/pull/143.
-        //
-        // init_logger(log::LevelFilter::Debug)?;
+        crate::test_case::init_logging();
+
         let platform = Platform::find(platform_name)
             .ok_or(anyhow!("invalid platform"))?
             .clone();
@@ -513,6 +552,7 @@ mod test {
             matching,
             platform,
             is_musl: platform_name.contains("musl"),
+            archive_only: false,
         };
 
         let url = Url::parse("https://example.com")?;
@@ -532,35 +572,40 @@ mod test {
 
     #[test_case(
         "x86_64-unknown-linux-gnu",
-        &["project-macOS-arm64.tar.gz", "project-Windows-i686-gnu.tar.gz"],
+        &["project-Linux-x86_64.tar.gz", "project-Linux-x86_64.gz"],
         None,
-        "could not find a release asset for this OS (linux) from" ;
-        "x86_64-unknown-linux-gnu - no assets for this OS"
+        0 ;
+        "picks tarball from multiple matches - tarball first"
     )]
     #[test_case(
-        "i686-unknown-linux-gnu",
-        &["project-Linux-x86_64-gnu.tar.gz", "project-Windows-i686-gnu.tar.gz"],
+        "x86_64-unknown-linux-gnu",
+        &["project-Linux-x86_64.gz", "project-Linux-x86_64.tar.gz"],
         None,
-        "could not find a release asset for this OS (linux) and architecture (x86) from" ;
-        "i686-unknown-linux-gnu - no assets for this arch"
+        1 ;
+        "picks tarball from multiple matches - tarball last"
     )]
     #[test_case(
-        "x86_64-unknown-linux-musl",
-        &["project-Linux-x86_64-gnu.tar.gz", "project-Windows-i686-gnu.tar.gz"],
+        "x86_64-unknown-linux-gnu",
+        &["project-Linux-x86_64.tar.gz", "project-Linux-x86_64.zip"],
         None,
-        "could not find a release asset for this OS (linux), architecture (x86_64), and libc (musl) from" ;
-        "x86_64-unknown-linux-musl - only one Linux asset and it is gnu"
+        0 ;
+        "picks tarball over zip - tarball first"
     )]
-    fn pick_asset_errors(
+    #[test_case(
+        "x86_64-unknown-linux-gnu",
+        &["project-Linux-x86_64.zip", "project-Linux-x86_64.tar.gz"],
+        None,
+        1 ;
+        "picks tarball over zip - tarball last"
+    )]
+    fn pick_asset_archive_only(
         platform_name: &str,
         asset_names: &[&str],
         matching: Option<&str>,
-        expect_err: &str,
+        expect_idx: usize,
     ) -> Result<()> {
-        // It'd be nice to use `test_log` but that doesn't work with the test-case crate. See
-        // https://github.com/frondeus/test-case/pull/143.
-        //
-        // init_logger(log::LevelFilter::Debug)?;
+        crate::test_case::init_logging();
+
         let platform = Platform::find(platform_name)
             .ok_or(anyhow!("invalid platform"))?
             .clone();
@@ -568,6 +613,81 @@ mod test {
             matching,
             platform,
             is_musl: platform_name.contains("musl"),
+            archive_only: true,
+        };
+
+        let url = Url::parse("https://example.com")?;
+        let assets = asset_names
+            .iter()
+            .map(|name| Asset {
+                name: (*name).to_string(),
+                url: url.clone(),
+            })
+            .collect::<Vec<_>>();
+
+        let picked_asset = picker.pick_asset(assets)?;
+        assert_eq!(picked_asset.name, asset_names[expect_idx]);
+
+        Ok(())
+    }
+
+    #[test_case(
+        "x86_64-unknown-linux-gnu",
+        false,
+        &["project-macOS-arm64.tar.gz", "project-Windows-i686-gnu.tar.gz"],
+        None,
+        "could not find a release asset for this OS (linux) from" ;
+        "x86_64-unknown-linux-gnu - no assets for this OS"
+    )]
+    #[test_case(
+        "i686-unknown-linux-gnu",
+        false,
+        &["project-Linux-x86_64-gnu.tar.gz", "project-Windows-i686-gnu.tar.gz"],
+        None,
+        "could not find a release asset for this OS (linux) and architecture (x86) from" ;
+        "i686-unknown-linux-gnu - no assets for this arch"
+    )]
+    #[test_case(
+        "x86_64-unknown-linux-musl",
+        false,
+        &["project-Linux-x86_64-gnu.tar.gz", "project-Windows-i686-gnu.tar.gz"],
+        None,
+        "could not find a release asset for this OS (linux), architecture (x86_64), and libc (musl) from" ;
+        "x86_64-unknown-linux-musl - only one Linux asset and it is gnu"
+    )]
+    #[test_case(
+        "x86_64-unknown-linux-musl",
+        false,
+        &["project-Linux-x86_64-gnu.glorp", "project-Linux-x86-64-gnu.asfasf"],
+        None,
+        "could not find a release asset after filtering for valid extensions from" ;
+        "x86_64-unknown-linux-musl - no valid extensions"
+    )]
+    #[test_case(
+        "x86_64-unknown-linux-musl",
+        true,
+        &["project-Linux-x86_64-gnu.gz", "project-Linux-x86-64-gnu.bz", "project-Linux-x86-64-gnu"],
+        None,
+        "could not find a release asset after filtering for archive files (tarball or zip) from" ;
+        "x86_64-unknown-linux-musl - no archive files"
+    )]
+    fn pick_asset_errors(
+        platform_name: &str,
+        archive_only: bool,
+        asset_names: &[&str],
+        matching: Option<&str>,
+        expect_err: &str,
+    ) -> Result<()> {
+        crate::test_case::init_logging();
+
+        let platform = Platform::find(platform_name)
+            .ok_or(anyhow!("invalid platform"))?
+            .clone();
+        let mut picker = AssetPicker {
+            matching,
+            platform,
+            is_musl: platform_name.contains("musl"),
+            archive_only,
         };
 
         let url = Url::parse("https://example.com")?;

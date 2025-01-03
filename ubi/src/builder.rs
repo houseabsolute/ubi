@@ -3,7 +3,7 @@ use crate::{
     forge::{Forge, ForgeType},
     github::GitHub,
     gitlab::GitLab,
-    installer::Installer,
+    installer::{ArchiveInstaller, ExeInstaller, Installer},
     picker::AssetPicker,
     ubi::Ubi,
 };
@@ -32,6 +32,7 @@ pub struct UbiBuilder<'a> {
     install_dir: Option<PathBuf>,
     matching: Option<&'a str>,
     exe: Option<&'a str>,
+    extract_all: bool,
     github_token: Option<&'a str>,
     gitlab_token: Option<&'a str>,
     platform: Option<&'a Platform>,
@@ -100,9 +101,22 @@ impl<'a> UbiBuilder<'a> {
     /// Set the name of the executable to look for in archive files. By default this is the same as
     /// the project name, so for `houseabsolute/precious` we look for `precious` or
     /// `precious.exe`. When running on Windows the ".exe" suffix will be added as needed.
+    ///
+    /// You cannot call `extract_all` if you set this.
     #[must_use]
     pub fn exe(mut self, exe: &'a str) -> Self {
         self.exe = Some(exe);
+        self
+    }
+
+    /// Call this to tell `ubi` to extract all files from the archive. By default `ubi` will look
+    /// for an executable in an archive file. But if this is true, it will simply unpack the archive
+    /// file in the specified directory.
+    ///
+    /// You cannot set `exe` when this is true.
+    #[must_use]
+    pub fn extract_all(mut self) -> Self {
+        self.extract_all = true;
         self
     }
 
@@ -175,6 +189,9 @@ impl<'a> UbiBuilder<'a> {
         if self.url.is_some() && (self.project.is_some() || self.tag.is_some()) {
             return Err(anyhow!("You cannot set a url with a project or tag"));
         }
+        if self.exe.is_some() && self.extract_all {
+            return Err(anyhow!("You cannot set exe and extract_all"));
+        }
 
         let platform = self.determine_platform()?;
 
@@ -183,18 +200,35 @@ impl<'a> UbiBuilder<'a> {
         let asset_url = self.url.map(Url::parse).transpose()?;
         let (project_name, forge_type) =
             parse_project_name(self.project, asset_url.as_ref(), self.forge.clone())?;
-        let exe = exe_name(self.exe, &project_name, &platform);
+        let installer = self.new_installer(&project_name, &platform)?;
         let forge = self.new_forge(project_name, &forge_type)?;
-        let install_path = install_path(self.install_dir, &exe)?;
         let is_musl = self.is_musl.unwrap_or_else(|| platform_is_musl(&platform));
 
         Ok(Ubi::new(
             forge,
             asset_url,
-            AssetPicker::new(self.matching, platform, is_musl),
-            Installer::new(install_path, exe),
+            AssetPicker::new(self.matching, platform, is_musl, self.extract_all),
+            installer,
             reqwest_client()?,
         ))
+    }
+
+    fn new_installer(&self, project_name: &str, platform: &Platform) -> Result<Box<dyn Installer>> {
+        let (install_path, exe) = if self.extract_all {
+            (install_path(self.install_dir.as_deref(), None)?, None)
+        } else {
+            let exe = exe_name(self.exe, project_name, platform);
+            (
+                install_path(self.install_dir.as_deref(), Some(&exe))?,
+                Some(exe),
+            )
+        };
+
+        Ok(if self.extract_all {
+            Box::new(ArchiveInstaller::new(install_path))
+        } else {
+            Box::new(ExeInstaller::new(install_path, exe.unwrap()))
+        })
     }
 
     fn new_forge(
@@ -283,17 +317,19 @@ fn parse_project_name(
     ))
 }
 
-fn install_path(install_dir: Option<PathBuf>, exe: &str) -> Result<PathBuf> {
-    let mut path = if let Some(i) = install_dir {
-        i
+fn install_path(install_dir: Option<&Path>, exe: Option<&str>) -> Result<PathBuf> {
+    let mut install_dir = if let Some(install_dir) = install_dir {
+        install_dir.to_path_buf()
     } else {
-        let mut i = env::current_dir()?;
-        i.push("bin");
-        i
+        let mut install_dir = env::current_dir()?;
+        install_dir.push("bin");
+        install_dir
     };
-    path.push(exe);
-    debug!("install path = {}", path.to_string_lossy());
-    Ok(path)
+    if let Some(exe) = exe {
+        install_dir.push(exe);
+    }
+    debug!("install path = {}", install_dir.to_string_lossy());
+    Ok(install_dir)
 }
 
 fn exe_name(exe: Option<&str>, project_name: &str, platform: &Platform) -> String {
@@ -303,12 +339,13 @@ fn exe_name(exe: Option<&str>, project_name: &str, platform: &Platform) -> Strin
             _ => e.to_string(),
         }
     } else {
-        let parts = project_name.split('/').collect::<Vec<&str>>();
-        let e = parts[parts.len() - 1].to_string();
+        // We know that this contains a slash because it already went through `parse_project_name`
+        // successfully.
+        let e = project_name.split('/').last().unwrap();
         if matches!(platform.target_os, OS::Windows) {
             format!("{e}.exe")
         } else {
-            e
+            e.to_string()
         }
     };
     debug!("exe name = {name}");

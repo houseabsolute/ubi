@@ -121,6 +121,8 @@ mod os;
 mod picker;
 #[cfg(test)]
 mod test;
+#[cfg(test)]
+mod test_case;
 mod ubi;
 
 pub use crate::{builder::UbiBuilder, forge::ForgeType, ubi::Ubi};

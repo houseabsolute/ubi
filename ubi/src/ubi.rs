@@ -17,7 +17,7 @@ pub struct Ubi<'a> {
     forge: Box<dyn Forge + Send + Sync>,
     asset_url: Option<Url>,
     asset_picker: AssetPicker<'a>,
-    installer: Installer,
+    installer: Box<dyn Installer>,
     reqwest_client: Client,
 }
 
@@ -41,7 +41,7 @@ impl<'a> Ubi<'a> {
         forge: Box<dyn Forge + Send + Sync>,
         asset_url: Option<Url>,
         asset_picker: AssetPicker<'a>,
-        installer: Installer,
+        installer: Box<dyn Installer>,
         reqwest_client: Client,
     ) -> Ubi<'a> {
         Ubi {

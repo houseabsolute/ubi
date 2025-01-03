@@ -53,6 +53,23 @@ impl Extension {
         }
     }
 
+    pub(crate) fn is_archive(&self) -> bool {
+        match self {
+            Extension::Bz | Extension::Bz2 | Extension::Exe | Extension::Gz | Extension::Xz => {
+                false
+            }
+            Extension::Tar
+            | Extension::TarBz
+            | Extension::TarBz2
+            | Extension::TarGz
+            | Extension::TarXz
+            | Extension::Tbz
+            | Extension::Tgz
+            | Extension::Txz
+            | Extension::Zip => true,
+        }
+    }
+
     pub(crate) fn from_path<S: AsRef<str>>(path: S) -> Result<Option<Extension>> {
         let path = path.as_ref();
         let Some(ext_str) = Path::new(path).extension() else {
@@ -146,6 +163,8 @@ mod test {
     #[test_case("i386-linux-ghcup-0.1.30.0-linux_amd64", Ok(None))]
     #[test_case("foo.bar", Err(ExtensionError::UnknownExtension { path: "foo.bar".to_string(), ext: "bar".to_string() }.into()))]
     fn from_path(path: &str, expect: Result<Option<Extension>>) {
+        crate::test_case::init_logging();
+
         let ext = Extension::from_path(path);
         if expect.is_ok() {
             assert!(ext.is_ok());
