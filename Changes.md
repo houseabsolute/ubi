@@ -1,4 +1,4 @@
-## 0.4.0
+## 0.4.0 - 2025-01-03
 
 - The `ubi` CLI tool now takes an optional `--extract-all` argument. If this is passed, it will only
   look for archive files and it will extract the entire contents of an archive it finds. There is
