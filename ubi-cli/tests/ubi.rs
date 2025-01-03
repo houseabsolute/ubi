@@ -502,7 +502,7 @@ fn make_dir_pathbuf(path: &[&str]) -> PathBuf {
 
 fn run_test(td: &Path, cmd: &Path, args: &[&str], expect: PathBuf) -> Result<bool> {
     if let Ok(v) = env::var("UBI_TESTS_INTEGRATION_ONLY") {
-        if !v.is_empty() && !(args.len() > 1 && args[1].contains(&v)) {
+        if !(v.is_empty() || (args.len() > 1 && args[1].contains(&v))) {
             println!(
                 "Skipping test for [{}] because it does not contain {v}",
                 args.join(" "),
