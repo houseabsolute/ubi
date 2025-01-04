@@ -151,9 +151,9 @@ executable will use the name of the project instead.
 
 This is a bit inconsistent, but it's how `ubi` has behaved since it was created, and I find this to
 be the sanest behavior. Some projects, for example `rust-analyzer`, provide releases as compressed
-executables with names like `rust-analyzer-x86_64-apple-darwin.gz` and
-`rust-analyzer-x86_64-unknown-linux-musl.gz`, so installing these as `rust-analyzer` seems like
-better behavior.
+executables with names like `rust-analyzer-x86_64-apple-darwin` and
+`rust-analyzer-x86_64-unknown-linux-musl`, so installing these as `rust-analyzer` seems like better
+behavior.
 
 ## How `ubi` Finds the Right Release Artifact
 
