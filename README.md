@@ -258,12 +258,12 @@ var, and in that case the rate limits are per repository.
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Similarly, the GitLab CI system sets a `CI_JOB_TOKEN` for all jobs. Make sure to pass this to UBI
-when you use it to install something from GitLab in CI.
+Similarly, the GitLab CI system sets a `CI_JOB_TOKEN` for all jobs. Make sure this environment
+variable is set you use `ubi` to install something from GitLab in CI.
 
-If you only run `ubi` on one platform, you can avoid hitting the GitHub API entirely by using the
-`--url` parameter. But if you run on multiple platforms this can be tedious to maintain and it
-largely defeats the purpose of using `ubi`.
+If you only run `ubi` on one platform, you can avoid hitting the GitHub or GitLab API entirely by
+using the `--url` parameter. But if you run on multiple platforms this can be tedious to maintain
+and it largely defeats the purpose of using `ubi`.
 
 If you are downloading executables from repos you don't control _and_ you don't use the `--url`
 parameter, then you should use the `--tag` parameter to specify the released version you want to
@@ -290,17 +290,18 @@ macOS, and Windows.
 
 ### Is This Better Than Installing from Source?
 
-I think so. While you can of course use `go` or `cargo` to install these tools, that requires an
-entire language toolchain. Then you have to actually compile the tool, which may require downloading
-and compiling many dependencies. This is going to be a lot slower and more error prone than
-installing a binary.
+I think so. While you can use `go` or `cargo` to install these tools, that requires an entire
+language toolchain. Then you have to actually compile the tool, which may require downloading and
+compiling many dependencies. This is going to be a lot slower and more error prone than installing a
+binary.
 
 ### Is This Better Than Installing from a deb/RPM/homebrew/chocolatey Package?
 
-That's debatable. The big advantage of using `ubi` is that you can use the exact same tool on Linux,
-macOS, and Windows. The big disadvantage is that you don't get a full package that contains metadata
-(like a license file) or extras like shell completion files, nor can you easily uninstall it using a
-package manager.
+That's debatable. The big advantage of using `ubi` is that you can use `ubi` in the same way on
+Linux, macOS, and Windows. The big disadvantage is that you're not using a package manager, so you
+don't get any record of the installation, a way to uninstall, etc. If a tool provides
+platform-specific packages for your platforms, you should probably consider using those instead of
+`ubi`.
 
 ## Linting and Tidying this Code
 
