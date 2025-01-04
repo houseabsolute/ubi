@@ -157,8 +157,11 @@ better behavior.
 
 ## How `ubi` Finds the Right Release Artifact
 
-> [!WARNING] Note that the exact set of steps that `ubi` follows to find a release artifacts is not
-> considered part of the API, and may change in any future release.
+<!-- prettier-ignore-start -->
+> [!WARNING]
+> Note that the exact set of steps that `ubi` follows to find a release artifacts is not considered
+> part of the API, and may change in any future release.
+<!-- prettier-ignore-end -->
 
 When `ubi` looks at the release assets (downloadable files) for a project, it tries to find the
 "right" asset for the platform it's running on. The matching logic currently works like this:
