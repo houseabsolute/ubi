@@ -200,8 +200,11 @@ this in several stages:
   looks at the asset filenames to see which ones match your OS, using a (hopefully complete) regex.
 - Next it filters based on your CPU architecture, which is something like x86-64, ARM64, PowerPC,
   etc. Again, this is done with a regex.
-- If you are running on a Linux system using musl as its libc, it will also filter based on this to
-  filter out anything _not_ compiled against musl.
+- If you are running on a Linux system using musl as its libc, it will also filter out anything
+  _not_ compiled against musl. This filter looks to see if the file name contains an indication of
+  which libc it was compiled against. Typically, this is something like "-gnu" or "-musl". If it
+  does contain this indicator, names that are _not_ musl are filtered out. However, if there is no
+  libc indicator, the asset will still be included.
 
 At this point, any remaining assets should work on your platform. If there's more than one at this
 point, it attempts to pick the best one.

@@ -87,17 +87,22 @@
 //!   complete) regex.
 //! - Next it filters based on your CPU architecture, which is something like x86-64, ARM64, PowerPC,
 //!   etc. Again, this is done with a regex.
-//! - If you are running on a Linux system using musl as its libc, it will also filter based on this
-//!   to filter out anything _not_ compiled against musl. You can set this explicitly with the
-//!   [`UbiBuilder::is_musl`] function. If this wasn't set, then it will try to detect if you are
-//!   using musl by looking at the output of `ldd /bin/ls`.
+//! - If you are running on a Linux system using musl as its libc, it will also filter out anything
+//!   _not_ compiled against musl. This filter looks to see if the file name contains an indication
+//!   of which libc it was compiled against. Typically, this is something like "-gnu" or "-musl". If
+//!   it does contain this indicator, names that are _not_ musl are filtered out. However, if there
+//!   is no libc indicator, the asset will still be included. You can use the
+//!   [`UbiBuilder::is_musl`] method to explicitly say that the platform is using musl. If this
+//!   isn't set, then it will try to detect if you are using musl by looking at the output of `ldd
+//!   /bin/ls`.
 //!
 //! At this point, any remaining assets should work on your platform. If there's more than one at
 //! this point, it attempts to pick the best one.
 //!
 //! - If it finds both 64-bit and 32-bit assets and you are on a 64-bit platform, it filters out the
 //!   32-bit assets.
-//! - If you've provided a `--matching` string, this is used as a filter at this point.
+//! - If you've provided a string to [`UbiBuilder::matching`], this is used as a filter at this
+//!   point.
 //! - If your platform is macOS on ARM64 and there are assets for both x86-64 and ARM64, it filters
 //!   out the non-ARM64 assets.
 //!
