@@ -173,6 +173,7 @@ doesn't match one of the following:
 - `.bz2`
 - `.exe`
 - `.gz`
+- `.pyz`
 - `.tar`
 - `.tar.bz`
 - `.tar.bz2`

@@ -1,3 +1,8 @@
+## $NEXT
+
+- Added support for release artifacts with a `.pyz` extension. These are zip files containing Python
+  code, and they can be directly executed.
+
 ## 0.4.0 - 2025-01-03
 
 - The `ubi` CLI tool now takes an optional `--extract-all` argument. If this is passed, it will only
