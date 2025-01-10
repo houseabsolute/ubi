@@ -66,7 +66,7 @@ impl ExeInstaller {
             Some(Extension::Gz) => self.ungzip(downloaded_file),
             Some(Extension::Xz) => self.unxz(downloaded_file),
             Some(Extension::Zip) => self.extract_executable_from_zip(downloaded_file),
-            Some(Extension::Exe) | None => self.copy_executable(downloaded_file),
+            Some(Extension::Exe | Extension::Pyz) | None => self.copy_executable(downloaded_file),
         }
     }
 
@@ -374,6 +374,7 @@ mod tests {
     #[test_case("test-data/project.bz2")]
     #[test_case("test-data/project.exe")]
     #[test_case("test-data/project.gz")]
+    #[test_case("test-data/project.pyz")]
     #[test_case("test-data/project.tar")]
     #[test_case("test-data/project.tar.bz")]
     #[test_case("test-data/project.tar.bz2")]

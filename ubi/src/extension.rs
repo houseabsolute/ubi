@@ -21,6 +21,7 @@ pub(crate) enum Extension {
     Bz2,
     Exe,
     Gz,
+    Pyz,
     Tar,
     TarBz,
     TarBz2,
@@ -40,6 +41,7 @@ impl Extension {
             Extension::Bz2 => ".bz2",
             Extension::Exe => ".exe",
             Extension::Gz => ".gz",
+            Extension::Pyz => ".pyz",
             Extension::Tar => ".tar",
             Extension::TarBz => ".tar.bz",
             Extension::TarBz2 => ".tar.bz2",
@@ -55,9 +57,12 @@ impl Extension {
 
     pub(crate) fn is_archive(&self) -> bool {
         match self {
-            Extension::Bz | Extension::Bz2 | Extension::Exe | Extension::Gz | Extension::Xz => {
-                false
-            }
+            Extension::Bz
+            | Extension::Bz2
+            | Extension::Exe
+            | Extension::Gz
+            | Extension::Pyz
+            | Extension::Xz => false,
             Extension::Tar
             | Extension::TarBz
             | Extension::TarBz2
