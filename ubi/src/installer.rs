@@ -120,7 +120,7 @@ impl ExeInstaller {
         for i in 0..zip.len() {
             let mut zf = zip.by_index(i)?;
             let path = PathBuf::from(zf.name());
-            if path.ends_with(&self.exe) {
+            if zf.is_file() && path.ends_with(&self.exe) {
                 let mut buffer: Vec<u8> = Vec::with_capacity(usize::try_from(zf.size())?);
                 zf.read_to_end(&mut buffer)?;
                 self.create_install_dir()?;
@@ -442,10 +442,18 @@ mod tests {
                 archive_path: PathBuf::from(archive_path),
             })?;
 
-            assert!(install_path.exists());
             assert!(install_path.is_file());
+            // Testing the installed file's length is a shortcut to make sure we install the file we
+            // expected to install.
+            let meta = install_path.metadata()?;
+            let expect_len = if install_path.extension().unwrap_or_default() == "pyz" {
+                fs::metadata(archive_path)?.len()
+            } else {
+                3
+            };
+            assert_eq!(meta.len(), expect_len);
             #[cfg(target_family = "unix")]
-            assert!(install_path.metadata()?.permissions().mode() & 0o111 != 0);
+            assert!(meta.permissions().mode() & 0o111 != 0);
         }
 
         Ok(())

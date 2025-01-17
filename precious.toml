@@ -1,4 +1,16 @@
-exclude = ["target"]
+exclude = [
+    "target",
+    "**/*.AppImage",
+    "**/*.bz",
+    "**/*.bz2",
+    "**/*.exe",
+    "**/*.gz",
+    "**/*.pyz",
+    "**/*.tar",
+    "**/*.tar.*",
+    "**/*.xz",
+    "**/*.zip",
+]
 
 [commands.clippy]
 type = "lint"
@@ -97,7 +109,6 @@ labels = ["default", "fast-tidy"]
 [commands.typos]
 type = "lint"
 include = "**/*"
-exclude = "**/*.tar.gz"
 cmd = "typos"
 invoke = "once"
 ok-exit-codes = 0

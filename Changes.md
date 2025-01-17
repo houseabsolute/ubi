@@ -1,5 +1,8 @@
 ## $NEXT
 
+- Fixed a bug where `ubi` where zip files containing a directory that matched the expected
+  executable name caused `ubi` to extract the directory instead of the actual executable, resulting
+  in a 0-length file. Based on a PR #89 from @fiadliel (Gary Coady). Fixes #88.
 - Added a new `UbiBuilder::rename_exe_to` method, along with a `--rename-exe-to` CLI flag. When this
   is set, the installed executable will use the name given here, instead of the name that it has in
   the downloaded file. This is useful for projects that do releases where the executable name
