@@ -113,7 +113,7 @@ impl ExeInstaller {
         for i in 0..zip.len() {
             let mut zf = zip.by_index(i)?;
             let path = PathBuf::from(zf.name());
-            if path.ends_with(&self.exe) {
+            if zf.is_file() && path.ends_with(&self.exe) {
                 let mut buffer: Vec<u8> = Vec::with_capacity(usize::try_from(zf.size())?);
                 zf.read_to_end(&mut buffer)?;
                 self.create_install_dir()?;
