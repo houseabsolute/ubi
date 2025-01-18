@@ -24,7 +24,7 @@ async fn main() {
 
     // We use this when `--self-upgrade` is passed. We need to create this String here so that we
     // can make a Ubi<'_> instance that borrows this value. It needs to have the same lifetime as
-    // matches. If we try to make it in `self_upgrade_ubi` we end up trying to return a reference
+    // `matches`. If we try to make it in `self_upgrade_ubi` we end up trying to return a reference
     // data owned by that fn.
     let ubi_exe_path = match env::current_exe() {
         Ok(p) => p,
