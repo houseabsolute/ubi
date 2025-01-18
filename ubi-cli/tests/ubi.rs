@@ -497,6 +497,16 @@ fn integration_tests() -> Result<()> {
         make_exe_pathbuf(&["bin", "glab"]),
     )?;
 
+    #[cfg(target_os = "linux")]
+    {
+        run_test(
+            td.path(),
+            ubi.as_ref(),
+            &["--project", "hzeller/timg", "--tag", "v1.6.1"],
+            make_exe_pathbuf(&["bin", "timg.AppImage"]),
+        )?;
+    }
+
     Ok(())
 }
 

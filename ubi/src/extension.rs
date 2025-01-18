@@ -4,19 +4,24 @@ use anyhow::Result;
 use itertools::Itertools;
 use lazy_regex::{regex, Lazy};
 use log::debug;
+use platforms::{Platform, OS};
 use regex::Regex;
-use std::{ffi::OsStr, path::Path};
+use std::{
+    ffi::OsStr,
+    path::{Path, PathBuf},
+};
 use strum::{EnumIter, IntoEnumIterator};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub(crate) enum ExtensionError {
-    #[error("{path:} has unknown extension {ext:}")]
-    UnknownExtension { path: String, ext: String },
+    #[error("{} has unknown extension {ext:}", path.display())]
+    UnknownExtension { path: PathBuf, ext: String },
 }
 
 #[derive(Debug, EnumIter, PartialEq, Eq)]
 pub(crate) enum Extension {
+    AppImage,
     Bz,
     Bz2,
     Exe,
@@ -37,6 +42,7 @@ pub(crate) enum Extension {
 impl Extension {
     pub(crate) fn extension(&self) -> &'static str {
         match self {
+            Extension::AppImage => ".AppImage",
             Extension::Bz => ".bz",
             Extension::Bz2 => ".bz2",
             Extension::Exe => ".exe",
@@ -55,9 +61,14 @@ impl Extension {
         }
     }
 
+    pub(crate) fn extension_without_dot(&self) -> &str {
+        self.extension().strip_prefix('.').unwrap()
+    }
+
     pub(crate) fn is_archive(&self) -> bool {
         match self {
-            Extension::Bz
+            Extension::AppImage
+            | Extension::Bz
             | Extension::Bz2
             | Extension::Exe
             | Extension::Gz
@@ -75,41 +86,71 @@ impl Extension {
         }
     }
 
-    pub(crate) fn from_path<S: AsRef<str>>(path: S) -> Result<Option<Extension>> {
-        let path = path.as_ref();
-        let Some(ext_str) = Path::new(path).extension() else {
+    pub(crate) fn should_preserve_extension_on_install(&self) -> bool {
+        match self {
+            Extension::AppImage | Extension::Exe | Extension::Pyz => true,
+            Extension::Xz
+            | Extension::Gz
+            | Extension::Bz
+            | Extension::Bz2
+            | Extension::Tar
+            | Extension::TarBz
+            | Extension::TarBz2
+            | Extension::TarGz
+            | Extension::TarXz
+            | Extension::Tbz
+            | Extension::Tgz
+            | Extension::Txz
+            | Extension::Zip => false,
+        }
+    }
+
+    pub(crate) fn matches_platform(&self, platform: &Platform) -> bool {
+        match self {
+            Extension::AppImage => platform.target_os == OS::Linux,
+            Extension::Exe => platform.target_os == OS::Windows,
+            _ => true,
+        }
+    }
+
+    pub(crate) fn from_path(path: &Path) -> Result<Option<Extension>> {
+        let Some(ext_str_from_path) = path.extension() else {
             return Ok(None);
         };
+        let path_str = path.to_string_lossy();
 
         // We need to try the longest extensions first so that ".tar.gz" matches before ".gz" and so
         // on for other compression formats.
         if let Some(ext) = Extension::iter()
             .sorted_by(|a, b| Ord::cmp(&a.extension().len(), &b.extension().len()))
             .rev()
-            .find(|e| path.ends_with(e.extension()))
+            // This is intentionally using a string comparison instead of looking at
+            // path.extension(). That's because the `.extension()` method returns `"bz"` for paths
+            // like "foo.tar.bz", instead of "tar.bz".
+            .find(|e| path_str.ends_with(e.extension()))
         {
             return Ok(Some(ext));
         }
 
-        if extension_is_part_of_version(path, ext_str) {
-            debug!("the extension {ext_str:?} is part of the version, ignoring");
+        if extension_is_part_of_version(path, ext_str_from_path) {
+            debug!("the extension {ext_str_from_path:?} is part of the version, ignoring");
             return Ok(None);
         }
 
-        if extension_is_platform(ext_str) {
-            debug!("the extension {ext_str:?} is a platform name, ignoring");
+        if extension_is_platform(ext_str_from_path) {
+            debug!("the extension {ext_str_from_path:?} is a platform name, ignoring");
             return Ok(None);
         }
 
         Err(ExtensionError::UnknownExtension {
-            path: path.to_string(),
-            ext: ext_str.to_string_lossy().to_string(),
+            path: path.to_path_buf(),
+            ext: ext_str_from_path.to_string_lossy().to_string(),
         }
         .into())
     }
 }
 
-fn extension_is_part_of_version(path: &str, ext_str: &OsStr) -> bool {
+fn extension_is_part_of_version(path: &Path, ext_str: &OsStr) -> bool {
     let ext_str = ext_str.to_string_lossy().to_string();
 
     let version_number_ext_re = regex!(r"^[0-9]+");
@@ -119,7 +160,9 @@ fn extension_is_part_of_version(path: &str, ext_str: &OsStr) -> bool {
 
     // This matches something like "foo_3.2.1_linux_amd64" and captures "1_linux_amd64".
     let version_number_re = regex!(r"[0-9]+\.([0-9]+[^.]*)$");
-    let Some(caps) = version_number_re.captures(path) else {
+    let Some(caps) = version_number_re.captures(path.to_str().expect(
+        "this path came from a UTF-8 string originally so it should always convert back to one",
+    )) else {
         return false;
     };
     let Some(dot_num) = caps.get(1) else {
@@ -149,7 +192,9 @@ fn extension_is_platform(ext_str: &OsStr) -> bool {
 mod test {
     use super::*;
     use test_case::test_case;
+    use test_log::test;
 
+    #[test_case("foo.AppImage", Ok(Some(Extension::AppImage)))]
     #[test_case("foo.bz", Ok(Some(Extension::Bz)))]
     #[test_case("foo.bz2", Ok(Some(Extension::Bz2)))]
     #[test_case("foo.exe", Ok(Some(Extension::Exe)))]
@@ -166,11 +211,11 @@ mod test {
     #[test_case("foo_3.9.1.linux.amd64", Ok(None))]
     #[test_case("i386-linux-ghcup-0.1.30.0", Ok(None))]
     #[test_case("i386-linux-ghcup-0.1.30.0-linux_amd64", Ok(None))]
-    #[test_case("foo.bar", Err(ExtensionError::UnknownExtension { path: "foo.bar".to_string(), ext: "bar".to_string() }.into()))]
+    #[test_case("foo.bar", Err(ExtensionError::UnknownExtension { path: PathBuf::from("foo.bar"), ext: "bar".to_string() }.into()))]
     fn from_path(path: &str, expect: Result<Option<Extension>>) {
         crate::test_case::init_logging();
 
-        let ext = Extension::from_path(path);
+        let ext = Extension::from_path(Path::new(path));
         if expect.is_ok() {
             assert!(ext.is_ok());
             assert_eq!(ext.unwrap(), expect.unwrap());
@@ -180,5 +225,38 @@ mod test {
                 expect.unwrap_err().to_string()
             );
         }
+    }
+
+    #[test]
+    fn matches_platform() -> Result<()> {
+        let freebsd = Platform::find("x86_64-unknown-freebsd").unwrap().clone();
+        let linux = Platform::find("x86_64-unknown-linux-gnu").unwrap().clone();
+        let macos = Platform::find("aarch64-apple-darwin").unwrap().clone();
+        let windows = Platform::find("x86_64-pc-windows-msvc").unwrap().clone();
+
+        let ext = Extension::from_path(Path::new("foo.exe"))?.unwrap();
+        assert!(
+            ext.matches_platform(&windows),
+            "foo.exe is valid on {windows}"
+        );
+        for p in [&freebsd, &linux, &macos] {
+            assert!(!ext.matches_platform(p), "foo.exe is not valid on {p}");
+        }
+
+        let ext = Extension::from_path(Path::new("foo.AppImage"))?.unwrap();
+        assert!(
+            ext.matches_platform(&linux),
+            "foo.exe is valid on {windows}"
+        );
+        for p in [&freebsd, &macos, &windows] {
+            assert!(!ext.matches_platform(p), "foo.AppImage is not valid on {p}");
+        }
+
+        let ext = Extension::from_path(Path::new("foo.tar.gz"))?.unwrap();
+        for p in [&freebsd, &linux, &macos, &windows] {
+            assert!(ext.matches_platform(p), "foo.tar.gz is valid on {p}");
+        }
+
+        Ok(())
     }
 }

@@ -40,8 +40,8 @@ impl ExeInstaller {
         ExeInstaller { install_path, exe }
     }
 
-    fn extract_executable(&self, downloaded_file: &Path) -> Result<()> {
-        match Extension::from_path(downloaded_file.to_string_lossy())? {
+    fn extract_executable(&self, downloaded_file: &Path) -> Result<Option<PathBuf>> {
+        match Extension::from_path(downloaded_file)? {
             Some(
                 Extension::Tar
                 | Extension::TarBz
@@ -51,12 +51,29 @@ impl ExeInstaller {
                 | Extension::Tbz
                 | Extension::Tgz
                 | Extension::Txz,
-            ) => self.extract_executable_from_tarball(downloaded_file),
-            Some(Extension::Bz | Extension::Bz2) => self.unbzip(downloaded_file),
-            Some(Extension::Gz) => self.ungzip(downloaded_file),
-            Some(Extension::Xz) => self.unxz(downloaded_file),
-            Some(Extension::Zip) => self.extract_executable_from_zip(downloaded_file),
-            Some(Extension::Exe | Extension::Pyz) | None => self.copy_executable(downloaded_file),
+            ) => {
+                self.extract_executable_from_tarball(downloaded_file)?;
+                Ok(None)
+            }
+            Some(Extension::Bz | Extension::Bz2) => {
+                self.unbzip(downloaded_file)?;
+                Ok(None)
+            }
+            Some(Extension::Gz) => {
+                self.ungzip(downloaded_file)?;
+                Ok(None)
+            }
+            Some(Extension::Xz) => {
+                self.unxz(downloaded_file)?;
+                Ok(None)
+            }
+            Some(Extension::Zip) => {
+                self.extract_executable_from_zip(downloaded_file)?;
+                Ok(None)
+            }
+            Some(Extension::AppImage | Extension::Exe | Extension::Pyz) | None => {
+                self.copy_executable(downloaded_file)
+            }
         }
     }
 
@@ -146,12 +163,24 @@ impl ExeInstaller {
         Ok(())
     }
 
-    fn copy_executable(&self, exe_file: &Path) -> Result<()> {
+    fn copy_executable(&self, exe_file: &Path) -> Result<Option<PathBuf>> {
         debug!("copying executable to final location");
         self.create_install_dir()?;
-        std::fs::copy(exe_file, &self.install_path)?;
 
-        Ok(())
+        let mut install_path = self.install_path.clone();
+        if let Some(ext) = Extension::from_path(exe_file)? {
+            if ext.should_preserve_extension_on_install() {
+                debug!("preserving the {} extension on install", ext.extension());
+                install_path.set_extension(ext.extension_without_dot());
+            }
+        }
+        std::fs::copy(exe_file, &install_path).context(format!(
+            "error copying file from {} to {}",
+            exe_file.display(),
+            install_path.display()
+        ))?;
+
+        Ok(Some(install_path))
     }
 
     fn create_install_dir(&self) -> Result<()> {
@@ -167,12 +196,12 @@ impl ExeInstaller {
             .with_context(|| format!("could not create a directory at {}", path.display()))
     }
 
-    fn chmod_executable(&self) -> Result<()> {
+    fn chmod_executable(exe: &Path) -> Result<()> {
         #[cfg(target_family = "windows")]
         return Ok(());
 
         #[cfg(target_family = "unix")]
-        match set_permissions(&self.install_path, Permissions::from_mode(0o755)) {
+        match set_permissions(exe, Permissions::from_mode(0o755)) {
             Ok(()) => Ok(()),
             Err(e) => Err(anyhow::Error::new(e)),
         }
@@ -181,9 +210,10 @@ impl ExeInstaller {
 
 impl Installer for ExeInstaller {
     fn install(&self, download: &Download) -> Result<()> {
-        self.extract_executable(&download.archive_path)?;
-        self.chmod_executable()?;
-        info!("Installed executable into {}", self.install_path.display());
+        let exe = self.extract_executable(&download.archive_path)?;
+        let real_exe = exe.as_deref().unwrap_or(&self.install_path);
+        Self::chmod_executable(real_exe)?;
+        info!("Installed executable into {}", real_exe.display());
 
         Ok(())
     }
@@ -197,7 +227,7 @@ impl ArchiveInstaller {
     }
 
     fn extract_entire_archive(&self, downloaded_file: &Path) -> Result<()> {
-        match Extension::from_path(downloaded_file.to_string_lossy())? {
+        match Extension::from_path(downloaded_file)? {
             Some(
                 Extension::Tar
                 | Extension::TarBz
@@ -370,6 +400,7 @@ mod tests {
     use test_case::test_case;
     use test_log::test;
 
+    #[test_case("test-data/project.AppImage")]
     #[test_case("test-data/project.bz")]
     #[test_case("test-data/project.bz2")]
     #[test_case("test-data/project.exe")]
@@ -393,6 +424,14 @@ mod tests {
         path_without_subdir.push("project");
         let mut path_with_subdir = td.path().to_path_buf();
         path_with_subdir.extend(&["subdir", "project"]);
+
+        // The installer special-cases this extension and preserves it for the installed file.
+        if let Some(ext) = Extension::from_path(Path::new(archive_path))? {
+            if ext.should_preserve_extension_on_install() {
+                path_without_subdir.set_extension(ext.extension_without_dot());
+                path_with_subdir.set_extension(ext.extension_without_dot());
+            }
+        }
 
         for install_path in [path_without_subdir, path_with_subdir] {
             let installer = ExeInstaller::new(install_path.clone(), exe.to_string());

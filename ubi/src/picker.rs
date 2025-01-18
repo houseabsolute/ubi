@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use crate::{
     arch::{
         aarch64_re, arm_re, macos_aarch64_re, mips64_re, mips64le_re, mips_re, mipsle_re, ppc32_re,
@@ -95,7 +97,7 @@ impl<'a> AssetPicker<'a> {
         debug!("filtering out assets that do not have a valid extension");
         assets
             .into_iter()
-            .filter(|a| match Extension::from_path(&a.name) {
+            .filter(|a| match Extension::from_path(Path::new(&a.name)) {
                 Err(e) => {
                     debug!("skipping asset with invalid extension: {e}");
                     false
@@ -109,8 +111,12 @@ impl<'a> AssetPicker<'a> {
                         }
                         debug!("not including this asset because it is not an archive file");
                         false
-                    } else {
+                    } else if ext.matches_platform(&self.platform) {
+                        debug!("including this asset because this extension is valid for this platform");
                         true
+                    } else {
+                        debug!("skipping asset because this extension is not valid for this platform");
+                        false
                     }
                 }
                 Ok(None) => {
@@ -670,6 +676,30 @@ mod test {
         None,
         "could not find a release asset after filtering for archive files (tarball or zip) from" ;
         "x86_64-unknown-linux-musl - no archive files"
+    )]
+    #[test_case(
+        "x86_64-unknown-linux-musl",
+        false,
+        &["project.exe"],
+        None,
+        "could not find a release asset after filtering for valid extensions" ;
+        "x86_64-unknown-linux-musl - does not pick .exe files"
+    )]
+    #[test_case(
+        "x86_64-pc-windows-msvc",
+        false,
+        &["project.AppImage"],
+        None,
+        "could not find a release asset after filtering for valid extensions" ;
+        "x86_64-pc-windows-msvc - does not pick .AppImage files"
+    )]
+    #[test_case(
+        "aarch64-apple-darwin",
+        false,
+        &["project.AppImage"],
+        None,
+        "could not find a release asset after filtering for valid extensions" ;
+        "aarch64-apple-darwin - does not pick .AppImage files"
     )]
     fn pick_asset_errors(
         platform_name: &str,

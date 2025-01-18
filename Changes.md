@@ -6,6 +6,11 @@
   includes things like a version number of platform information. Based on discussion in #86.
 - Added support for release artifacts with a `.pyz` extension. These are zip files containing Python
   code, and they can be directly executed.
+- Added support for release artifacts with a `.AppImage` extension. These will only be picked when
+  running Linux. Requested by @saulh (Saul Reynolds-Haertle). GH #86.
+- Fixed a bug where `ubi` would consider an asset with `.exe` extension on non-Windows platforms. In
+  practice, this would probably only have been an issue for projects with exactly one release
+  artifact, where that artifact had a `.exe` extension.
 - The `--extract-all` CLI option added in the previous release did not have any description in the
   help output. This has been fixed.
 
