@@ -1,4 +1,4 @@
-## $NEXT
+## 0.4.1 - 2025-01-18
 
 - Fixed a bug where `ubi` where zip files containing a directory that matched the expected
   executable name caused `ubi` to extract the directory instead of the actual executable, resulting
