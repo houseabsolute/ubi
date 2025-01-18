@@ -101,6 +101,23 @@ fn integration_tests() -> Result<()> {
         make_exe_pathbuf(&["bin", "precious"]),
     )?;
 
+    let rename_to = if cfg!(windows) {
+        "gollum.exe"
+    } else {
+        "gollum"
+    };
+    run_test(
+        td.path(),
+        ubi.as_ref(),
+        &[
+            "--project",
+            "https://github.com/houseabsolute/precious",
+            "--rename-exe",
+            rename_to,
+        ],
+        make_exe_pathbuf(&["bin", "gollum"]),
+    )?;
+
     run_test(
         td.path(),
         ubi.as_ref(),

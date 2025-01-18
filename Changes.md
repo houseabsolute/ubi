@@ -1,5 +1,9 @@
 ## $NEXT
 
+- Added a new `UbiBuilder::rename_exe_to` method, along with a `--rename-exe-to` CLI flag. When this
+  is set, the installed executable will use the name given here, instead of the name that it has in
+  the downloaded file. This is useful for projects that do releases where the executable name
+  includes things like a version number of platform information. Based on discussion in #86.
 - Added support for release artifacts with a `.pyz` extension. These are zip files containing Python
   code, and they can be directly executed.
 

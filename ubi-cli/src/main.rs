@@ -96,10 +96,18 @@ fn cmd() -> Command {
                 .help("The directory in which the binary should be placed. Defaults to ./bin."),
         )
         .arg(Arg::new("exe").long("exe").short('e').help(concat!(
-            "The name of this project's executable. By default this is the same as the",
+            "The name of the file to look for in an archive file, or the name of the downloadable",
+            " file excluding its extension, e.g. `ubi.gz`. By default this is the same as the",
             " project name, so for houseabsolute/precious we look for precious or",
-            r#" precious.exe. When running on Windows the ".exe" suffix will be added"#,
-            " as needed. You cannot pass --extract-all when this is set.",
+            " precious.exe. When running on Windows the `.exe` suffix will be added, as needed. You",
+            " cannot pass `--extract-all` when this is set.",
+        )))
+        .arg(Arg::new("rename-exe-to").long("rename-exe").help(concat!(
+            "The name to use for the executable after it is unpacked. By default this is the same",
+            " as the name of the file passed for the `--exe` flag. If that flag isn't passed, this",
+            " is the same as the name of the project. Note that when set, this name is used as-is,",
+            " so on Windows, `.exe` will not be appended to the name given. You cannot pass",
+            " `--extract-all` when this is set.",
         )))
         .arg(
             Arg::new("extract-all")
@@ -210,6 +218,9 @@ fn make_ubi<'a>(
     }
     if let Some(e) = matches.get_one::<String>("exe") {
         builder = builder.exe(e);
+    }
+    if let Some(e) = matches.get_one::<String>("rename-exe-to") {
+        builder = builder.rename_exe_to(e);
     }
     if matches.get_flag("extract-all") {
         builder = builder.extract_all();

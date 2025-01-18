@@ -32,6 +32,7 @@ pub struct UbiBuilder<'a> {
     install_dir: Option<PathBuf>,
     matching: Option<&'a str>,
     exe: Option<&'a str>,
+    rename_exe_to: Option<&'a str>,
     extract_all: bool,
     github_token: Option<&'a str>,
     gitlab_token: Option<&'a str>,
@@ -106,6 +107,19 @@ impl<'a> UbiBuilder<'a> {
     #[must_use]
     pub fn exe(mut self, exe: &'a str) -> Self {
         self.exe = Some(exe);
+        self
+    }
+
+    /// The name to use when installing the executable. This is useful if the executable in the
+    /// archive file has a name that includes a version number or platform information. If this is
+    /// not set, then the executable will be installed with the name it has in the archive
+    /// file. Note that this name is used as-is, so on Windows, `.exe` will not be appended to the
+    /// name given.
+    ///
+    /// You cannot call `extract_all` if you set this.
+    #[must_use]
+    pub fn rename_exe_to(mut self, name: &'a str) -> Self {
+        self.rename_exe_to = Some(name);
         self
     }
 
@@ -190,7 +204,12 @@ impl<'a> UbiBuilder<'a> {
             return Err(anyhow!("You cannot set a url with a project or tag"));
         }
         if self.exe.is_some() && self.extract_all {
-            return Err(anyhow!("You cannot set exe and extract_all"));
+            return Err(anyhow!("You cannot set exe and enable extract_all"));
+        }
+        if self.rename_exe_to.is_some() && self.extract_all {
+            return Err(anyhow!(
+                "You cannot set rename_exe_to and enable extract_all"
+            ));
         }
 
         let platform = self.determine_platform()?;
@@ -217,10 +236,14 @@ impl<'a> UbiBuilder<'a> {
         let (install_path, exe) = if self.extract_all {
             (install_path(self.install_dir.as_deref(), None)?, None)
         } else {
-            let exe = exe_name(self.exe, project_name, platform);
+            let exe_in_downloaded_file =
+                expect_exe_name_in_downloaded_file(self.exe, project_name, platform);
             (
-                install_path(self.install_dir.as_deref(), Some(&exe))?,
-                Some(exe),
+                install_path(
+                    self.install_dir.as_deref(),
+                    self.rename_exe_to.or(Some(&exe_in_downloaded_file)),
+                )?,
+                Some(exe_in_downloaded_file),
             )
         };
 
@@ -332,21 +355,23 @@ fn install_path(install_dir: Option<&Path>, exe: Option<&str>) -> Result<PathBuf
     Ok(install_dir)
 }
 
-fn exe_name(exe: Option<&str>, project_name: &str, platform: &Platform) -> String {
-    let name = if let Some(e) = exe {
-        match platform.target_os {
-            OS::Windows => format!("{e}.exe"),
-            _ => e.to_string(),
-        }
+fn expect_exe_name_in_downloaded_file(
+    exe: Option<&str>,
+    project_name: &str,
+    platform: &Platform,
+) -> String {
+    let name = if let Some(exe) = exe {
+        exe
     } else {
         // We know that this contains a slash because it already went through `parse_project_name`
         // successfully.
-        let e = project_name.split('/').last().unwrap();
-        if matches!(platform.target_os, OS::Windows) {
-            format!("{e}.exe")
-        } else {
-            e.to_string()
-        }
+        project_name.split('/').last().unwrap()
+    };
+
+    let name = if matches!(platform.target_os, OS::Windows) {
+        format!("{name}.exe")
+    } else {
+        name.to_string()
     };
     debug!("exe name = {name}");
     name

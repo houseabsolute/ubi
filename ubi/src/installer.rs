@@ -35,16 +35,6 @@ pub(crate) struct ArchiveInstaller {
     install_root: PathBuf,
 }
 
-impl Installer for ExeInstaller {
-    fn install(&self, download: &Download) -> Result<()> {
-        self.extract_executable(&download.archive_path)?;
-        self.chmod_executable()?;
-        info!("Installed executable into {}", self.install_path.display());
-
-        Ok(())
-    }
-}
-
 impl ExeInstaller {
     pub(crate) fn new(install_path: PathBuf, exe: String) -> Self {
         ExeInstaller { install_path, exe }
@@ -189,13 +179,11 @@ impl ExeInstaller {
     }
 }
 
-impl Installer for ArchiveInstaller {
+impl Installer for ExeInstaller {
     fn install(&self, download: &Download) -> Result<()> {
-        self.extract_entire_archive(&download.archive_path)?;
-        info!(
-            "Installed contents of archive file into {}",
-            self.install_root.display()
-        );
+        self.extract_executable(&download.archive_path)?;
+        self.chmod_executable()?;
+        info!("Installed executable into {}", self.install_path.display());
 
         Ok(())
     }
@@ -331,6 +319,18 @@ impl ArchiveInstaller {
 
         let mut zip = ZipArchive::new(open_file(downloaded_file)?)?;
         Ok(zip.extract(&self.install_root)?)
+    }
+}
+
+impl Installer for ArchiveInstaller {
+    fn install(&self, download: &Download) -> Result<()> {
+        self.extract_entire_archive(&download.archive_path)?;
+        info!(
+            "Installed contents of archive file into {}",
+            self.install_root.display()
+        );
+
+        Ok(())
     }
 }
 
