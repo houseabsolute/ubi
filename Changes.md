@@ -8,7 +8,7 @@
   the downloaded file. This is useful for projects that do releases where the executable name
   includes things like a version number of platform information. Based on discussion in #86.
 - Added support for release artifacts with a `.pyz` extension. These are zip files containing Python
-  code, and they can be directly executed.
+  code, and they can be directly executed. Based on PR #85 from @itochan (Kazunori Jo).
 - Added support for release artifacts with a `.AppImage` extension. These will only be picked when
   running Linux. Requested by @saulh (Saul Reynolds-Haertle). GH #86.
 - Fixed a bug where `ubi` would consider an asset with `.exe` extension on non-Windows platforms. In
