@@ -6,6 +6,8 @@
   includes things like a version number of platform information. Based on discussion in #86.
 - Added support for release artifacts with a `.pyz` extension. These are zip files containing Python
   code, and they can be directly executed.
+- The `--extract-all` CLI option added in the previous release did not have any description in the
+  help output. This has been fixed.
 
 ## 0.4.0 - 2025-01-03
 

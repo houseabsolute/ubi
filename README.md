@@ -102,7 +102,15 @@ Options:
                                      the name of the project. When running on Windows the `.exe`
                                      suffix will be added, as needed. You cannot pass
                                      `--extract-all` when this is set.
-      --extract-all
+      --extract-all                  Pass this to tell `ubi` to extract all files from the archive.
+                                     By default `ubi` will only extract an executable from an
+                                     archive file. But if this is true, it will simply unpack the
+                                     archive file. If all of the contents of the archive file share
+                                     a top-level directory, that directory will be removed during
+                                     unpacking. In other words, if an archive contains
+                                     `./project/some-file` and `./project/docs.md`, it will extract
+                                     them as `some-file` and `docs.md`. You cannot pass `--exe` or
+                                     `--rename-exe-to` when this is set.
   -m, --matching <matching>          A string that will be matched against the release filename when
                                      there are multiple matching files for your OS/arch. For
                                      example, there may be multiple releases for an OS/arch that

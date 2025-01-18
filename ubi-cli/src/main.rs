@@ -114,13 +114,14 @@ fn cmd() -> Command {
                 .long("extract-all")
                 .action(ArgAction::SetTrue)
                 .help(concat!(
-                    // Pass this to tell `ubi` to extract all files from the archive. By default
-                    // `ubi` will only extract an executable from an archive file. But if this is
-                    // true, it will simply unpack the archive file. If all of the contents of
-                    // the archive file share a top-level directory, that directory will be removed
-                    // during unpacking. In other words, if an archive contains
-                    // `./project/some-file` and `./project/docs.md`, it will extract them as
-                    // `some-file` and `docs.md`. You cannot pass --exe when this is set.
+                    "Pass this to tell `ubi` to extract all files from the archive. By default",
+                    " `ubi` will only extract an executable from an archive file. But if this is",
+                    " true, it will simply unpack the archive file. If all of the contents of the",
+                    " archive file share a top-level directory, that directory will be removed",
+                    " during unpacking. In other words, if an archive contains",
+                    " `./project/some-file` and `./project/docs.md`, it will extract them as",
+                    " `some-file` and `docs.md`. You cannot pass `--exe` or `--rename-exe-to`",
+                    " when this is set.",
                 )),
         )
         .arg(
