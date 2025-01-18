@@ -149,9 +149,9 @@ fn cmd() -> Command {
                 )),
         )
         .arg(Arg::new("api-base-url").long("api-base-url").help(concat!(
-            "The the base URL for the forge site's API. This is useful for testing or if",
-            " you want to operate against an Enterprise version of GitHub or GitLab. This",
-            " should be something like `https://github.my-corp.example.com/api/v4`.",
+            "The the base URL for the forge site's API. This is useful for testing or if you want",
+            " to operate against an Enterprise version of GitHub or GitLab. This should be",
+            " something like `https://github.my-corp.example.com/api/v4`.",
         )))
         .arg(
             Arg::new("verbose")
