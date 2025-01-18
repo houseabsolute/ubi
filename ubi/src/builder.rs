@@ -384,6 +384,7 @@ fn reqwest_client() -> Result<Client> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use test_case::test_case;
 
     #[test]
     fn parse_project_name() -> Result<()> {
@@ -433,52 +434,60 @@ mod test {
         Ok(())
     }
 
-    #[test]
-    fn exe_name() -> Result<()> {
-        struct Test {
-            exe: Option<&'static str>,
-            project_name: &'static str,
-            platform: &'static str,
-            expect: &'static str,
-        }
-        let tests: &[Test] = &[
-            Test {
-                exe: None,
-                project_name: "houseabsolute/precious",
-                platform: "x86_64-unknown-linux-musl",
-                expect: "precious",
-            },
-            Test {
-                exe: None,
-                project_name: "houseabsolute/precious",
-                platform: "thumbv7m-none-eabi",
-                expect: "precious",
-            },
-            Test {
-                exe: None,
-                project_name: "houseabsolute/precious",
-                platform: "x86_64-apple-darwin",
-                expect: "precious",
-            },
-            Test {
-                exe: None,
-                project_name: "houseabsolute/precious",
-                platform: "x86_64-pc-windows-msvc",
-                expect: "precious.exe",
-            },
-            Test {
-                exe: Some("foo"),
-                project_name: "houseabsolute/precious",
-                platform: "x86_64-pc-windows-msvc",
-                expect: "foo.exe",
-            },
-        ];
-
-        for t in tests {
-            let req = PlatformReq::from_str(t.platform)?;
-            let platform = req.matching_platforms().next().unwrap();
-            assert_eq!(super::exe_name(t.exe, t.project_name, platform), t.expect);
-        }
+    #[test_case(
+        None,
+        "houseabsolute/precious",
+        "x86_64-unknown-linux-musl",
+        "precious";
+        "no exe or exe_name - linux"
+    )]
+    #[test_case(
+        None,
+        "houseabsolute/precious",
+        "thumbv7m-none-eabi",
+        "precious";
+        "no exe or exe_name - no OS-platform"
+    )]
+    #[test_case(
+        None,
+        "houseabsolute/precious",
+        "x86_64-apple-darwin",
+        "precious";
+        "no exe or exe_name - macOS"
+    )]
+    #[test_case(
+        None,
+        "houseabsolute/precious",
+        "x86_64-pc-windows-msvc",
+        "precious.exe";
+        "no exe or exe_name - Windows"
+    )]
+    #[test_case(
+        Some("foo"),
+        "houseabsolute/precious",
+        "x86_64-unknown-linux-musl",
+        "foo";
+        "passed exe - Linux"
+    )]
+    #[test_case(
+        Some("foo"),
+        "houseabsolute/precious",
+        "x86_64-pc-windows-msvc",
+        "foo.exe";
+        "passed exe - Windows"
+    )]
+    fn exe_name(
+        exe: Option<&'static str>,
+        project_name: &'static str,
+        platform: &'static str,
+        expect: &'static str,
+    ) -> Result<()> {
+        let req = PlatformReq::from_str(platform)?;
+        let platform = req.matching_platforms().next().unwrap();
+        assert_eq!(
+            super::expect_exe_name_in_downloaded_file(exe, project_name, platform),
+            expect
+        );
 
         Ok(())
     }
