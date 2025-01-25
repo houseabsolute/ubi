@@ -194,7 +194,7 @@ doesn't match one of the following:
 - `.zip`
 - No extension
 
-It tries to be careful about what consistutes an extension. It's common for releases to include a
+It tries to be careful about what constitutes an extension. It's common for releases to include a
 dot (`.`) in the filename before something that's _not_ intended as an extension, for example
 `some-tool.linux.amd64`.
 
