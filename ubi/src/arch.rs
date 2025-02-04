@@ -22,6 +22,8 @@ pub(crate) fn macos_aarch64_re() -> &'static Lazy<Regex> {
             x64
             |
             amd64
+            |
+            all
         )
         (?:
             \b

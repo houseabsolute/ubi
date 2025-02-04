@@ -1,3 +1,9 @@
+## 0.4.2 - 2025-02-04
+
+- Added `all` to the list of architecture strings to match against for macOS on ARM64. It looks like
+  this is in use in the wild. See https://github.com/segmentio/golines/releases/tag/v0.12.2 for an
+  example. Reported by Shyam Subramaniyam.
+
 ## 0.4.1 - 2025-01-18
 
 - Fixed a bug where `ubi` where zip files containing a directory that matched the expected

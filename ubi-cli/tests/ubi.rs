@@ -507,6 +507,17 @@ fn integration_tests() -> Result<()> {
         )?;
     }
 
+    // This project releases macOS binaries named "golines_0.12.2_darwin_all.tar.gz".
+    #[cfg(target_os = "macos")]
+    {
+        run_test(
+            td.path(),
+            ubi.as_ref(),
+            &["--project", "segmentio/golines", "--tag", "v0.12.2"],
+            make_exe_pathbuf(&["bin", "golines"]),
+        )?;
+    }
+
     Ok(())
 }
 
