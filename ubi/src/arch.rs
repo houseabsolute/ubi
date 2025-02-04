@@ -3,7 +3,7 @@ use lazy_regex::{regex, Lazy};
 use regex::Regex;
 
 // This is a special case to account for the fact that MacOS ARM systems can
-// also return x86-64 binaries.
+// also run x86-64 binaries.
 pub(crate) fn macos_aarch64_re() -> &'static Lazy<Regex> {
     regex!(
         r"(?ix)
