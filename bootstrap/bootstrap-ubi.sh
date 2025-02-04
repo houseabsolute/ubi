@@ -72,10 +72,9 @@ fi
 
 OLD_FILE_NAMING=""
 if [ -n "$TAG" ]; then
-    IFS="." read -r MAJOR MINOR PATCH <<EOF
+    IFS="." read -r MAJOR MINOR <<EOF
 $TAG
 EOF
-    echo "$MAJOR $MINOR $PATCH"
     if [ "$MAJOR" = "v0" ] && [ "$MINOR" -lt 2 ]; then
         OLD_FILE_NAMING="true"
     fi
