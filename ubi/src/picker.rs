@@ -516,6 +516,13 @@ mod test {
         "aarch64-apple-darwin - pick the x86-64 asset on macOS ARM if no aarch64 asset is available"
     )]
     #[test_case(
+        "aarch64-apple-darwin",
+        &["project-Macos-all.tar.gz"],
+        None,
+        0 ;
+        "aarch64-apple-darwin - pick the all asset on macOS ARM if no aarch64 asset is available"
+    )]
+    #[test_case(
         "x86_64-unknown-linux-musl",
         &["project-Linux-x86_64.tar.gz"],
         None,
