@@ -84,6 +84,9 @@ impl ExeInstaller {
         );
 
         let mut arch = tar_reader_for(downloaded_file)?;
+        let mut found_executables = Vec::new();
+
+        // First pass: look for exact match
         for entry in arch.entries()? {
             let mut entry = entry?;
             let path = entry.path()?;
@@ -102,15 +105,59 @@ impl ExeInstaller {
                         entry.unpack(&self.install_path).unwrap();
                         return Ok(());
                     }
+                    // Store executable entries that contain project name for second pass
+                    if n.contains(&self.exe) {
+                        #[cfg(target_family = "unix")]
+                        {
+                            // Check if the file has executable permissions
+                            let mode = entry.header().mode()?;
+                            if mode & 0o111 != 0 {
+                                // Check if any execute bit is set
+                                found_executables.push((path.to_path_buf(), entry));
+                            }
+                        }
+
+                        #[cfg(target_family = "windows")]
+                        {
+                            // On Windows, we'll check for common executable extensions
+                            if let Some(ext) = path.extension() {
+                                if ext.eq_ignore_ascii_case("exe")
+                                    || ext.eq_ignore_ascii_case("com")
+                                    || ext.eq_ignore_ascii_case("bat")
+                                {
+                                    found_executables.push((path.to_path_buf(), entry));
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
 
+        // If we found exactly one executable containing the project name, use it
+        if found_executables.len() == 1 {
+            let (_path, mut entry) = found_executables.pop().unwrap();
+            debug!(
+                "found single matching executable, extracting to {}",
+                self.install_path.to_string_lossy(),
+            );
+            self.create_install_dir()?;
+            entry.unpack(&self.install_path).unwrap();
+            return Ok(());
+        }
+
         debug!("could not find any entries named {}", self.exe);
-        Err(anyhow!(
-            "could not find any files named {} in the downloaded tarball",
-            self.exe,
-        ))
+        if found_executables.is_empty() {
+            Err(anyhow!(
+                "could not find any files named {} in the downloaded tarball",
+                self.exe,
+            ))
+        } else {
+            Err(anyhow!(
+                "found multiple executables containing {} in the downloaded tarball",
+                self.exe,
+            ))
+        }
     }
 
     fn extract_executable_from_zip(&self, downloaded_file: &Path) -> Result<()> {
@@ -414,6 +461,7 @@ mod tests {
     #[test_case("test-data/project.xz")]
     #[test_case("test-data/project.zip")]
     #[test_case("test-data/project")]
+    #[test_case("test-data/project-non-matched-binary.tar.gz")]
     fn exe_installer(archive_path: &str) -> Result<()> {
         crate::test_case::init_logging();
 
@@ -451,7 +499,8 @@ mod tests {
             } else {
                 3
             };
-            assert_eq!(meta.len(), expect_len);
+            let meta_len = meta.len();
+            assert_eq!(meta_len, expect_len);
             #[cfg(target_family = "unix")]
             assert!(meta.permissions().mode() & 0o111 != 0);
         }
