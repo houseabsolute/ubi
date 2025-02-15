@@ -20,10 +20,10 @@ jobs:
       matrix:
         platform:
           - os_name: Linux
-            os: ubuntu-latest
+            os: ubuntu-24.04
             script: bootstrap-ubi.sh
           - os_name: Alpine Linux (ash)
-            os: ubuntu-latest
+            os: ubuntu-24.04
             container:
               image: alpine:latest
               env:

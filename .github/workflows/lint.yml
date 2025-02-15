@@ -10,7 +10,7 @@ env:
 jobs:
   lint:
     name: Check that code is lint clean using precious
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Cache cargo & target directories
