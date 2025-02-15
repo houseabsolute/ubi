@@ -518,6 +518,15 @@ fn integration_tests() -> Result<()> {
         )?;
     }
 
+    // As of their v5.0.0 release, this project produced archive file that contained executables
+    // with names like `scorecard-linux-amd64`. They have since changed that started with v5.1.0.
+    run_test(
+        td.path(),
+        ubi.as_ref(),
+        &["--project", "ossf/scorecard", "--tag", "v5.0.0"],
+        make_exe_pathbuf(&["bin", "scorecard"]),
+    )?;
+
     Ok(())
 }
 

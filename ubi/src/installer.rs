@@ -14,7 +14,7 @@ use std::{
 };
 use strum::IntoEnumIterator;
 use xz2::read::XzDecoder;
-use zip::ZipArchive;
+use zip::{read::ZipFile, ZipArchive};
 
 #[cfg(target_family = "unix")]
 use std::fs::{set_permissions, Permissions};
@@ -29,6 +29,7 @@ pub(crate) trait Installer: Debug {
 pub(crate) struct ExeInstaller {
     install_path: PathBuf,
     exe_file_stem: String,
+    is_windows: bool,
     extensions: Vec<&'static str>,
 }
 
@@ -41,7 +42,7 @@ impl ExeInstaller {
     pub(crate) fn new(install_path: PathBuf, exe: String, is_windows: bool) -> Self {
         let extensions = if is_windows {
             Extension::iter()
-                .filter(Extension::is_windows_only)
+                .filter(super::extension::Extension::is_windows_only)
                 .map(|e| e.extension())
                 .collect()
         } else {
@@ -51,6 +52,7 @@ impl ExeInstaller {
         ExeInstaller {
             install_path,
             exe_file_stem: exe,
+            is_windows,
             extensions,
         }
     }
@@ -66,10 +68,7 @@ impl ExeInstaller {
                 | Extension::Tbz
                 | Extension::Tgz
                 | Extension::Txz,
-            ) => {
-                self.extract_executable_from_tarball(downloaded_file)?;
-                Ok(None)
-            }
+            ) => Ok(Some(self.extract_executable_from_tarball(downloaded_file)?)),
             Some(Extension::Bz | Extension::Bz2) => {
                 self.unbzip(downloaded_file)?;
                 Ok(None)
@@ -82,100 +81,197 @@ impl ExeInstaller {
                 self.unxz(downloaded_file)?;
                 Ok(None)
             }
-            Some(Extension::Zip) => {
-                self.extract_executable_from_zip(downloaded_file)?;
-                Ok(None)
-            }
+            Some(Extension::Zip) => Ok(Some(self.extract_executable_from_zip(downloaded_file)?)),
             Some(Extension::AppImage | Extension::Bat | Extension::Exe | Extension::Pyz) | None => {
-                self.copy_executable(downloaded_file)
+                Ok(Some(self.copy_executable(downloaded_file)?))
             }
         }
     }
 
-    fn extract_executable_from_tarball(&self, downloaded_file: &Path) -> Result<()> {
+    fn extract_executable_from_tarball(&self, downloaded_file: &Path) -> Result<PathBuf> {
         debug!(
             "extracting executable from tarball at {}",
-            downloaded_file.to_string_lossy(),
+            downloaded_file.display(),
         );
 
-        let mut arch = tar_reader_for(downloaded_file)?;
-        for entry in arch.entries()? {
-            let mut entry = entry?;
-            let path = entry.path()?;
-            if !entry.header().entry_type().is_file() {
-                continue;
-            }
-            debug!("found tarball entry with path {}", path.to_string_lossy());
-            if let Some(file_name) = path.file_name() {
-                if let Some(file_name) = file_name.to_str() {
-                    if self.archive_member_is_expected_file(file_name) {
-                        debug!(
-                            "extracting tarball entry to {}",
-                            self.install_path.to_string_lossy(),
-                        );
-                        self.create_install_dir()?;
-                        entry.unpack(&self.install_path).unwrap();
-                        return Ok(());
+        // Iterating through the archive both here and in `best_match_from_tarball` is really
+        // gross. But this is necessary because the underlying `Entry` structs returned by
+        // `arch.entries` are only valid for the duration of the loop iteration. That's because they
+        // rely on the position of the underlying file handle. It'd be nice to just be able to seek
+        // that handle back to the start of the file, but the readers provided by various decoders,
+        // like `BzDecoder`, do not implement the `Seek` trait.
+        //
+        // So the only viable solution is find the entry, then _re-open_ the file and go through the
+        // entries again until we find the one we want.
+        if let Some(idx) = self.best_match_from_tarball(downloaded_file)? {
+            let mut arch = tar_reader_for(downloaded_file)?;
+            for (i, entry) in arch.entries()?.enumerate() {
+                let mut entry = entry?;
+                if i != idx {
+                    continue;
+                }
+
+                let entry_path = entry.path()?;
+                let mut install_path = self.install_path.clone();
+                if let Some(ext) = Extension::from_path(entry_path.as_ref())? {
+                    if ext.should_preserve_extension_on_install() {
+                        debug!("preserving the {} extension on install", ext.extension());
+                        install_path.set_extension(ext.extension_without_dot());
                     }
                 }
+
+                debug!(
+                    "extracting tarball entry named {} to {}",
+                    entry_path.display(),
+                    install_path.display(),
+                );
+                self.create_install_dir()?;
+                entry.unpack(&install_path).unwrap();
+
+                return Ok(install_path);
             }
         }
 
         self.could_not_find_archive_matches_error()
     }
 
-    fn extract_executable_from_zip(&self, downloaded_file: &Path) -> Result<()> {
-        debug!("extracting executable from zip file");
+    fn best_match_from_tarball<'a>(&self, downloaded_file: &Path) -> Result<Option<usize>> {
+        let mut arch = tar_reader_for(downloaded_file)?;
+        let mut possible_matches: Vec<usize> = vec![];
+        for (i, entry) in arch.entries()?.enumerate() {
+            let entry = entry?;
+            if !entry.header().entry_type().is_file() {
+                continue;
+            }
 
-        let mut zip = ZipArchive::new(open_file(downloaded_file)?)?;
-        for i in 0..zip.len() {
-            let mut zf = zip.by_index(i)?;
-            if zf.is_file() {
-                let path = PathBuf::from(zf.name());
-                if let Some(file_name) = path.file_name() {
-                    if let Some(file_name) = file_name.to_str() {
-                        if self.archive_member_is_expected_file(file_name) {
-                            let mut buffer: Vec<u8> =
-                                Vec::with_capacity(usize::try_from(zf.size())?);
-                            zf.read_to_end(&mut buffer)?;
-                            self.create_install_dir()?;
-                            return File::create(&self.install_path)?
-                                .write_all(&buffer)
-                                .map_err(Into::into);
+            let path = entry.path()?;
+            debug!("found tarball entry with path {}", path.display());
+            if let Some(file_name) = path.file_name() {
+                if let Some(file_name) = file_name.to_str() {
+                    if self.archive_member_is_exact_match(file_name) {
+                        debug!("found tar file entry with exact match: {}", file_name);
+                        return Ok(Some(i));
+                    } else if self.archive_member_is_partial_match(file_name) {
+                        // This checks if the entry is marked as an executable, but a tarball
+                        // created on Windows may not have file modes set.
+                        if self.is_windows || entry.header().mode()? & 0o111 != 0 {
+                            debug!("found tar file entry with partial match: {}", file_name);
+                            possible_matches.push(i);
                         }
                     }
                 }
             }
         }
 
+        Ok(possible_matches.into_iter().next())
+    }
+
+    fn extract_executable_from_zip(&self, downloaded_file: &Path) -> Result<PathBuf> {
+        debug!(
+            "extracting executable from zip file at {}",
+            downloaded_file.display()
+        );
+
+        let mut zip = ZipArchive::new(open_file(downloaded_file)?)?;
+        if let Some(mut zf) = self.best_match_from_zip_archive(&mut zip)? {
+            let zf_path = Path::new(zf.name());
+            let mut install_path = self.install_path.clone();
+            if let Some(ext) = Extension::from_path(zf_path)? {
+                if ext.should_preserve_extension_on_install() {
+                    debug!("preserving the {} extension on install", ext.extension());
+                    install_path.set_extension(ext.extension_without_dot());
+                }
+            }
+
+            debug!(
+                "extracting zip file entry named {} to {}",
+                zf.name(),
+                install_path.display(),
+            );
+            let mut buffer: Vec<u8> = Vec::with_capacity(usize::try_from(zf.size())?);
+            zf.read_to_end(&mut buffer)?;
+            self.create_install_dir()?;
+
+            File::create(&install_path)?.write_all(&buffer)?;
+
+            return Ok(install_path);
+        }
+
         self.could_not_find_archive_matches_error()
     }
 
-    fn archive_member_is_expected_file(&self, file_name: &str) -> bool {
+    fn best_match_from_zip_archive<'a>(
+        &self,
+        zip: &'a mut ZipArchive<File>,
+    ) -> Result<Option<ZipFile<'a>>> {
+        let mut possible_matches: Vec<usize> = vec![];
+        for i in 0..zip.len() {
+            let zf = zip.by_index(i)?;
+            if zf.is_file() {
+                let path = PathBuf::from(zf.name());
+                if let Some(file_name) = path.file_name() {
+                    if let Some(file_name) = file_name.to_str() {
+                        if self.archive_member_is_exact_match(file_name) {
+                            debug!("found zip file entry with exact match: {}", file_name);
+                            // It'd be nicer to immediately return `zf`, but that runs into lifetime
+                            // issues, because `zip.by_index` takes `&mut self`. Yeesh.
+                            possible_matches.push(i);
+                            break;
+                        } else if self.archive_member_is_partial_match(file_name) {
+                            debug!("found zip file entry with partial match: {}", file_name);
+                            // Note that we don't test if the file is executable on Unix systems
+                            // because preserving the mode is not a standard Zip behavior, AFAICT.
+                            possible_matches.push(i);
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(i) = possible_matches.first() {
+            return Ok(Some(zip.by_index(*i)?));
+        }
+
+        Ok(None)
+    }
+
+    fn archive_member_is_exact_match(&self, file_name: &str) -> bool {
         if self.extensions.is_empty() {
             return file_name == self.exe_file_stem;
         }
 
         self.extensions
             .iter()
-            .map(|ext| format!("{}{}", self.exe_file_stem, ext))
+            .map(|&ext| format!("{}{}", self.exe_file_stem.to_lowercase(), ext))
             .any(|n| n == file_name)
     }
 
-    fn could_not_find_archive_matches_error(&self) -> Result<()> {
+    fn archive_member_is_partial_match(&self, file_name: &str) -> bool {
+        if !file_name.starts_with(&self.exe_file_stem) {
+            return false;
+        }
+        if self.extensions.is_empty() {
+            return true;
+        }
+        self.extensions
+            .iter()
+            .any(|&ext| file_name.to_lowercase().ends_with(ext))
+    }
+
+    fn could_not_find_archive_matches_error(&self) -> Result<PathBuf> {
         let expect_names = if self.extensions.is_empty() {
-            self.exe_file_stem.clone()
+            format!("{}*", self.exe_file_stem)
         } else {
             self.extensions
                 .iter()
-                .map(|ext| format!("{}{}", self.exe_file_stem, ext))
+                .map(|ext| format!("{}*{}", self.exe_file_stem, ext))
                 .collect::<Vec<_>>()
                 .join(" ")
         };
 
-        debug!("could not find any entries named [{}]", expect_names);
+        debug!("could not find any entries matching [{}]", expect_names);
         Err(anyhow!(
-            "could not find any files named [{}] in the downloaded tarball",
+            "could not find any files matching [{}] in the downloaded archive file",
             expect_names,
         ))
     }
@@ -201,12 +297,12 @@ impl ExeInstaller {
     fn write_to_install_path(&self, mut reader: impl Read) -> Result<()> {
         self.create_install_dir()?;
         let mut writer = File::create(&self.install_path)
-            .with_context(|| format!("Cannot write to {}", self.install_path.to_string_lossy()))?;
+            .with_context(|| format!("Cannot write to {}", self.install_path.display()))?;
         std::io::copy(&mut reader, &mut writer)?;
         Ok(())
     }
 
-    fn copy_executable(&self, exe_file: &Path) -> Result<Option<PathBuf>> {
+    fn copy_executable(&self, exe_file: &Path) -> Result<PathBuf> {
         debug!("copying executable to final location");
         self.create_install_dir()?;
 
@@ -223,7 +319,7 @@ impl ExeInstaller {
             install_path.display()
         ))?;
 
-        Ok(Some(install_path))
+        Ok(install_path)
     }
 
     fn create_install_dir(&self) -> Result<()> {
@@ -303,13 +399,9 @@ impl ArchiveInstaller {
     }
 
     fn extract_entire_tarball(&self, downloaded_file: &Path) -> Result<()> {
-        debug!(
-            "extracting entire tarball at {}",
-            downloaded_file.to_string_lossy(),
-        );
+        debug!("extracting entire tarball at {}", downloaded_file.display(),);
 
         let mut arch = tar_reader_for(downloaded_file)?;
-
         arch.unpack(&self.install_root)?;
 
         Ok(())
@@ -387,7 +479,7 @@ impl ArchiveInstaller {
     fn extract_entire_zip(&self, downloaded_file: &Path) -> Result<()> {
         debug!(
             "extracting entire zip file at {}",
-            downloaded_file.to_string_lossy(),
+            downloaded_file.display(),
         );
 
         let mut zip = ZipArchive::new(open_file(downloaded_file)?)?;
@@ -431,7 +523,7 @@ fn tar_reader_for(downloaded_file: &Path) -> Result<Archive<Box<dyn Read>>> {
 }
 
 fn open_file(path: &Path) -> Result<File> {
-    File::open(path).with_context(|| format!("Failed to open file at {}", path.to_string_lossy()))
+    File::open(path).with_context(|| format!("Failed to open file at {}", path.display()))
 }
 
 #[cfg(test)]
@@ -443,90 +535,73 @@ mod tests {
     use test_case::test_case;
     use test_log::test;
 
-    #[test_case("test-data/project.AppImage")]
-    #[test_case("test-data/project.bat")]
-    #[test_case("test-data/project.bz")]
-    #[test_case("test-data/project.bz2")]
-    #[test_case("test-data/project.exe")]
-    #[test_case("test-data/project.gz")]
-    #[test_case("test-data/project.pyz")]
-    #[test_case("test-data/project.tar")]
-    #[test_case("test-data/project.tar.bz")]
-    #[test_case("test-data/project.tar.bz2")]
-    #[test_case("test-data/project.tar.gz")]
-    #[test_case("test-data/project.tar.xz")]
-    #[test_case("test-data/project.xz")]
-    #[test_case("test-data/project.zip")]
-    #[test_case("test-data/project")]
-    fn exe_installer(archive_path: &str) -> Result<()> {
+    #[test_case("test-data/project.AppImage", Some("AppImage"))]
+    #[test_case("test-data/project.bat", Some("bat"))]
+    #[test_case("test-data/project.bz", None)]
+    #[test_case("test-data/project.bz2", None)]
+    #[test_case("test-data/project.exe", Some("exe"))]
+    #[test_case("test-data/project.gz", None)]
+    #[test_case("test-data/project.pyz", Some("pyz"))]
+    #[test_case("test-data/project.tar", None)]
+    #[test_case("test-data/project.tar.bz", None)]
+    #[test_case("test-data/project.tar.bz2", None)]
+    #[test_case("test-data/project.tar.gz", None)]
+    #[test_case("test-data/project.tar.xz", None)]
+    #[test_case("test-data/project.xz", None)]
+    #[test_case("test-data/project.zip", None)]
+    #[test_case("test-data/project", None)]
+    // These are archive files that just contain a partial match for the expected executable.
+    #[test_case("test-data/project-with-partial-match.tar.gz", None)]
+    #[test_case("test-data/project-with-partial-match.zip", None)]
+    fn exe_installer(archive_path: &str, installed_extension: Option<&str>) -> Result<()> {
         crate::test_case::init_logging();
 
-        let exe_file_stem = "project";
+        let td = tempdir()?;
+        let path_without_subdir = td.path().to_path_buf();
+        test_installer(
+            archive_path,
+            installed_extension,
+            path_without_subdir,
+            false,
+        )?;
 
         let td = tempdir()?;
-        let mut path_without_subdir = td.path().to_path_buf();
-        path_without_subdir.push("project");
         let mut path_with_subdir = td.path().to_path_buf();
-        path_with_subdir.extend(&["subdir", "project"]);
-
-        // The installer special-cases this extension and preserves it for the installed file.
-        if let Some(ext) = Extension::from_path(Path::new(archive_path))? {
-            if ext.should_preserve_extension_on_install() {
-                path_without_subdir.set_extension(ext.extension_without_dot());
-                path_with_subdir.set_extension(ext.extension_without_dot());
-            }
-        }
-
-        for install_path in [path_without_subdir, path_with_subdir] {
-            let installer =
-                ExeInstaller::new(install_path.clone(), exe_file_stem.to_string(), false);
-            installer.install(&Download {
-                // It doesn't matter what we use here. We're not actually going to
-                // put anything in this temp dir.
-                _temp_dir: tempdir()?,
-                archive_path: PathBuf::from(archive_path),
-            })?;
-
-            assert!(install_path.is_file());
-            // Testing the installed file's length is a shortcut to make sure we install the file we
-            // expected to install.
-            let meta = install_path.metadata()?;
-            let expect_len = if install_path.extension().unwrap_or_default() == "pyz" {
-                fs::metadata(archive_path)?.len()
-            } else {
-                3
-            };
-            assert_eq!(meta.len(), expect_len);
-            #[cfg(target_family = "unix")]
-            assert!(meta.permissions().mode() & 0o111 != 0);
-        }
-
-        Ok(())
+        path_with_subdir.push("subdir");
+        test_installer(archive_path, installed_extension, path_with_subdir, false)
     }
 
     // These tests check that we look for project.bat and project.exe in archive files when running
     // on Windows.
-    #[test_case("test-data/windows-project-bat.tar.gz")]
-    #[test_case("test-data/windows-project-exe.tar.gz")]
-    #[test_case("test-data/windows-project-bat.zip")]
-    #[test_case("test-data/windows-project-exe.zip")]
-    fn exe_installer_on_windows(archive_path: &str) -> Result<()> {
+    #[test_case("test-data/windows-project-bat.tar.gz", "bat")]
+    #[test_case("test-data/windows-project-exe.tar.gz", "exe")]
+    #[test_case("test-data/windows-project-bat.zip", "bat")]
+    #[test_case("test-data/windows-project-exe.zip", "exe")]
+    // And these check that we match project-with-stuff.exe.
+    #[test_case("test-data/windows-project-exe-with-partial-match.tar.gz", "exe")]
+    #[test_case("test-data/windows-project-exe-with-partial-match.zip", "exe")]
+    fn exe_installer_on_windows(archive_path: &str, extension: &str) -> Result<()> {
         crate::test_case::init_logging();
 
+        let td = tempdir()?;
+        let install_dir = td.path().to_path_buf();
+
+        test_installer(archive_path, Some(extension), install_dir, true)
+    }
+
+    fn test_installer(
+        archive_path: &str,
+        installed_extension: Option<&str>,
+        install_dir: PathBuf,
+        is_windows: bool,
+    ) -> Result<()> {
         let exe_file_stem = "project";
 
-        let td = tempdir()?;
-        let mut install_path = td.path().to_path_buf();
+        let mut install_path = install_dir;
         install_path.push("project");
 
-        // The installer special-cases this extension and preserves it for the installed file.
-        if let Some(ext) = Extension::from_path(Path::new(archive_path))? {
-            if ext.should_preserve_extension_on_install() {
-                install_path.set_extension(ext.extension_without_dot());
-            }
-        }
-
-        let installer = ExeInstaller::new(install_path.clone(), exe_file_stem.to_string(), true);
+        let installer =
+            ExeInstaller::new(install_path.clone(), exe_file_stem.to_string(), is_windows);
         installer.install(&Download {
             // It doesn't matter what we use here. We're not actually going to
             // put anything in this temp dir.
@@ -534,15 +609,28 @@ mod tests {
             archive_path: PathBuf::from(archive_path),
         })?;
 
-        assert!(install_path.is_file());
+        let mut expect_install_path = install_path.clone();
+        if let Some(installed_extension) = installed_extension {
+            let path = PathBuf::from(format!("foo.{installed_extension}"));
+            let ext = Extension::from_path(&path).unwrap().unwrap();
+            if ext.should_preserve_extension_on_install() {
+                expect_install_path.set_extension(ext.extension_without_dot());
+            }
+        }
+
+        assert!(
+            fs::exists(&expect_install_path)?,
+            "{} file exists",
+            expect_install_path.display()
+        );
         // Testing the installed file's length is a shortcut to make sure we install the file we
         // expected to install.
-        let meta = install_path.metadata()?;
-        let expect_len = if install_path.extension().unwrap_or_default() == "pyz" {
+        let expect_len = if expect_install_path.extension().unwrap_or_default() == "pyz" {
             fs::metadata(archive_path)?.len()
         } else {
             3
         };
+        let meta = expect_install_path.metadata()?;
         assert_eq!(meta.len(), expect_len);
         #[cfg(target_family = "unix")]
         assert!(meta.permissions().mode() & 0o111 != 0);

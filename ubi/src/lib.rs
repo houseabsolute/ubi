@@ -111,6 +111,27 @@
 //! Finally, if there are still multiple assets left, it sorts them by file name and picks the first
 //! one.
 //!
+//! ## How `ubi` Finds the Right Executable in an Archive File
+//!
+//! If the release artifact is an archive file (a tarball or zip file), then `ubi` will look inside
+//! the archive to find the right executable.
+//!
+//! It first tries to find a file matching the exact name of the project (plus an extension on
+//! Windows). So for example, if you're installing
+//! [`houseabsolute/precious`](https://github.com/houseabsolute/precious), it will look for a file
+//! named `precious` in the archive on Unix-like systems and `precious.bat` or `precious.exe` on
+//! Windows. Note that if it finds an exact match, it does not check file mode.
+//!
+//! If it can't find an exact match it will look for a file that _starts with_ the project
+//! name. This is mostly to account for projects that include things like platforms or release names
+//! in their executables. Using
+//! [`houseabsolute/precious`](https://github.com/houseabsolute/precious) as an example again, it
+//! will match a file named `precious-linux-amd64` or `precious-v1.2.3`. In this case, it will
+//! _rename_ the extracted file to `precious`. On Unix-like systems, these partial matches will only
+//! be considered if mode includes an executable bit. On Windows, it looks for a partial match that
+//! is a `.bat` or `.exe` file, and the extracted file will be renamed to `precious.bat` or
+//! `precious.exe`.
+//!
 //! ## Features
 //!
 //! This crate offers several features to control the TLS dependency used by `reqwest`:

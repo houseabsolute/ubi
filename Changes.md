@@ -3,6 +3,10 @@
 - On Windows, `ubi` now looks for files with `.bat` extensions as an executable. This applies both
   to releases of standalone files and executables in an archive file (tarball or zip). Based on work
   by @timothysparg (Tim Sparg) in PR #97.
+- If there are no files that are an exact match for the project name in an archive file, `ubi` will
+  now look for files that _start_ with the project name. On non-Windows, boxes, this will only match
+  executables. On Windows, this will only match `.bat` or `.exe` files. Based on work by
+  @timothysparg (Tim Sparg) in PR #97.
 
 ## 0.4.2 - 2025-02-04
 
