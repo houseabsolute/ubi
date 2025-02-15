@@ -233,25 +233,21 @@ impl<'a> UbiBuilder<'a> {
     }
 
     fn new_installer(&self, project_name: &str, platform: &Platform) -> Result<Box<dyn Installer>> {
-        let (install_path, exe) = if self.extract_all {
-            (install_path(self.install_dir.as_deref(), None)?, None)
+        if self.extract_all {
+            let install_path = install_path(self.install_dir.as_deref(), None)?;
+            Ok(Box::new(ArchiveInstaller::new(install_path)))
         } else {
-            let exe_in_downloaded_file =
-                expect_exe_name_in_downloaded_file(self.exe, project_name, platform);
-            (
-                install_path(
-                    self.install_dir.as_deref(),
-                    self.rename_exe_to.or(Some(&exe_in_downloaded_file)),
-                )?,
-                Some(exe_in_downloaded_file),
-            )
-        };
-
-        Ok(if self.extract_all {
-            Box::new(ArchiveInstaller::new(install_path))
-        } else {
-            Box::new(ExeInstaller::new(install_path, exe.unwrap()))
-        })
+            let expect_exe_stem_name = expect_exe_stem_name(self.exe, project_name);
+            let install_path = install_path(
+                self.install_dir.as_deref(),
+                self.rename_exe_to.or(Some(expect_exe_stem_name)),
+            )?;
+            Ok(Box::new(ExeInstaller::new(
+                install_path,
+                expect_exe_stem_name.to_string(),
+                platform.target_os == OS::Windows,
+            )))
+        }
     }
 
     fn new_forge(
@@ -355,11 +351,7 @@ fn install_path(install_dir: Option<&Path>, exe: Option<&str>) -> Result<PathBuf
     Ok(install_dir)
 }
 
-fn expect_exe_name_in_downloaded_file(
-    exe: Option<&str>,
-    project_name: &str,
-    platform: &Platform,
-) -> String {
+fn expect_exe_stem_name<'a>(exe: Option<&'a str>, project_name: &'a str) -> &'a str {
     let name = if let Some(exe) = exe {
         exe
     } else {
@@ -368,11 +360,6 @@ fn expect_exe_name_in_downloaded_file(
         project_name.split('/').last().unwrap()
     };
 
-    let name = if matches!(platform.target_os, OS::Windows) {
-        format!("{name}.exe")
-    } else {
-        name.to_string()
-    };
     debug!("exe name = {name}");
     name
 }
@@ -462,58 +449,20 @@ mod test {
     #[test_case(
         None,
         "houseabsolute/precious",
-        "x86_64-unknown-linux-musl",
         "precious";
-        "no exe or exe_name - linux"
-    )]
-    #[test_case(
-        None,
-        "houseabsolute/precious",
-        "thumbv7m-none-eabi",
-        "precious";
-        "no exe or exe_name - no OS-platform"
-    )]
-    #[test_case(
-        None,
-        "houseabsolute/precious",
-        "x86_64-apple-darwin",
-        "precious";
-        "no exe or exe_name - macOS"
-    )]
-    #[test_case(
-        None,
-        "houseabsolute/precious",
-        "x86_64-pc-windows-msvc",
-        "precious.exe";
-        "no exe or exe_name - Windows"
+        "no exe or exe_name"
     )]
     #[test_case(
         Some("foo"),
         "houseabsolute/precious",
-        "x86_64-unknown-linux-musl",
         "foo";
-        "passed exe - Linux"
+        "passed exe"
     )]
-    #[test_case(
-        Some("foo"),
-        "houseabsolute/precious",
-        "x86_64-pc-windows-msvc",
-        "foo.exe";
-        "passed exe - Windows"
-    )]
-    fn exe_name(
+    fn expect_exe_stem_name(
         exe: Option<&'static str>,
         project_name: &'static str,
-        platform: &'static str,
         expect: &'static str,
-    ) -> Result<()> {
-        let req = PlatformReq::from_str(platform)?;
-        let platform = req.matching_platforms().next().unwrap();
-        assert_eq!(
-            super::expect_exe_name_in_downloaded_file(exe, project_name, platform),
-            expect
-        );
-
-        Ok(())
+    ) {
+        assert_eq!(super::expect_exe_stem_name(exe, project_name), expect);
     }
 }

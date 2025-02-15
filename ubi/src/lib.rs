@@ -55,9 +55,10 @@
 //! First it filters out assets with extensions it doesn't recognize. Right now this is anything that
 //! doesn't match one of the following:
 //!
+//! - `.bat` (Windows only)
 //! - `.bz`
 //! - `.bz2`
-//! - `.exe`
+//! - `.exe` (Windows only)
 //! - `.gz`
 //! - `.tar`
 //! - `.tar.bz`

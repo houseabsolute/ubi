@@ -22,6 +22,7 @@ pub(crate) enum ExtensionError {
 #[derive(Debug, EnumIter, PartialEq, Eq)]
 pub(crate) enum Extension {
     AppImage,
+    Bat,
     Bz,
     Bz2,
     Exe,
@@ -43,6 +44,7 @@ impl Extension {
     pub(crate) fn extension(&self) -> &'static str {
         match self {
             Extension::AppImage => ".AppImage",
+            Extension::Bat => ".bat",
             Extension::Bz => ".bz",
             Extension::Bz2 => ".bz2",
             Extension::Exe => ".exe",
@@ -68,6 +70,7 @@ impl Extension {
     pub(crate) fn is_archive(&self) -> bool {
         match self {
             Extension::AppImage
+            | Extension::Bat
             | Extension::Bz
             | Extension::Bz2
             | Extension::Exe
@@ -88,7 +91,7 @@ impl Extension {
 
     pub(crate) fn should_preserve_extension_on_install(&self) -> bool {
         match self {
-            Extension::AppImage | Extension::Exe | Extension::Pyz => true,
+            Extension::AppImage | Extension::Bat | Extension::Exe | Extension::Pyz => true,
             Extension::Bz
             | Extension::Gz
             | Extension::Bz2
@@ -108,9 +111,13 @@ impl Extension {
     pub(crate) fn matches_platform(&self, platform: &Platform) -> bool {
         match self {
             Extension::AppImage => platform.target_os == OS::Linux,
-            Extension::Exe => platform.target_os == OS::Windows,
+            Extension::Bat | Extension::Exe => platform.target_os == OS::Windows,
             _ => true,
         }
+    }
+
+    pub(crate) fn is_windows_only(&self) -> bool {
+        matches!(self, Extension::Bat | Extension::Exe)
     }
 
     pub(crate) fn from_path(path: &Path) -> Result<Option<Extension>> {

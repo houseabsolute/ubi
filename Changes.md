@@ -1,3 +1,9 @@
+## 0.5.0
+
+- On Windows, `ubi` now looks for files with `.bat` extensions as an executable. This applies both
+  to releases of standalone files and executables in an archive file (tarball or zip). Based on work
+  by @timothysparg (Tim Sparg) in PR #97.
+
 ## 0.4.2 - 2025-02-04
 
 - Added `all` to the list of architecture strings to match against for macOS on ARM64. It looks like
