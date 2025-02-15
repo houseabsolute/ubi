@@ -89,9 +89,8 @@ impl Extension {
     pub(crate) fn should_preserve_extension_on_install(&self) -> bool {
         match self {
             Extension::AppImage | Extension::Exe | Extension::Pyz => true,
-            Extension::Xz
+            Extension::Bz
             | Extension::Gz
-            | Extension::Bz
             | Extension::Bz2
             | Extension::Tar
             | Extension::TarBz
@@ -101,6 +100,7 @@ impl Extension {
             | Extension::Tbz
             | Extension::Tgz
             | Extension::Txz
+            | Extension::Xz
             | Extension::Zip => false,
         }
     }
