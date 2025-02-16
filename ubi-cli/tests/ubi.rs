@@ -709,6 +709,7 @@ fn check_installed_binary(mut expect: PathBuf) -> Result<()> {
 
     let expect_str = expect.to_string_lossy();
 
+    assert!(fs::exists(&expect)?);
     let meta = fs::metadata(&expect).context(format!("getting fs metadata for {expect_str}"))?;
     assert!(meta.is_file(), "downloaded file into expected location");
     #[cfg(target_family = "unix")]
