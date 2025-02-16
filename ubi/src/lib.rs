@@ -55,6 +55,7 @@
 //! First it filters out assets with extensions it doesn't recognize. Right now this is anything that
 //! doesn't match one of the following:
 //!
+//! - `.AppImage` (Linux only)
 //! - `.bat` (Windows only)
 //! - `.bz`
 //! - `.bz2`
