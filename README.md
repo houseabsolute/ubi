@@ -333,6 +333,13 @@ don't get any record of the installation, a way to uninstall, etc. If a tool pro
 platform-specific packages for your platforms, you should probably consider using those instead of
 `ubi`.
 
+### Is this Better Than Installing via `curl https://some.site/random/installer.sh | sh`?
+
+Isn't literally anything else better than this?
+
+In all seriousness, `ubi` does not execute arbitrary code when you install anything. That seems like
+a good thing.
+
 ## Linting and Tidying this Code
 
 The code in this repo is linted and tidied with
