@@ -335,11 +335,13 @@ impl ExeInstaller {
             .with_context(|| format!("could not create a directory at {}", path.display()))
     }
 
-    fn chmod_executable(exe: &Path) -> Result<()> {
-        #[cfg(target_family = "windows")]
-        return Ok(());
+    #[cfg(target_family = "windows")]
+    fn chmod_executable(_exe: &Path) -> Result<()> {
+        Ok(())
+    }
 
-        #[cfg(target_family = "unix")]
+    #[cfg(target_family = "unix")]
+    fn chmod_executable(exe: &Path) -> Result<()> {
         match set_permissions(exe, Permissions::from_mode(0o755)) {
             Ok(()) => Ok(()),
             Err(e) => Err(anyhow::Error::new(e)),
