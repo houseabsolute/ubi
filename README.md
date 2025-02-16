@@ -195,9 +195,9 @@ doesn't match one of the following:
 - `.zip`
 - No extension
 
-It tries to be careful about what constitutes an extension. It's common for releases to include a
-dot (`.`) in the filename before something that's _not_ intended as an extension, for example
-`some-tool.linux.amd64`.
+It tries to be careful about what constitutes an extension. It's common for release filenames to
+include a dot (`.`) in the filename before something that's _not_ intended as an extension, for
+example `some-tool.linux.amd64`.
 
 If, after filtering for extensions, there's only one asset, it will try to install this one, on the
 assumption that this project releases assets which are not platform-specific (like a shell script)
@@ -216,8 +216,8 @@ this in several stages:
   does contain this indicator, names that are _not_ musl are filtered out. However, if there is no
   libc indicator, the asset will still be included.
 
-At this point, any remaining assets should work on your platform. If there's more than one at this
-point, it attempts to pick the best one.
+At this point, any remaining assets should work on your platform, so if there's more than one match,
+it attempts to pick the best one.
 
 - If it finds both 64-bit and 32-bit assets and you are on a 64-bit platform, it filters out the
   32-bit assets.
@@ -226,26 +226,26 @@ point, it attempts to pick the best one.
   the non-ARM64 assets.
 
 Finally, if there are still multiple assets left, it sorts them by file name and picks the first
-one.
+one. The sorting is done to make sure it always picks the same one every time it's run.
 
 ## How `ubi` Finds the Right Executable in an Archive File
 
-If the release artifact is an archive file (a tarball or zip file), then `ubi` will look inside the
-archive to find the right executable.
+If the selected release artifact is an archive file (a tarball or zip file), then `ubi` will look
+inside the archive to find the right executable.
 
 It first tries to find a file matching the exact name of the project (plus an extension on Windows).
 So for example, if you're installing
-[`houseabsolute/precious`](https://github.com/houseabsolute/precious), it will look for a file named
-`precious` in the archive on Unix-like systems and `precious.bat` or `precious.exe` on Windows. Note
-that if it finds an exact match, it does not check file mode.
+[`houseabsolute/precious`](https://github.com/houseabsolute/precious), it will look in the archive
+for a file named `precious` on Unix-like systems and `precious.bat` or `precious.exe` on Windows.
+Note that if it finds an exact match, it does not check the file's mode.
 
 If it can't find an exact match it will look for a file that _starts with_ the project name. This is
 mostly to account for projects that include things like platforms or release names in their
 executables. Using [`houseabsolute/precious`](https://github.com/houseabsolute/precious) as an
 example again, it will match a file named `precious-linux-amd64` or `precious-v1.2.3`. In this case,
 it will _rename_ the extracted file to `precious`. On Unix-like systems, these partial matches will
-only be considered if mode includes an executable bit. On Windows, it looks for a partial match that
-is a `.bat` or `.exe` file, and the extracted file will be renamed to `precious.bat` or
+only be considered if the file's mode includes an executable bit. On Windows, it looks for a partial
+match that is a `.bat` or `.exe` file, and the extracted file will be renamed to `precious.bat` or
 `precious.exe`.
 
 ## Upgrading `ubi`
