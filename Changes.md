@@ -1,4 +1,4 @@
-## 0.5.0
+## 0.5.0 - 2025-02-15
 
 - On Windows, `ubi` now looks for files with `.bat` extensions as an executable. This applies both
   to releases of standalone files and executables in an archive file (tarball or zip). Based on work
