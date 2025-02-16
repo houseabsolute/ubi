@@ -289,7 +289,7 @@ var, and in that case the rate limits are per repository.
 ```
 
 Similarly, the GitLab CI system sets a `CI_JOB_TOKEN` for all jobs. Make sure this environment
-variable is set you use `ubi` to install something from GitLab in CI.
+variable is set when you use `ubi` to install something from GitLab in CI.
 
 If you only run `ubi` on one platform, you can avoid hitting the GitHub or GitLab API entirely by
 using the `--url` parameter. But if you run on multiple platforms this can be tedious to maintain
