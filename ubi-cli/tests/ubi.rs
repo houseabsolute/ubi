@@ -212,7 +212,10 @@ fn integration_tests() -> Result<()> {
         }
     }
 
-    {
+    let ref_name = env::var("GITHUB_REF_NAME").unwrap_or_default();
+    // This test can fail if run on a tag that triggers a release, because it will find a new
+    // in-progress release.
+    if !(ref_name.starts_with('v') || ref_name.starts_with("ubi-v")) {
         let new_ubi_dir = TempDir::new()?;
         let ubi_copy = make_exe_pathbuf(&[
             new_ubi_dir
