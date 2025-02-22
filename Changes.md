@@ -1,4 +1,4 @@
-## 0.5.1
+## 0.5.1 - 2025-02-22
 
 - Fixed a bug introduced in the last release where `ubi` could pick a file with a partial match over
   an exact match, but only with zip files. Reported by @oalders (Olaf Alders). GH #100.
