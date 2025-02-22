@@ -215,6 +215,7 @@ impl ExeInstaller {
                             debug!("found zip file entry with exact match: {}", file_name);
                             // It'd be nicer to immediately return `zf`, but that runs into lifetime
                             // issues, because `zip.by_index` takes `&mut self`. Yeesh.
+                            possible_matches.clear();
                             possible_matches.push(i);
                             break;
                         } else if self.archive_member_is_partial_match(file_name) {
@@ -552,6 +553,8 @@ mod tests {
     #[test_case("test-data/project.xz", None)]
     #[test_case("test-data/project.zip", None)]
     #[test_case("test-data/project", None)]
+    // This tests a bug where zip files with partial matches before an exact match would pick the wrong file.
+    #[test_case("test-data/project-with-partial-before-exact.zip", None)]
     // These are archive files that just contain a partial match for the expected executable.
     #[test_case("test-data/project-with-partial-match.tar.gz", None)]
     #[test_case("test-data/project-with-partial-match.zip", None)]

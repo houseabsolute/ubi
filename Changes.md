@@ -1,3 +1,8 @@
+## 0.5.1
+
+- Fixed a bug introduced in the last release where `ubi` could pick a file with a partial match over
+  an exact match, but only with zip files. Reported by @oalders (Olaf Alders). GH #100.
+
 ## 0.5.0 - 2025-02-15
 
 - On Windows, `ubi` now looks for files with `.bat` extensions as an executable. This applies both
