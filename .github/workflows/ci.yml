@@ -140,6 +140,7 @@ jobs:
         with:
           executable-name: ubi
           target: ${{ matrix.platform.target }}
+          action-gh-release-parameters: '{ "make_latest": false }'
         if: matrix.toolchain == 'stable' && matrix.platform.features == ''
 
   test-alpine:

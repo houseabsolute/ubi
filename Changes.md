@@ -1,3 +1,9 @@
+## 0.5.2 - 2025-02-22
+
+- This is identical to 0.5.1, but it was necessary to work around a bug in my GitHub release
+  automation. The 0.5.1 is no longer available on GitHub, but the crates.io releases still exist and
+  there's no issue with using them.
+
 ## 0.5.1 - 2025-02-22
 
 - Fixed a bug introduced in the last release where `ubi` could pick a file with a partial match over
