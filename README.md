@@ -121,10 +121,10 @@ Options:
                                      --project or --url will be checked for gitlab.com. If this
                                      contains any other domain _or_ if it does not have a domain at
                                      all, then the default is GitHub. [possible values: github,
-                                     gitlab, codeberg]
+                                     gitlab, forgejo]
       --api-base-url <api-base-url>  The the base URL for the forge site's API. This is useful for
                                      testing or if you want to operate against an Enterprise version
-                                     of GitHub, GitLab or Codeberg. This should be something like
+                                     of GitHub, GitLab or Forgejo. This should be something like
                                      `https://github.my-corp.example.com/api/v4`.
   -v, --verbose                      Enable verbose output.
   -d, --debug                        Enable debugging output.
