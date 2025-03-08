@@ -1,5 +1,6 @@
 /// The `builder` module contains the `UbiBuilder` struct which is used to create a `Ubi` instance.
 use crate::{
+    codeberg::Codeberg,
     forge::{Forge, ForgeType},
     github::GitHub,
     gitlab::GitLab,
@@ -36,6 +37,7 @@ pub struct UbiBuilder<'a> {
     extract_all: bool,
     github_token: Option<&'a str>,
     gitlab_token: Option<&'a str>,
+    codeberg_token: Option<&'a str>,
     platform: Option<&'a Platform>,
     is_musl: Option<bool>,
     api_base_url: Option<&'a str>,
@@ -148,6 +150,14 @@ impl<'a> UbiBuilder<'a> {
     #[must_use]
     pub fn gitlab_token(mut self, token: &'a str) -> Self {
         self.gitlab_token = Some(token);
+        self
+    }
+
+    /// Set a Codeberg token to use for API requests. If this is not set then this will be taken from
+    /// `CODEBERG_TOKEN` env var.
+    #[must_use]
+    pub fn codeberg_token(mut self, token: &'a str) -> Self {
+        self.codeberg_token = Some(token);
         self
     }
 
@@ -268,6 +278,12 @@ impl<'a> UbiBuilder<'a> {
                 self.tag.map(String::from),
                 api_base,
                 self.gitlab_token,
+            )),
+            ForgeType::Codeberg => Box::new(Codeberg::new(
+                project_name,
+                self.tag.map(String::from),
+                api_base,
+                self.codeberg_token,
             )),
         })
     }

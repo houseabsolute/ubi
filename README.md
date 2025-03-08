@@ -121,10 +121,10 @@ Options:
                                      --project or --url will be checked for gitlab.com. If this
                                      contains any other domain _or_ if it does not have a domain at
                                      all, then the default is GitHub. [possible values: github,
-                                     gitlab]
+                                     gitlab, codeberg]
       --api-base-url <api-base-url>  The the base URL for the forge site's API. This is useful for
                                      testing or if you want to operate against an Enterprise version
-                                     of GitHub or GitLab. This should be something like
+                                     of GitHub, GitLab or Codeberg. This should be something like
                                      `https://github.my-corp.example.com/api/v4`.
   -v, --verbose                      Enable verbose output.
   -d, --debug                        Enable debugging output.
@@ -136,7 +136,7 @@ Options:
 ## Using a Forge Token
 
 You can set a token for GitHub in the `GITHUB_TOKEN` environment variable. For GitLab, you can
-either use `CI_JOB_TOKEN` or `GITLAB_TOKEN`. The former is set in GitLab CI automatically, and it
+either use `CI_JOB_TOKEN` or `GITLAB_TOKEN`, and for Codeberg, you can use `CODEBERG_TOKEN`. The former is set in GitLab CI automatically, and it
 will be preferred if both are set.
 
 If a token environment variable is set, then this will be used for all API calls. This is required

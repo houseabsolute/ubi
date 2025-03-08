@@ -18,6 +18,8 @@ pub enum ForgeType {
     GitHub,
     #[strum(serialize = "gitlab")]
     GitLab,
+    #[strum(serialize = "codeberg")]
+    Codeberg,
 }
 
 #[async_trait]
@@ -44,14 +46,18 @@ pub(crate) trait Forge: std::fmt::Debug {
 
 const GITHUB_DOMAIN: &str = "github.com";
 const GITLAB_DOMAIN: &str = "gitlab.com";
+const CODEBERG_DOMAIN: &str = "codeberg.org";
 
 const GITHUB_API_BASE: &str = "https://api.github.com";
 const GITLAB_API_BASE: &str = "https://gitlab.com/api/v4";
+const CODEBERG_API_BASE: &str = "https://codeberg.org/api/v1";
 
 impl ForgeType {
     pub(crate) fn from_url(url: &Url) -> ForgeType {
         if url.domain().unwrap().contains(GITLAB_DOMAIN) {
             ForgeType::GitLab
+        } else if url.domain().unwrap().contains(CODEBERG_DOMAIN) {
+            ForgeType::Codeberg
         } else {
             ForgeType::default()
         }
@@ -61,6 +67,7 @@ impl ForgeType {
         match self {
             ForgeType::GitHub => Url::parse(&format!("https://{GITHUB_DOMAIN}")).unwrap(),
             ForgeType::GitLab => Url::parse(&format!("https://{GITLAB_DOMAIN}")).unwrap(),
+            ForgeType::Codeberg => Url::parse(&format!("https://{CODEBERG_DOMAIN}")).unwrap(),
         }
     }
 
@@ -68,6 +75,7 @@ impl ForgeType {
         match self {
             ForgeType::GitHub => Url::parse(GITHUB_API_BASE).unwrap(),
             ForgeType::GitLab => Url::parse(GITLAB_API_BASE).unwrap(),
+            ForgeType::Codeberg => Url::parse(CODEBERG_API_BASE).unwrap(),
         }
     }
 }
