@@ -136,8 +136,8 @@ Options:
 ## Using a Forge Token
 
 You can set a token for GitHub in the `GITHUB_TOKEN` environment variable. For GitLab, you can
-either use `CI_JOB_TOKEN` or `GITLAB_TOKEN`, and for Codeberg, you can use `CODEBERG_TOKEN`. The former is set in GitLab CI automatically, and it
-will be preferred if both are set.
+either use `CI_JOB_TOKEN` or `GITLAB_TOKEN`. The former is set in GitLab CI automatically, and it
+will be preferred if both are set. For Forgejo, you can use `FORGEJO_TOKEN`.
 
 If a token environment variable is set, then this will be used for all API calls. This is required
 to download releases for a private project. If you are running `ubi` against GitHub in a CI

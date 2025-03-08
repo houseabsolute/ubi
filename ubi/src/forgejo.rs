@@ -14,15 +14,15 @@ use std::env;
 use url::Url;
 
 #[derive(Debug)]
-pub(crate) struct Codeberg {
+pub(crate) struct Forgejo {
     project_name: String,
     tag: Option<String>,
     api_base_url: Url,
     token: Option<String>,
 }
 
-unsafe impl Send for Codeberg {}
-unsafe impl Sync for Codeberg {}
+unsafe impl Send for Forgejo {}
+unsafe impl Sync for Forgejo {}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct Release {
@@ -30,7 +30,7 @@ pub(crate) struct Release {
 }
 
 #[async_trait]
-impl Forge for Codeberg {
+impl Forge for Forgejo {
     async fn fetch_assets(&self, client: &Client) -> Result<Vec<Asset>> {
         Ok(self
             .make_release_info_request(client)
@@ -68,7 +68,7 @@ impl Forge for Codeberg {
 
     fn maybe_add_token_header(&self, mut req_builder: RequestBuilder) -> Result<RequestBuilder> {
         if let Some(token) = self.token.as_deref() {
-            debug!("Adding Codeberg token to Codeberg request.");
+            debug!("Adding Forgejo token to Forgejo request.");
             let bearer = format!("Bearer {token}");
             let mut auth_val = HeaderValue::from_str(&bearer)?;
             auth_val.set_sensitive(true);
@@ -78,7 +78,7 @@ impl Forge for Codeberg {
     }
 }
 
-impl Codeberg {
+impl Forgejo {
     pub(crate) fn new(
         project_name: String,
         tag: Option<String>,
@@ -87,13 +87,13 @@ impl Codeberg {
     ) -> Self {
         let mut token = token.map(String::from);
         if token.is_none() {
-            token = env::var("CODEBERG_TOKEN").ok();
+            token = env::var("FORGEJO_TOKEN").ok();
         }
 
         Self {
             project_name,
             tag,
-            api_base_url: api_base.unwrap_or_else(|| ForgeType::Codeberg.api_base()),
+            api_base_url: api_base.unwrap_or_else(|| ForgeType::Forgejo.api_base()),
             token,
         }
     }
@@ -127,7 +127,7 @@ mod tests {
 
     async fn fetch_assets(tag: Option<&str>, token: Option<&str>) -> Result<()> {
         let vars = env::vars();
-        env::remove_var("CODEBERG_TOKEN");
+        env::remove_var("FORGEJO_TOKEN");
 
         let assets = vec![Asset {
             name: "asset1".to_string(),
@@ -157,7 +157,7 @@ mod tests {
             .create_async()
             .await;
 
-        let codeberg = Codeberg::new(
+        let forgejo = Forgejo::new(
             "houseabsolute/ubi".to_string(),
             tag.map(String::from),
             Some(Url::parse(&server.url())?),
@@ -165,7 +165,7 @@ mod tests {
         );
 
         let client = Client::new();
-        let got_assets = codeberg.fetch_assets(&client).await?;
+        let got_assets = forgejo.fetch_assets(&client).await?;
         assert_eq!(got_assets, assets);
 
         m.assert_async().await;
@@ -179,13 +179,13 @@ mod tests {
 
     #[test]
     fn api_base_url() {
-        let codeberg = Codeberg::new(
+        let forgejo = Forgejo::new(
             "houseabsolute/ubi".to_string(),
             None,
             Some(Url::parse("https://codeberg.org/api/v1").unwrap()),
             None,
         );
-        let url = codeberg.release_info_url();
+        let url = forgejo.release_info_url();
         assert_eq!(
             url.as_str(),
             "https://codeberg.org/api/v1/repos/houseabsolute/ubi/releases/latest"

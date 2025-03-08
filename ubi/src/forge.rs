@@ -18,8 +18,8 @@ pub enum ForgeType {
     GitHub,
     #[strum(serialize = "gitlab")]
     GitLab,
-    #[strum(serialize = "codeberg")]
-    Codeberg,
+    #[strum(serialize = "forgejo")]
+    Forgejo,
 }
 
 #[async_trait]
@@ -57,7 +57,7 @@ impl ForgeType {
         if url.domain().unwrap().contains(GITLAB_DOMAIN) {
             ForgeType::GitLab
         } else if url.domain().unwrap().contains(CODEBERG_DOMAIN) {
-            ForgeType::Codeberg
+            ForgeType::Forgejo
         } else {
             ForgeType::default()
         }
@@ -67,7 +67,7 @@ impl ForgeType {
         match self {
             ForgeType::GitHub => Url::parse(&format!("https://{GITHUB_DOMAIN}")).unwrap(),
             ForgeType::GitLab => Url::parse(&format!("https://{GITLAB_DOMAIN}")).unwrap(),
-            ForgeType::Codeberg => Url::parse(&format!("https://{CODEBERG_DOMAIN}")).unwrap(),
+            ForgeType::Forgejo => Url::parse(&format!("https://{CODEBERG_DOMAIN}")).unwrap(),
         }
     }
 
@@ -75,7 +75,7 @@ impl ForgeType {
         match self {
             ForgeType::GitHub => Url::parse(GITHUB_API_BASE).unwrap(),
             ForgeType::GitLab => Url::parse(GITLAB_API_BASE).unwrap(),
-            ForgeType::Codeberg => Url::parse(CODEBERG_API_BASE).unwrap(),
+            ForgeType::Forgejo => Url::parse(CODEBERG_API_BASE).unwrap(),
         }
     }
 }

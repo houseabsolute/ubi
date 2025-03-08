@@ -141,9 +141,9 @@
 
 mod arch;
 mod builder;
-mod codeberg;
 mod extension;
 mod forge;
+mod forgejo;
 mod github;
 mod gitlab;
 mod installer;
