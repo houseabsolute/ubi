@@ -27,6 +27,7 @@ pub(crate) enum Extension {
     Bz2,
     Exe,
     Gz,
+    Jar,
     Pyz,
     Tar,
     TarBz,
@@ -49,6 +50,7 @@ impl Extension {
             Extension::Bz2 => ".bz2",
             Extension::Exe => ".exe",
             Extension::Gz => ".gz",
+            Extension::Jar => ".jar",
             Extension::Pyz => ".pyz",
             Extension::Tar => ".tar",
             Extension::TarBz => ".tar.bz",
@@ -75,6 +77,7 @@ impl Extension {
             | Extension::Bz2
             | Extension::Exe
             | Extension::Gz
+            | Extension::Jar
             | Extension::Pyz
             | Extension::Xz => false,
             Extension::Tar
@@ -91,7 +94,11 @@ impl Extension {
 
     pub(crate) fn should_preserve_extension_on_install(&self) -> bool {
         match self {
-            Extension::AppImage | Extension::Bat | Extension::Exe | Extension::Pyz => true,
+            Extension::AppImage
+            | Extension::Bat
+            | Extension::Exe
+            | Extension::Jar
+            | Extension::Pyz => true,
             Extension::Bz
             | Extension::Gz
             | Extension::Bz2
@@ -206,6 +213,7 @@ mod test {
     #[test_case("foo.bz2", Ok(Some(Extension::Bz2)))]
     #[test_case("foo.exe", Ok(Some(Extension::Exe)))]
     #[test_case("foo.gz", Ok(Some(Extension::Gz)))]
+    #[test_case("foo.jar", Ok(Some(Extension::Jar)))]
     #[test_case("foo.tar", Ok(Some(Extension::Tar)))]
     #[test_case("foo.tar.bz", Ok(Some(Extension::TarBz)))]
     #[test_case("foo.tar.bz2", Ok(Some(Extension::TarBz2)))]

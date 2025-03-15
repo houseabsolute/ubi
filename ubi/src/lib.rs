@@ -33,8 +33,8 @@
 //! has in the archive file.
 //!
 //! If the release is in the form of a bare executable or a compressed executable, then the
-//! installed executable will use the name of the project instead. For files with a `.exe`, `.pyz`
-//! or `.AppImage`, the installed executable will be `$project_name.$extension`.
+//! installed executable will use the name of the project instead. For files with a `.exe`, `.jar`,
+//! `.pyz` or `.AppImage`, the installed executable will be `$project_name.$extension`.
 //!
 //! This is a bit inconsistent, but it's how `ubi` has behaved since it was created, and I find this
 //! to be the sanest behavior. Some projects, for example `rust-analyzer`, provide releases as
@@ -61,6 +61,7 @@
 //! - `.bz2`
 //! - `.exe` (Windows only)
 //! - `.gz`
+//! - `.jar`
 //! - `.tar`
 //! - `.tar.bz`
 //! - `.tar.bz2`

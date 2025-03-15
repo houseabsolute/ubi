@@ -183,6 +183,7 @@ doesn't match one of the following:
 - `.bz2`
 - `.exe` (Windows only)
 - `.gz`
+- `.jar`
 - `.tar`
 - `.tar.bz`
 - `.tar.bz2`
