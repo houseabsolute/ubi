@@ -1,3 +1,7 @@
+## 0.5.3
+
+- Added support for release artifacts with a `.jar` extension. Based on PR #110 from @vemoo.
+
 ## 0.5.2 - 2025-02-22
 
 - This is identical to 0.5.1, but it was necessary to work around a bug in my GitHub release
