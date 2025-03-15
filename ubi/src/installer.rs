@@ -82,9 +82,14 @@ impl ExeInstaller {
                 Ok(None)
             }
             Some(Extension::Zip) => Ok(Some(self.extract_executable_from_zip(downloaded_file)?)),
-            Some(Extension::AppImage | Extension::Bat | Extension::Exe | Extension::Pyz) | None => {
-                Ok(Some(self.copy_executable(downloaded_file)?))
-            }
+            Some(
+                Extension::AppImage
+                | Extension::Bat
+                | Extension::Exe
+                | Extension::Pyz
+                | Extension::Jar,
+            )
+            | None => Ok(Some(self.copy_executable(downloaded_file)?)),
         }
     }
 

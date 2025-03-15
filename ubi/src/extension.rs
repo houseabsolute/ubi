@@ -27,6 +27,7 @@ pub(crate) enum Extension {
     Bz2,
     Exe,
     Gz,
+    Jar,
     Pyz,
     Tar,
     TarBz,
@@ -50,6 +51,7 @@ impl Extension {
             Extension::Exe => ".exe",
             Extension::Gz => ".gz",
             Extension::Pyz => ".pyz",
+            Extension::Jar => ".jar",
             Extension::Tar => ".tar",
             Extension::TarBz => ".tar.bz",
             Extension::TarBz2 => ".tar.bz2",
@@ -75,6 +77,7 @@ impl Extension {
             | Extension::Bz2
             | Extension::Exe
             | Extension::Gz
+            | Extension::Jar
             | Extension::Pyz
             | Extension::Xz => false,
             Extension::Tar
@@ -91,7 +94,11 @@ impl Extension {
 
     pub(crate) fn should_preserve_extension_on_install(&self) -> bool {
         match self {
-            Extension::AppImage | Extension::Bat | Extension::Exe | Extension::Pyz => true,
+            Extension::AppImage
+            | Extension::Bat
+            | Extension::Exe
+            | Extension::Jar
+            | Extension::Pyz => true,
             Extension::Bz
             | Extension::Gz
             | Extension::Bz2
@@ -219,6 +226,7 @@ mod test {
     #[test_case("i386-linux-ghcup-0.1.30.0", Ok(None))]
     #[test_case("i386-linux-ghcup-0.1.30.0-linux_amd64", Ok(None))]
     #[test_case("foo.bar", Err(ExtensionError::UnknownExtension { path: PathBuf::from("foo.bar"), ext: "bar".to_string() }.into()))]
+    #[test_case("pkl-lsp-0.2.0.jar", Ok(Some(Extension::Jar)))]
     fn from_path(path: &str, expect: Result<Option<Extension>>) {
         crate::test_case::init_logging();
 
