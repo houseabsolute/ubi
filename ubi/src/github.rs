@@ -1,7 +1,4 @@
-use crate::{
-    forge::{Forge, ForgeType},
-    ubi::Asset,
-};
+use crate::{forge::Forge, ubi::Asset};
 use anyhow::Result;
 use async_trait::async_trait;
 use log::debug;
@@ -10,7 +7,6 @@ use reqwest::{
     Client, RequestBuilder,
 };
 use serde::{Deserialize, Serialize};
-use std::env;
 use url::Url;
 
 #[derive(Debug)]
@@ -82,18 +78,13 @@ impl GitHub {
     pub(crate) fn new(
         project_name: String,
         tag: Option<String>,
-        api_base: Option<Url>,
-        token: Option<&str>,
+        api_base_url: Url,
+        token: Option<String>,
     ) -> Self {
-        let mut token = token.map(String::from);
-        if token.is_none() {
-            token = env::var("GITHUB_TOKEN").ok();
-        }
-
         Self {
             project_name,
             tag,
-            api_base_url: api_base.unwrap_or_else(|| ForgeType::GitHub.api_base()),
+            api_base_url,
             token,
         }
     }
@@ -105,6 +96,7 @@ mod tests {
     use mockito::Server;
     use reqwest::Client;
     use serial_test::serial;
+    use std::env;
     use test_log::test;
 
     #[test(tokio::test)]
@@ -158,8 +150,8 @@ mod tests {
         let github = GitHub::new(
             "houseabsolute/ubi".to_string(),
             tag.map(String::from),
-            Some(Url::parse(&server.url())?),
-            token,
+            Url::parse(&server.url())?,
+            token.map(String::from),
         );
 
         let client = Client::new();
@@ -180,7 +172,7 @@ mod tests {
         let github = GitHub::new(
             "houseabsolute/ubi".to_string(),
             None,
-            Some(Url::parse("https://github.example.com/api/v4").unwrap()),
+            Url::parse("https://github.example.com/api/v4").unwrap(),
             None,
         );
         let url = github.release_info_url();

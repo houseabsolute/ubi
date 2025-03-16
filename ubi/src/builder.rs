@@ -1,8 +1,6 @@
 /// The `builder` module contains the `UbiBuilder` struct which is used to create a `Ubi` instance.
 use crate::{
     forge::{Forge, ForgeType},
-    github::GitHub,
-    gitlab::GitLab,
     installer::{ArchiveInstaller, ExeInstaller, Installer},
     picker::AssetPicker,
     ubi::Ubi,
@@ -267,21 +265,12 @@ impl<'a> UbiBuilder<'a> {
         project_name: String,
         forge_type: &ForgeType,
     ) -> Result<Box<dyn Forge + Send + Sync>> {
-        let api_base = self.api_base_url.map(Url::parse).transpose()?;
-        Ok(match forge_type {
-            ForgeType::GitHub => Box::new(GitHub::new(
-                project_name,
-                self.tag.map(String::from),
-                api_base,
-                self.token,
-            )),
-            ForgeType::GitLab => Box::new(GitLab::new(
-                project_name,
-                self.tag.map(String::from),
-                api_base,
-                self.token,
-            )),
-        })
+        forge_type.make_forge_impl(
+            project_name,
+            self.tag.map(String::from),
+            self.api_base_url.map(String::from),
+            self.token.map(String::from),
+        )
     }
 
     fn determine_platform(&self) -> Result<Platform> {
