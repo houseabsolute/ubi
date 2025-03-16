@@ -184,6 +184,7 @@ doesn't match one of the following:
 - `.exe` (Windows only)
 - `.gz`
 - `.jar`
+- `.pyz`
 - `.tar`
 - `.tar.bz`
 - `.tar.bz2`
