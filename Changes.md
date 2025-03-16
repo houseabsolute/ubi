@@ -1,4 +1,4 @@
-## 0.6.0
+## 0.6.0 2025-03-16
 
 - The `UbiBuilder::github_token` and `UbiBuilder::gitlab_token` methods are deprecated in favor of a
   new ``UbiBuilder::token` method. These deprecated methods will be removed in a future release.
