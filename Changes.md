@@ -1,6 +1,8 @@
 ## 0.5.3
 
 - Added support for release artifacts with a `.jar` extension. Based on PR #110 from @vemoo.
+- `ubi` could incorrectly pick a release for Android when running on Linux aarch64 platforms.
+  Reported by @jahands (Jacob Hands). GH #111.
 
 ## 0.5.2 - 2025-02-22
 

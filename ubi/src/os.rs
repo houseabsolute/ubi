@@ -2,6 +2,10 @@ use itertools::Itertools;
 use lazy_regex::{regex, Lazy};
 use regex::Regex;
 
+pub(crate) fn android_re() -> &'static Lazy<Regex> {
+    regex!(r"(?i:android)")
+}
+
 pub(crate) fn freebsd_re() -> &'static Lazy<Regex> {
     regex!(r"(?i:(?:\b|_)freebsd(?:\b|_))")
 }

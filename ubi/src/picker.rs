@@ -7,7 +7,10 @@ use crate::{
         ALL_ARCHES_RE,
     },
     extension::Extension,
-    os::{freebsd_re, fuchsia, illumos_re, linux_re, macos_re, netbsd_re, solaris_re, windows_re},
+    os::{
+        android_re, freebsd_re, fuchsia, illumos_re, linux_re, macos_re, netbsd_re, solaris_re,
+        windows_re,
+    },
     ubi::Asset,
 };
 use anyhow::{anyhow, Result};
@@ -143,6 +146,11 @@ impl<'a> AssetPicker<'a> {
             debug!("matching OS against asset name = {}", asset.name);
 
             if os_matcher.is_match(&asset.name) {
+                if self.platform.target_os != OS::Android && android_re().is_match(&asset.name) {
+                    debug!("does not match our OS");
+                    continue;
+                }
+
                 debug!("matches our OS");
                 matches.push(asset);
             } else {
@@ -550,6 +558,13 @@ mod test {
         1 ;
         "x86_64-unknown-linux-musl - pick the musl asset over unspecified libc on a musl platform"
     )]
+    #[test_case(
+        "aarch64-unknown-linux-gnu",
+        &["project-aarch64-linux-android.tar.gz", "project-aarch64-unknown-linux.tar.gz"],
+        None,
+        1 ;
+        "project-aarch64-unknown-linux - pick the non-Android asset when not on Android"
+    )]
     fn pick_asset(
         platform_name: &str,
         asset_names: &[&str],
@@ -559,7 +574,7 @@ mod test {
         crate::test_case::init_logging();
 
         let platform = Platform::find(platform_name)
-            .ok_or(anyhow!("invalid platform"))?
+            .ok_or(anyhow!("invalid platform name - {platform_name}"))?
             .clone();
         let mut picker = AssetPicker {
             matching,
