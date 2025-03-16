@@ -62,6 +62,7 @@
 //! - `.exe` (Windows only)
 //! - `.gz`
 //! - `.jar`
+//! - `.pyz`
 //! - `.tar`
 //! - `.tar.bz`
 //! - `.tar.bz2`
