@@ -214,6 +214,7 @@ mod test {
     #[test_case("foo.exe", Ok(Some(Extension::Exe)))]
     #[test_case("foo.gz", Ok(Some(Extension::Gz)))]
     #[test_case("foo.jar", Ok(Some(Extension::Jar)))]
+    #[test_case("foo.pyz", Ok(Some(Extension::Pyz)))]
     #[test_case("foo.tar", Ok(Some(Extension::Tar)))]
     #[test_case("foo.tar.bz", Ok(Some(Extension::TarBz)))]
     #[test_case("foo.tar.bz2", Ok(Some(Extension::TarBz2)))]
