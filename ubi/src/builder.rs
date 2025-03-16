@@ -1,6 +1,7 @@
 /// The `builder` module contains the `UbiBuilder` struct which is used to create a `Ubi` instance.
 use crate::{
     forge::{Forge, ForgeType},
+    forgejo::Forgejo,
     github::GitHub,
     gitlab::GitLab,
     installer::{ArchiveInstaller, ExeInstaller, Installer},
@@ -36,6 +37,7 @@ pub struct UbiBuilder<'a> {
     extract_all: bool,
     github_token: Option<&'a str>,
     gitlab_token: Option<&'a str>,
+    forgejo_token: Option<&'a str>,
     platform: Option<&'a Platform>,
     is_musl: Option<bool>,
     api_base_url: Option<&'a str>,
@@ -148,6 +150,14 @@ impl<'a> UbiBuilder<'a> {
     #[must_use]
     pub fn gitlab_token(mut self, token: &'a str) -> Self {
         self.gitlab_token = Some(token);
+        self
+    }
+
+    /// Set a Forgejo token to use for API requests. If this is not set then this will be taken from
+    /// `FORGEJO_TOKEN` env var.
+    #[must_use]
+    pub fn forgejo_token(mut self, token: &'a str) -> Self {
+        self.forgejo_token = Some(token);
         self
     }
 
@@ -268,6 +278,12 @@ impl<'a> UbiBuilder<'a> {
                 self.tag.map(String::from),
                 api_base,
                 self.gitlab_token,
+            )),
+            ForgeType::Forgejo => Box::new(Forgejo::new(
+                project_name,
+                self.tag.map(String::from),
+                api_base,
+                self.forgejo_token,
             )),
         })
     }
