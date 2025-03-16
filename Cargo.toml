@@ -12,7 +12,7 @@ resolver = "2"
 
 [workspace.dependencies]
 anyhow = "1.0.97"
-async-trait = "0.1.87"
+async-trait = "0.1.88"
 binstall-tar = "0.4.42"
 bzip2 = "0.5.2"
 clap = { version = "4.5.32", features = ["wrap_help"] }
@@ -27,22 +27,24 @@ log = "0.4.26"
 mockito = "1.7.0"
 platforms = "3.5.0"
 regex = "1.11.1"
-reqwest = { version = "0.12.12", default-features = false, features = ["gzip", "json"] }
+reqwest = { version = "0.12.14", default-features = false, features = ["gzip", "json"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 serial_test = "3.2.0"
 strum = { version = "0.27.1", features = ["derive"] }
-tempfile = "3.18.0"
+tempfile = "3.19.0"
 test-case = "3.3.1"
 test-log = "0.2.17"
 thiserror = "2.0.12"
-tokio = { version = "1.44.0", default-features = false, features = ["macros", "rt"] }
+tokio = { version = "1.44.1", default-features = false, features = ["macros", "rt"] }
 url = { version = "2.5.4", features = ["serde"] }
 which = "7.0.2"
 xz2 = "0.1.7"
 # This disables all the features that require C compilation, which greatly
 # simplifies cross-platform builds.
-zip = { version = "2.2.3", default-features = false, features = [
+#
+# There's some sort of change in 2.3.0 that breaks our tests, but I'm not sure what the issue is.
+zip = { version = "= 2.2.3", default-features = false, features = [
     "aes-crypto",
     "bzip2",
     "deflate",
