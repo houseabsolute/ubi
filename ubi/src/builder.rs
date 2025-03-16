@@ -34,8 +34,7 @@ pub struct UbiBuilder<'a> {
     exe: Option<&'a str>,
     rename_exe_to: Option<&'a str>,
     extract_all: bool,
-    github_token: Option<&'a str>,
-    gitlab_token: Option<&'a str>,
+    token: Option<&'a str>,
     platform: Option<&'a Platform>,
     is_musl: Option<bool>,
     api_base_url: Option<&'a str>,
@@ -134,20 +133,33 @@ impl<'a> UbiBuilder<'a> {
         self
     }
 
+    /// Set a token to use for API requests. If this is not set, then `ubi` will look for a token in
+    /// the appropriate env var:
+    ///
+    /// * GitHub - `GITHUB_TOKEN`
+    /// * GitLab - `CI_TOKEN`, then `GITLAB_TOKEN`.
+    #[must_use]
+    pub fn token(mut self, token: &'a str) -> Self {
+        self.token = Some(token);
+        self
+    }
+
     /// Set a GitHub token to use for API requests. If this is not set then this will be taken from
     /// the `GITHUB_TOKEN` env var if it is set.
+    #[deprecated(since = "0.6.0", note = "please use `token` instead")]
     #[must_use]
     pub fn github_token(mut self, token: &'a str) -> Self {
-        self.github_token = Some(token);
+        self.token = Some(token);
         self
     }
 
     /// Set a GitLab token to use for API requests. If this is not set then this will be taken from
     /// the `CI_JOB_TOKEN` or `GITLAB_TOKEN` env var, if one of these is set. If both are set, then
     /// the value in `CI_JOB_TOKEN` will be used.
+    #[deprecated(since = "0.6.0", note = "please use `token` instead")]
     #[must_use]
     pub fn gitlab_token(mut self, token: &'a str) -> Self {
-        self.gitlab_token = Some(token);
+        self.token = Some(token);
         self
     }
 
@@ -261,13 +273,13 @@ impl<'a> UbiBuilder<'a> {
                 project_name,
                 self.tag.map(String::from),
                 api_base,
-                self.github_token,
+                self.token,
             )),
             ForgeType::GitLab => Box::new(GitLab::new(
                 project_name,
                 self.tag.map(String::from),
                 api_base,
-                self.gitlab_token,
+                self.token,
             )),
         })
     }

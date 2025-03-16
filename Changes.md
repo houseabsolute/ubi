@@ -1,5 +1,7 @@
-## 0.5.3
+## 0.6.0
 
+- The `UbiBuilder::github_token` and `UbiBuilder::gitlab_token` methods are deprecated in favor of a
+  new ``UbiBuilder::token` method. These deprecated methods will be removed in a future release.
 - Added support for release artifacts with a `.jar` extension. Based on PR #110 from @vemoo.
 - `ubi` could incorrectly pick a release for Android when running on Linux aarch64 platforms.
   Reported by @jahands (Jacob Hands). GH #111.
