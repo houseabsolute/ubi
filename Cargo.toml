@@ -44,7 +44,7 @@ xz2 = "0.1.7"
 # simplifies cross-platform builds.
 #
 # There's some sort of change in 2.3.0 that breaks our tests, but I'm not sure what the issue is.
-zip = { version = "= 2.2.3", default-features = false, features = [
+zip = { version = "2.4.1", default-features = false, features = [
     "aes-crypto",
     "bzip2",
     "deflate",

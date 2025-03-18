@@ -1,3 +1,8 @@
+## 0.6.1
+
+- Upgraded the dependency on `zip` to 2.4.1. Previously, `ubi` pinned `zip` 2.2.3, which was yanked,
+  because the 2.3.0 release broke `ubi`'s tests.
+
 ## 0.6.0 2025-03-16
 
 - The `UbiBuilder::github_token` and `UbiBuilder::gitlab_token` methods are deprecated in favor of a
