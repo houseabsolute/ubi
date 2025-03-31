@@ -1,5 +1,5 @@
 use crate::{forge::Forge, ubi::Asset};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use log::debug;
 use reqwest::{
@@ -88,6 +88,24 @@ impl GitHub {
             token,
         }
     }
+
+    pub(crate) fn parse_project_name_from_url(url: &Url, from: &str) -> Result<String> {
+        let parts = url.path().split('/').collect::<Vec<_>>();
+
+        if parts.len() < 3 {
+            return Err(anyhow!("could not parse project from {from}"));
+        }
+
+        if parts[1].is_empty() || parts[2].is_empty() {
+            return Err(anyhow!("could not parse org and repo name from {from}"));
+        }
+
+        // The first part is an empty string for the leading '/' in the path.
+        let (org, proj) = (parts[1], parts[2]);
+        debug!("Parsed {url} = {org} / {proj}");
+
+        Ok(format!("{org}/{proj}"))
+    }
 }
 
 #[cfg(test)]
@@ -97,6 +115,7 @@ mod tests {
     use reqwest::Client;
     use serial_test::serial;
     use std::env;
+    use test_case::test_case;
     use test_log::test;
 
     #[test(tokio::test)]
@@ -180,5 +199,56 @@ mod tests {
             url.as_str(),
             "https://github.example.com/api/v4/repos/houseabsolute/ubi/releases/latest"
         );
+    }
+
+    enum ParseTestExpect {
+        Success(&'static str),
+        Fail(&'static str),
+    }
+
+    #[test_case(
+        "https://github.com/owner/repo",
+        ParseTestExpect::Success("owner/repo");
+        "basic"
+    )]
+    #[test_case(
+        "https://github.com/owner/repo/releases",
+        ParseTestExpect::Success("owner/repo");
+        "with /releases"
+    )]
+    #[test_case(
+        "https://github.com/owner/repo/",
+        ParseTestExpect::Success("owner/repo");
+        "with trailing slash"
+    )]
+    #[test_case(
+        "https://github.com/owner/repo/releases/tag/v1.0.0",
+        ParseTestExpect::Success("owner/repo");
+        "with release tag in path"
+    )]
+    #[test_case(
+        "https://github.com/owner",
+        ParseTestExpect::Fail("could not parse project from test");
+        "with org but no project"
+    )]
+    #[test_case(
+        "https://github.com/owner//repo",
+        ParseTestExpect::Fail("could not parse org and repo name from test");
+        "with empty path segments"
+    )]
+    fn parse_project_name(url: &'static str, expect: ParseTestExpect) -> Result<()> {
+        let url = Url::parse(url)?;
+        let result = GitHub::parse_project_name_from_url(&url, "test");
+        match (result, expect) {
+            (Ok(r), ParseTestExpect::Success(e)) => assert_eq!(r, e),
+            (Err(r), ParseTestExpect::Fail(e)) => assert!(r.to_string().contains(e)),
+            (Ok(r), ParseTestExpect::Fail(e)) => {
+                panic!("Expected failure {e} but got success: {r}")
+            }
+            (Err(r), ParseTestExpect::Success(e)) => {
+                panic!("Expected success {e} but got failure: {r}")
+            }
+        }
+        Ok(())
     }
 }

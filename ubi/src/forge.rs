@@ -1,5 +1,3 @@
-use std::env;
-
 use crate::{github::GitHub, gitlab::GitLab, ubi::Asset};
 use anyhow::Result;
 use async_trait::async_trait;
@@ -8,6 +6,7 @@ use reqwest::{
     header::{HeaderValue, ACCEPT},
     Client, RequestBuilder, Response,
 };
+use std::env;
 // It'd be nice to use clap::ValueEnum here, but then we'd need to add clap as a dependency for the
 // library code, which would be annoying for downstream users who just want to use the library.
 use strum::{AsRefStr, EnumString, VariantNames};
@@ -60,6 +59,13 @@ impl ForgeType {
             ForgeType::GitLab
         } else {
             ForgeType::default()
+        }
+    }
+
+    pub(crate) fn parse_project_name_from_url(&self, url: &Url, from: &str) -> Result<String> {
+        match self {
+            ForgeType::GitHub => GitHub::parse_project_name_from_url(url, from),
+            ForgeType::GitLab => GitLab::parse_project_name_from_url(url, from),
         }
     }
 

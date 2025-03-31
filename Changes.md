@@ -1,3 +1,9 @@
+## 0.7.4
+
+- Added support for projects on GitLab with more than one slash in the path name, like
+  https://gitlab.com/gitlab-com/gl-infra/terra-transformer. GitLab allows for more path components
+  in project names, unlike GitHub. Based on PR #115 from @suprememoocow (Andrew Newdigate).
+
 ## 0.7.3 2025-06-24
 
 - Added support for release artifacts with `.sh` and `.py` extension. Based on PR #127 from

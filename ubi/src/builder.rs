@@ -340,21 +340,10 @@ fn parse_project_name(
         );
     };
 
-    let parts = parsed.path().split('/').collect::<Vec<_>>();
-    if parts.len() < 3 || parts[1].is_empty() || parts[2].is_empty() {
-        return Err(anyhow!("could not parse org and repo name from {from}"));
-    }
+    let forge_type = ForgeType::from_url(&parsed);
+    let project_name = forge_type.parse_project_name_from_url(&parsed, &from)?;
 
-    // The first part is an empty string for the leading '/' in the path.
-    let (org, proj) = (parts[1], parts[2]);
-    debug!("Parsed {from} = {org} / {proj}");
-
-    Ok((
-        format!("{org}/{proj}"),
-        // If the forge argument was not `None` this is kind of pointless, but it should never
-        // be _wrong_ in that case.
-        ForgeType::from_url(&parsed),
-    ))
+    Ok((project_name, forge_type))
 }
 
 fn install_path(install_dir: Option<&Path>, exe: Option<&str>) -> Result<PathBuf> {
@@ -478,6 +467,12 @@ mod test {
         "houseabsolute/precious",
         "foo";
         "passed exe"
+    )]
+    #[test_case(
+        None,
+        "https://gitlab.com/gitlab-com/gl-infra/terra-transformer",
+        "terra-transformer";
+        "gitlab"
     )]
     fn expect_exe_stem_name(
         exe: Option<&'static str>,
