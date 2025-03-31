@@ -474,6 +474,38 @@ fn integration_tests() -> Result<()> {
         make_exe_pathbuf(&["bin", "glab"]),
     )?;
 
+    // Test deeply nested GitLab project - skip on Windows there is no windows binary for target
+    #[cfg(not(target_os = "windows"))]
+    {
+        run_test(
+            td.path(),
+            ubi.as_ref(),
+            &[
+                "--project",
+                "gitlab-com/gl-infra/terra-transformer",
+                "--forge",
+                "gitlab",
+            ],
+            make_exe_pathbuf(&["bin", "terra-transformer"]),
+        )?;
+    }
+
+    // Test deeply nested GitLab project - skip on Windows there is no windows binary for target
+    #[cfg(not(target_os = "windows"))]
+    {
+        run_test(
+            td.path(),
+            ubi.as_ref(),
+            &[
+                "--project",
+                "https://gitlab.com/gitlab-com/gl-infra/terra-transformer/-/issues/1",
+                "--tag",
+                "v1.31.17"
+            ],
+            make_exe_pathbuf(&["bin", "terra-transformer"]),
+        )?;
+    }
+
     #[cfg(target_os = "linux")]
     {
         run_test(

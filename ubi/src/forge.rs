@@ -63,6 +63,13 @@ impl ForgeType {
         }
     }
 
+    pub(crate) fn parse_project_name_from_url(&self, url: &Url, from: String) -> Result<String> {
+        match self {
+            ForgeType::GitHub => crate::github::GitHub::parse_project_name_from_url(url, from),
+            ForgeType::GitLab => crate::gitlab::GitLab::parse_project_name_from_url(url, from),
+        }
+    }
+
     pub(crate) fn make_forge_impl(
         &self,
         project_name: String,

@@ -1,5 +1,5 @@
 use crate::{forge::Forge, ubi::Asset};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use log::debug;
 use reqwest::{
@@ -87,6 +87,24 @@ impl GitHub {
             api_base_url,
             token,
         }
+    }
+
+    pub(crate) fn parse_project_name_from_url(url: &Url, from: String) -> Result<String> {
+        let parts = url.path().split('/').collect::<Vec<_>>();
+
+        if parts.len() < 3 {
+            return Err(anyhow!("could not parse project from {from}"));
+        }
+
+        if parts[1].is_empty() || parts[2].is_empty() {
+            return Err(anyhow!("could not parse org and repo name from {from}"));
+        }
+
+        // The first part is an empty string for the leading '/' in the path.
+        let (org, proj) = (parts[1], parts[2]);
+        debug!("Parsed {url} = {org} / {proj}");
+
+        Ok(format!("{org}/{proj}"))
     }
 }
 
@@ -180,5 +198,53 @@ mod tests {
             url.as_str(),
             "https://github.example.com/api/v4/repos/houseabsolute/ubi/releases/latest"
         );
+    }
+
+    #[test]
+    fn parse_project_name_from_url_basic() -> Result<()> {
+        let url = Url::parse("https://github.com/owner/repo")?;
+        let result = GitHub::parse_project_name_from_url(&url, "test".to_string())?;
+        assert_eq!(result, "owner/repo");
+        Ok(())
+    }
+
+    #[test]
+    fn parse_project_name_from_url_with_path() -> Result<()> {
+        let url = Url::parse("https://github.com/owner/repo/releases")?;
+        let result = GitHub::parse_project_name_from_url(&url, "test".to_string())?;
+        assert_eq!(result, "owner/repo");
+        Ok(())
+    }
+
+    #[test]
+    fn parse_project_name_from_url_with_trailing_slash() -> Result<()> {
+        let url = Url::parse("https://github.com/owner/repo/")?;
+        let result = GitHub::parse_project_name_from_url(&url, "test".to_string())?;
+        assert_eq!(result, "owner/repo");
+        Ok(())
+    }
+
+    #[test]
+    fn parse_project_name_from_url_complex_path() -> Result<()> {
+        let url = Url::parse("https://github.com/owner/repo/releases/tag/v1.0.0")?;
+        let result = GitHub::parse_project_name_from_url(&url, "test".to_string())?;
+        assert_eq!(result, "owner/repo");
+        Ok(())
+    }
+
+    #[test]
+    fn parse_project_name_from_url_error_too_short() {
+        let url = Url::parse("https://github.com/owner").unwrap();
+        let result = GitHub::parse_project_name_from_url(&url, "test".to_string());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("could not parse project from test"));
+    }
+
+    #[test]
+    fn parse_project_name_from_url_error_empty_segments() {
+        let url = Url::parse("https://github.com//repo").unwrap();
+        let result = GitHub::parse_project_name_from_url(&url, "test".to_string());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("could not parse org and repo name from test"));
     }
 }

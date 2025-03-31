@@ -1,5 +1,5 @@
 use crate::{forge::Forge, ubi::Asset};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use log::debug;
 use reqwest::{header::HeaderValue, header::AUTHORIZATION, Client, RequestBuilder};
@@ -86,6 +86,36 @@ impl GitLab {
             api_base_url,
             token,
         }
+    }
+
+    pub(crate) fn parse_project_name_from_url(url: &Url, from: String) -> Result<String> {
+        let mut parts = url.path().split('/').collect::<Vec<_>>();
+
+        if parts.len() < 3 {
+            return Err(anyhow!("could not parse project from {from}"));
+        }
+
+        // GitLab supports deeply nested projects (more than org/project)
+        parts.remove(0);
+
+        // Remove the trailing / if there is one
+        if let Some(last) = parts.last() {
+            if last.is_empty() {
+                parts.pop();
+            }
+        }
+
+        // Stop at the first `-` component, as this is GitLab's routing separator
+        // and indicates we've moved beyond the project path
+        if let Some(dash_pos) = parts.iter().position(|&s| s == "-") {
+            parts.truncate(dash_pos);
+        }
+
+        if !parts.iter().all(|s| !s.is_empty()) {
+            return Err(anyhow!("could not parse project from {from}"));
+        }
+
+        Ok(parts.join("/"))
     }
 }
 
@@ -182,5 +212,119 @@ mod tests {
             url.as_str(),
             "https://gitlab.example.com/api/v4/projects/houseabsolute%2Fubi/releases/permalink/latest"
         );
+    }
+
+    #[test]
+    fn parse_project_name_from_url_basic() -> Result<()> {
+        let url = Url::parse("https://gitlab.com/owner/repo")?;
+        let result = GitLab::parse_project_name_from_url(&url, "test".to_string())?;
+        assert_eq!(result, "owner/repo");
+        Ok(())
+    }
+
+    #[test]
+    fn parse_project_name_from_url_deeply_nested() -> Result<()> {
+        let url = Url::parse("https://gitlab.com/gitlab-com/gl-infra/terra-transformer")?;
+        let result = GitLab::parse_project_name_from_url(&url, "test".to_string())?;
+        assert_eq!(result, "gitlab-com/gl-infra/terra-transformer");
+        Ok(())
+    }
+
+    #[test]
+    fn parse_project_name_from_url_very_deeply_nested() -> Result<()> {
+        let url = Url::parse("https://gitlab.com/group/subgroup/subsubgroup/project")?;
+        let result = GitLab::parse_project_name_from_url(&url, "test".to_string())?;
+        assert_eq!(result, "group/subgroup/subsubgroup/project");
+        Ok(())
+    }
+
+    #[test]
+    fn parse_project_name_from_url_with_path() -> Result<()> {
+        let url = Url::parse("https://gitlab.com/owner/repo/releases")?;
+        let result = GitLab::parse_project_name_from_url(&url, "test".to_string())?;
+        assert_eq!(result, "owner/repo/releases");
+        Ok(())
+    }
+
+    #[test]
+    fn parse_project_name_from_url_with_trailing_slash() -> Result<()> {
+        let url = Url::parse("https://gitlab.com/owner/repo/")?;
+        let result = GitLab::parse_project_name_from_url(&url, "test".to_string())?;
+        assert_eq!(result, "owner/repo");
+        Ok(())
+    }
+
+    #[test]
+    fn parse_project_name_from_url_nested_with_trailing_slash() -> Result<()> {
+        let url = Url::parse("https://gitlab.com/gitlab-com/gl-infra/terra-transformer/")?;
+        let result = GitLab::parse_project_name_from_url(&url, "test".to_string())?;
+        assert_eq!(result, "gitlab-com/gl-infra/terra-transformer");
+        Ok(())
+    }
+
+    #[test]
+    fn parse_project_name_from_url_complex_path() -> Result<()> {
+        let url = Url::parse("https://gitlab.com/owner/repo/-/releases/tag/v1.0.0")?;
+        let result = GitLab::parse_project_name_from_url(&url, "test".to_string())?;
+        assert_eq!(result, "owner/repo");
+        Ok(())
+    }
+
+    #[test]
+    fn parse_project_name_from_url_error_too_short() {
+        let url = Url::parse("https://gitlab.com/owner").unwrap();
+        let result = GitLab::parse_project_name_from_url(&url, "test".to_string());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("could not parse project from test"));
+    }
+
+    #[test]
+    fn parse_project_name_from_url_error_empty_segments() {
+        let url = Url::parse("https://gitlab.com//repo").unwrap();
+        let result = GitLab::parse_project_name_from_url(&url, "test".to_string());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("could not parse project from test"));
+    }
+
+    #[test]
+    fn parse_project_name_from_url_error_root_only() {
+        let url = Url::parse("https://gitlab.com/").unwrap();
+        let result = GitLab::parse_project_name_from_url(&url, "test".to_string());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("could not parse project from test"));
+    }
+
+    #[test]
+    fn parse_project_name_from_url_stops_at_dash() -> Result<()> {
+        let url = Url::parse("https://gitlab.com/owner/repo/-/issues/123")?;
+        let result = GitLab::parse_project_name_from_url(&url, "test".to_string())?;
+        assert_eq!(result, "owner/repo");
+        Ok(())
+    }
+
+    #[test]
+    fn parse_project_name_from_url_nested_stops_at_dash() -> Result<()> {
+        let url = Url::parse("https://gitlab.com/gitlab-com/gl-infra/terra-transformer/-/merge_requests/42")?;
+        let result = GitLab::parse_project_name_from_url(&url, "test".to_string())?;
+        assert_eq!(result, "gitlab-com/gl-infra/terra-transformer");
+        Ok(())
+    }
+
+    #[test]
+    fn parse_project_name_from_url_dash_in_project_name() -> Result<()> {
+        // This tests that project names containing dashes are preserved
+        let url = Url::parse("https://gitlab.com/my-org/my-project")?;
+        let result = GitLab::parse_project_name_from_url(&url, "test".to_string())?;
+        assert_eq!(result, "my-org/my-project");
+        Ok(())
+    }
+
+    #[test]
+    fn parse_project_name_from_url_dash_separator_only() -> Result<()> {
+        // Test URL that has a standalone `-` as a path separator
+        let url = Url::parse("https://gitlab.com/group/project/-")?;
+        let result = GitLab::parse_project_name_from_url(&url, "test".to_string())?;
+        assert_eq!(result, "group/project");
+        Ok(())
     }
 }
