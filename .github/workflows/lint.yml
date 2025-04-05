@@ -27,6 +27,8 @@ jobs:
           set -x
           curl https://mise.run | sh
           mise install
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Run precious
         run: |
           mise exec -- precious lint -a
