@@ -15,24 +15,24 @@ anyhow = "1.0.97"
 async-trait = "0.1.88"
 binstall-tar = "0.4.42"
 bzip2 = "0.5.2"
-clap = { version = "4.5.32", features = ["wrap_help"] }
+clap = { version = "4.5.35", features = ["wrap_help"] }
 document-features = "0.2"
 # Used in some test code which can't use test_log.
-env_logger = "0.11.7"
+env_logger = "0.11.8"
 fern = { version = "0.7.1", features = ["colored"] }
-flate2 = "1.1.0"
+flate2 = "1.1.1"
 itertools = "0.14.0"
 lazy-regex = "3.4.1"
-log = "0.4.26"
+log = "0.4.27"
 mockito = "1.7.0"
 platforms = "3.5.0"
 regex = "1.11.1"
-reqwest = { version = "0.12.14", default-features = false, features = ["gzip", "json"] }
+reqwest = { version = "0.12.15", default-features = false, features = ["gzip", "json"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 serial_test = "3.2.0"
 strum = { version = "0.27.1", features = ["derive"] }
-tempfile = "3.19.0"
+tempfile = "3.19.1"
 test-case = "3.3.1"
 test-log = "0.2.17"
 thiserror = "2.0.12"
@@ -42,9 +42,7 @@ which = "7.0.2"
 xz2 = "0.1.7"
 # This disables all the features that require C compilation, which greatly
 # simplifies cross-platform builds.
-#
-# There's some sort of change in 2.3.0 that breaks our tests, but I'm not sure what the issue is.
-zip = { version = "2.4.1", default-features = false, features = [
+zip = { version = "= 2.4.2", default-features = false, features = [
     "aes-crypto",
     "bzip2",
     "deflate",
