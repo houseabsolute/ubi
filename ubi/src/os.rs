@@ -1,6 +1,7 @@
 use itertools::Itertools;
 use lazy_regex::{regex, Lazy};
 use regex::Regex;
+use std::sync::LazyLock;
 
 pub(crate) fn android_re() -> &'static Lazy<Regex> {
     regex!(r"(?i:android)")
@@ -38,7 +39,7 @@ pub(crate) fn windows_re() -> &'static Lazy<Regex> {
     regex!(r"(?i:(?:\b|_)win(?:32|64|dows)?(?:\b|_))")
 }
 
-pub(crate) static ALL_OSES_RE: Lazy<Regex> = Lazy::new(|| {
+pub(crate) static ALL_OSES_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         &[
             freebsd_re(),

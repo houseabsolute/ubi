@@ -2,13 +2,14 @@ use crate::arch::ALL_ARCHES_RE;
 use crate::os::ALL_OSES_RE;
 use anyhow::Result;
 use itertools::Itertools;
-use lazy_regex::{regex, Lazy};
+use lazy_regex::regex;
 use log::debug;
 use platforms::{Platform, OS};
 use regex::Regex;
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
+    sync::LazyLock,
 };
 use strum::{EnumIter, IntoEnumIterator};
 use thiserror::Error;
@@ -189,7 +190,7 @@ fn extension_is_part_of_version(path: &Path, ext_str: &OsStr) -> bool {
 }
 
 fn extension_is_platform(ext_str: &OsStr) -> bool {
-    static PLATFORM_RE: Lazy<Regex> = Lazy::new(|| {
+    static PLATFORM_RE: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(
             &[ALL_OSES_RE.as_str(), ALL_ARCHES_RE.as_str()]
                 .iter()

@@ -296,10 +296,7 @@ impl<'a> AssetPicker<'a> {
         }
 
         let asset_names = matches.iter().map(|a| a.name.as_str()).collect::<Vec<_>>();
-        debug!(
-            "found multiple candidate assets, filtering for 64-bit binaries in {:?}",
-            asset_names,
-        );
+        debug!("found multiple candidate assets, filtering for 64-bit binaries in {asset_names:?}",);
 
         if !matches.iter().any(|a| a.name.contains("64")) {
             debug!("no 64-bit assets found, falling back to all assets");
@@ -326,10 +323,7 @@ impl<'a> AssetPicker<'a> {
         }
 
         let m = self.matching.unwrap();
-        debug!(
-            r#"looking for an asset matching the string "{}" passed in --matching"#,
-            m
-        );
+        debug!(r#"looking for an asset matching the string "{m}" passed in --matching"#);
         if let Some(asset) = matches.into_iter().find(|a| a.name.contains(m)) {
             debug!("found an asset matching the string");
             return Ok((vec![], Some(asset)));
@@ -351,8 +345,7 @@ impl<'a> AssetPicker<'a> {
 
         let asset_names = matches.iter().map(|a| a.name.as_str()).collect::<Vec<_>>();
         debug!(
-            "found multiple candidate assets and running on macOS ARM, filtering for arm64 binaries in {:?}",
-            asset_names,
+            "found multiple candidate assets and running on macOS ARM, filtering for arm64 binaries in {asset_names:?}",
         );
 
         let arch_matcher = aarch64_re();

@@ -80,7 +80,7 @@ impl<'a> Ubi<'a> {
     pub(crate) async fn asset(&mut self) -> Result<Asset> {
         if let Some(url) = &self.asset_url {
             return Ok(Asset {
-                name: url.path().split('/').last().unwrap().to_string(),
+                name: url.path().split('/').next_back().unwrap().to_string(),
                 url: url.clone(),
             });
         }

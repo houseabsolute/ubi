@@ -358,7 +358,7 @@ fn expect_exe_stem_name<'a>(exe: Option<&'a str>, project_name: &'a str) -> &'a 
     } else {
         // We know that this contains a slash because it already went through `parse_project_name`
         // successfully.
-        project_name.split('/').last().unwrap()
+        project_name.split('/').next_back().unwrap()
     };
 
     debug!("exe name = {name}");

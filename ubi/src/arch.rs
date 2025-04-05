@@ -1,6 +1,7 @@
 use itertools::Itertools;
 use lazy_regex::{regex, Lazy};
 use regex::Regex;
+use std::sync::LazyLock;
 
 // This is a special case to account for the fact that MacOS ARM systems can
 // also run x86-64 binaries.
@@ -348,7 +349,7 @@ pub(crate) fn x86_64_re() -> &'static Lazy<Regex> {
     )
 }
 
-pub(crate) static ALL_ARCHES_RE: Lazy<Regex> = Lazy::new(|| {
+pub(crate) static ALL_ARCHES_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         &[
             aarch64_re(),

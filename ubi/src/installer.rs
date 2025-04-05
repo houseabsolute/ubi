@@ -154,13 +154,13 @@ impl ExeInstaller {
             if let Some(file_name) = path.file_name() {
                 if let Some(file_name) = file_name.to_str() {
                     if self.archive_member_is_exact_match(file_name) {
-                        debug!("found tar file entry with exact match: {}", file_name);
+                        debug!("found tar file entry with exact match: {file_name}");
                         return Ok(Some(i));
                     } else if self.archive_member_is_partial_match(file_name) {
                         // This checks if the entry is marked as an executable, but a tarball
                         // created on Windows may not have file modes set.
                         if self.is_windows || entry.header().mode()? & 0o111 != 0 {
-                            debug!("found tar file entry with partial match: {}", file_name);
+                            debug!("found tar file entry with partial match: {file_name}");
                             possible_matches.push(i);
                         }
                     }
@@ -217,14 +217,14 @@ impl ExeInstaller {
                 if let Some(file_name) = path.file_name() {
                     if let Some(file_name) = file_name.to_str() {
                         if self.archive_member_is_exact_match(file_name) {
-                            debug!("found zip file entry with exact match: {}", file_name);
+                            debug!("found zip file entry with exact match: {file_name}");
                             // It'd be nicer to immediately return `zf`, but that runs into lifetime
                             // issues, because `zip.by_index` takes `&mut self`. Yeesh.
                             possible_matches.clear();
                             possible_matches.push(i);
                             break;
                         } else if self.archive_member_is_partial_match(file_name) {
-                            debug!("found zip file entry with partial match: {}", file_name);
+                            debug!("found zip file entry with partial match: {file_name}");
                             // Note that we don't test if the file is executable on Unix systems
                             // because preserving the mode is not a standard Zip behavior, AFAICT.
                             possible_matches.push(i);
@@ -275,7 +275,7 @@ impl ExeInstaller {
                 .join(" ")
         };
 
-        debug!("could not find any entries matching [{}]", expect_names);
+        debug!("could not find any entries matching [{expect_names}]");
         Err(anyhow!(
             "could not find any files matching [{}] in the downloaded archive file",
             expect_names,
