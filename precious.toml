@@ -30,6 +30,8 @@ cmd = [
     "--",
     "-D",
     "clippy::pedantic",
+    "-D",
+    "warnings",
 ]
 ok_exit_codes = 0
 lint_failure_exit_codes = 101

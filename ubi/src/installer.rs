@@ -140,7 +140,7 @@ impl ExeInstaller {
         self.could_not_find_archive_matches_error()
     }
 
-    fn best_match_from_tarball<'a>(&self, downloaded_file: &Path) -> Result<Option<usize>> {
+    fn best_match_from_tarball(&self, downloaded_file: &Path) -> Result<Option<usize>> {
         let mut arch = tar_reader_for(downloaded_file)?;
         let mut possible_matches: Vec<usize> = vec![];
         for (i, entry) in arch.entries()?.enumerate() {
