@@ -15,7 +15,7 @@ anyhow = "1.0.97"
 async-trait = "0.1.88"
 binstall-tar = "0.4.42"
 bzip2 = "0.5.2"
-clap = { version = "4.5.35", features = ["wrap_help"] }
+clap = { version = "4.5.36", features = ["wrap_help"] }
 document-features = "0.2"
 # Used in some test code which can't use test_log.
 env_logger = "0.11.8"
@@ -36,13 +36,13 @@ tempfile = "3.19.1"
 test-case = "3.3.1"
 test-log = "0.2.17"
 thiserror = "2.0.12"
-tokio = { version = "1.44.1", default-features = false, features = ["macros", "rt"] }
+tokio = { version = "1.44.2", default-features = false, features = ["macros", "rt"] }
 url = { version = "2.5.4", features = ["serde"] }
-which = "7.0.2"
+which = "7.0.3"
 xz2 = "0.1.7"
 # This disables all the features that require C compilation, which greatly
 # simplifies cross-platform builds.
-zip = { version = "= 2.4.2", default-features = false, features = [
+zip = { version = "=2.4.2", default-features = false, features = [
     "aes-crypto",
     "bzip2",
     "deflate",
