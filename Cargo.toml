@@ -40,9 +40,11 @@ tokio = { version = "1.44.2", default-features = false, features = ["macros", "r
 url = { version = "2.5.4", features = ["serde"] }
 which = "7.0.3"
 xz2 = "0.1.7"
-# This disables all the features that require C compilation, which greatly
+# The 4.0.0 version is not compatible with xz2, as they have conflicting requirements on lzma-sys.
+#
+# This set of features disables all the features that require C compilation, which greatly
 # simplifies cross-platform builds.
-zip = { version = "=2.4.2", default-features = false, features = [
+zip = { version = "3.0.0", default-features = false, features = [
     "aes-crypto",
     "bzip2",
     "deflate",
