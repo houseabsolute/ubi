@@ -208,7 +208,7 @@ impl ExeInstaller {
     fn best_match_from_zip_archive<'a>(
         &self,
         zip: &'a mut ZipArchive<File>,
-    ) -> Result<Option<ZipFile<'a>>> {
+    ) -> Result<Option<ZipFile<'a, File>>> {
         let mut possible_matches: Vec<usize> = vec![];
         for i in 0..zip.len() {
             let zf = zip.by_index(i)?;
