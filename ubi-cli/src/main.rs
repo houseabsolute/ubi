@@ -137,6 +137,17 @@ fn cmd() -> Command {
                 )),
         )
         .arg(
+            Arg::new("matching-regex")
+            .long("matching-regex")
+            .short('r')
+            .help(concat!(
+                "A regular expression string that will be matched against recognizable release",
+                " filenames before matching against your OS/arch. If the pattern yields a single",
+                " match, that release will be selected. Otherwise, the results will be filtered",
+                " using the standard process.",
+            )),
+        )
+        .arg(
             Arg::new("forge")
                 .long("forge")
                 .value_parser(clap::builder::PossibleValuesParser::new(
@@ -216,6 +227,9 @@ fn make_ubi<'a>(
     }
     if let Some(m) = matches.get_one::<String>("matching") {
         builder = builder.matching(m);
+    }
+    if let Some(r) = matches.get_one::<String>("matching-regex") {
+        builder = builder.matching_regex(r);
     }
     if let Some(e) = matches.get_one::<String>("exe") {
         builder = builder.exe(e);
