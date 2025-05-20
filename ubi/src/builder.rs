@@ -29,6 +29,7 @@ pub struct UbiBuilder<'a> {
     url: Option<&'a str>,
     install_dir: Option<PathBuf>,
     matching: Option<&'a str>,
+    matching_regex: Option<&'a str>,
     exe: Option<&'a str>,
     rename_exe_to: Option<&'a str>,
     extract_all: bool,
@@ -93,6 +94,16 @@ impl<'a> UbiBuilder<'a> {
     #[must_use]
     pub fn matching(mut self, matching: &'a str) -> Self {
         self.matching = Some(matching);
+        self
+    }
+
+    /// Set a regular expression string that will be matched against release filenames before
+    /// matching against your OS/arch. If the pattern yields a single match, that release will be
+    /// selected. If no matches are found, then the `Ubi::install_binary` method will return an
+    /// error when it is run.
+    #[must_use]
+    pub fn matching_regex(mut self, matching_regex: &'a str) -> Self {
+        self.matching_regex = Some(matching_regex);
         self
     }
 
@@ -236,7 +247,13 @@ impl<'a> UbiBuilder<'a> {
         Ok(Ubi::new(
             forge,
             asset_url,
-            AssetPicker::new(self.matching, platform, is_musl, self.extract_all),
+            AssetPicker::new(
+                self.matching,
+                self.matching_regex,
+                platform,
+                is_musl,
+                self.extract_all,
+            ),
             installer,
             reqwest_client()?,
         ))
