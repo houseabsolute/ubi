@@ -147,6 +147,7 @@ mod extension;
 mod forge;
 mod github;
 mod gitlab;
+mod forgejo;
 mod installer;
 mod os;
 mod picker;

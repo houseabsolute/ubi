@@ -10,6 +10,7 @@ use reqwest::{
 };
 // It'd be nice to use clap::ValueEnum here, but then we'd need to add clap as a dependency for the
 // library code, which would be annoying for downstream users who just want to use the library.
+use crate::forgejo::Forgejo;
 use strum::{AsRefStr, EnumString, VariantNames};
 use url::Url;
 
@@ -21,6 +22,8 @@ pub enum ForgeType {
     GitHub,
     #[strum(serialize = "gitlab")]
     GitLab,
+    #[strum(serialize = "forgejo")]
+    Forgejo,
 }
 
 #[async_trait]
@@ -50,14 +53,18 @@ pub(crate) trait Forge: std::fmt::Debug {
 
 const GITHUB_DOMAIN: &str = "github.com";
 const GITLAB_DOMAIN: &str = "gitlab.com";
+const CODEBERG_DOMIN: &str = "codeberg.org";
 
 const GITHUB_API_BASE: &str = "https://api.github.com";
 const GITLAB_API_BASE: &str = "https://gitlab.com/api/v4";
+const FORGEJO_API_BASE: &str = "https://codeberg.org/api/v1";
 
 impl ForgeType {
     pub(crate) fn from_url(url: &Url) -> ForgeType {
         if url.domain().unwrap().contains(GITLAB_DOMAIN) {
             ForgeType::GitLab
+        } else if url.domain().unwrap().contains(CODEBERG_DOMIN) {
+            ForgeType::Forgejo
         } else {
             ForgeType::default()
         }
@@ -92,6 +99,7 @@ impl ForgeType {
         Ok(match self {
             ForgeType::GitHub => Box::new(GitHub::new(project_name, tag, api_base_url, token)),
             ForgeType::GitLab => Box::new(GitLab::new(project_name, tag, api_base_url, token)),
+            ForgeType::Forgejo => Box::new(Forgejo::new(project_name, tag, api_base_url, token)),
         })
     }
 
@@ -99,6 +107,7 @@ impl ForgeType {
         match self {
             ForgeType::GitHub => Url::parse(&format!("https://{GITHUB_DOMAIN}")).unwrap(),
             ForgeType::GitLab => Url::parse(&format!("https://{GITLAB_DOMAIN}")).unwrap(),
+            ForgeType::Forgejo => Url::parse(&format!("https://{CODEBERG_DOMIN}")).unwrap(),
         }
     }
 
@@ -106,6 +115,7 @@ impl ForgeType {
         match self {
             ForgeType::GitHub => Url::parse(GITHUB_API_BASE).unwrap(),
             ForgeType::GitLab => Url::parse(GITLAB_API_BASE).unwrap(),
+            ForgeType::Forgejo => Url::parse(FORGEJO_API_BASE).unwrap(),
         }
     }
 
@@ -113,6 +123,7 @@ impl ForgeType {
         match self {
             ForgeType::GitHub => &["GITHUB_TOKEN"],
             ForgeType::GitLab => &["CI_TOKEN", "GITLAB_TOKEN"],
+            ForgeType::Forgejo => &["FORGEJO_TOKEN"],
         }
     }
 
@@ -120,6 +131,7 @@ impl ForgeType {
         match self {
             ForgeType::GitHub => "GitHub",
             ForgeType::GitLab => "GitLab",
+            ForgeType::Forgejo => "Forgejo",
         }
     }
 }
