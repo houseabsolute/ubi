@@ -78,59 +78,66 @@ current directory.
 Usage: ubi [OPTIONS]
 
 Options:
-  -p, --project <project>            The project you want to install, like houseabsolute/precious or
-                                     https://github.com/houseabsolute/precious.
-  -t, --tag <tag>                    The tag to download. Defaults to the latest release.
-  -u, --url <url>                    The url of the file to download. This can be provided instead
-                                     of a project or tag. This will not use the forge site's API, so
-                                     you will never hit its API limits. With this parameter, you do
-                                     not need to set a token env var except for private repos.
-      --self-upgrade                 Use ubi to upgrade to the latest version of ubi. The --exe,
-                                     --in, --project, --tag, and --url args will be ignored.
-  -i, --in <in>                      The directory in which the binary should be placed. Defaults to
-                                     ./bin.
-  -e, --exe <exe>                    The name of the file to look for in an archive file, or the
-                                     name of the downloadable file excluding its extension, e.g.
-                                     `ubi.gz`. By default this is the same as the project name, so
-                                     for houseabsolute/precious we look for precious or
-                                     precious.exe. When running on Windows the `.exe` suffix will be
-                                     added, as needed. You cannot pass `--extract-all` when this is
-                                     set.
-      --rename-exe <rename-exe-to>   The name to use for the executable after it is unpacked. By
-                                     default this is the same as the name of the file passed for the
-                                     `--exe` flag. If that flag isn't passed, this is the same as
-                                     the name of the project. When running on Windows the `.exe`
-                                     suffix will be added, as needed. You cannot pass
-                                     `--extract-all` when this is set.
-      --extract-all                  Pass this to tell `ubi` to extract all files from the archive.
-                                     By default `ubi` will only extract an executable from an
-                                     archive file. But if this is true, it will simply unpack the
-                                     archive file. If all of the contents of the archive file share
-                                     a top-level directory, that directory will be removed during
-                                     unpacking. In other words, if an archive contains
-                                     `./project/some-file` and `./project/docs.md`, it will extract
-                                     them as `some-file` and `docs.md`. You cannot pass `--exe` or
-                                     `--rename-exe-to` when this is set.
-  -m, --matching <matching>          A string that will be matched against the release filename when
-                                     there are multiple matching files for your OS/arch. For
-                                     example, there may be multiple releases for an OS/arch that
-                                     differ by compiler (MSVC vs. gcc) or linked libc (glibc vs.
-                                     musl). Note that this will be ignored if there is only one
-                                     matching release filename for your OS/arch.
-      --forge <forge>                The forge to use. If this isn't set, then the value of
-                                     --project or --url will be checked for gitlab.com. If this
-                                     contains any other domain _or_ if it does not have a domain at
-                                     all, then the default is GitHub. [possible values: github,
-                                     gitlab]
-      --api-base-url <api-base-url>  The the base URL for the forge site's API. This is useful for
-                                     testing or if you want to operate against an Enterprise version
-                                     of GitHub or GitLab. This should be something like
-                                     `https://github.my-corp.example.com/api/v4`.
-  -v, --verbose                      Enable verbose output.
-  -d, --debug                        Enable debugging output.
-  -q, --quiet                        Suppresses most output.
-  -h, --help                         Print help
-  -V, --version                      Print version
+  -p, --project <project>
+          The project you want to install, like houseabsolute/precious or
+          https://github.com/houseabsolute/precious.
+  -t, --tag <tag>
+          The tag to download. Defaults to the latest release.
+  -u, --url <url>
+          The url of the file to download. This can be provided instead of a project or tag. This
+          will not use the forge site's API, so you will never hit its API limits. With this
+          parameter, you do not need to set a token env var except for private repos.
+      --self-upgrade
+          Use ubi to upgrade to the latest version of ubi. The --exe, --in, --project, --tag, and
+          --url args will be ignored.
+  -i, --in <in>
+          The directory in which the binary should be placed. Defaults to ./bin.
+  -e, --exe <exe>
+          The name of the file to look for in an archive file, or the name of the downloadable file
+          excluding its extension, e.g. `ubi.gz`. By default this is the same as the project name,
+          so for houseabsolute/precious we look for precious or precious.exe. When running on
+          Windows the `.exe` suffix will be added, as needed. You cannot pass `--extract-all` when
+          this is set.
+      --rename-exe <rename-exe-to>
+          The name to use for the executable after it is unpacked. By default this is the same as
+          the name of the file passed for the `--exe` flag. If that flag isn't passed, this is the
+          same as the name of the project. Note that when set, this name is used as-is, so on
+          Windows, `.exe` will not be appended to the name given. You cannot pass `--extract-all`
+          when this is set.
+      --extract-all
+          Pass this to tell `ubi` to extract all files from the archive. By default `ubi` will only
+          extract an executable from an archive file. But if this is true, it will simply unpack the
+          archive file. If all of the contents of the archive file share a top-level directory, that
+          directory will be removed during unpacking. In other words, if an archive contains
+          `./project/some-file` and `./project/docs.md`, it will extract them as `some-file` and
+          `docs.md`. You cannot pass `--exe` or `--rename-exe-to` when this is set.
+  -m, --matching <matching>
+          A string that will be matched against the release filename when there are multiple
+          matching files for your OS/arch. For example, there may be multiple releases for an
+          OS/arch that differ by compiler (MSVC vs. gcc) or linked libc (glibc vs. musl). Note that
+          this will be ignored if there is only one matching release filename for your OS/arch.
+  -r, --matching-regex <matching-regex>
+          A regular expression string that will be matched against release filenames before matching
+          against your OS/arch. If the pattern yields a single match, that release will be selected.
+          If no matches are found, this will result in an error.
+      --forge <forge>
+          The forge to use. If this isn't set, then the value of --project or --url will be checked
+          for gitlab.com. If this contains any other domain _or_ if it does not have a domain at
+          all, then the default is GitHub. [possible values: github, gitlab]
+      --api-base-url <api-base-url>
+          The the base URL for the forge site's API. This is useful for testing or if you want to
+          operate against an Enterprise version of GitHub or GitLab. This should be something like
+          `https://github.my-corp.example.com/api/v4`.
+  -v, --verbose
+          Enable verbose output.
+  -d, --debug
+          Enable debugging output.
+  -q, --quiet
+          Suppresses most output.
+  -h, --help
+          Print help
+  -V, --version
+          Print version
 ```
 
 ## Using a Forge Token

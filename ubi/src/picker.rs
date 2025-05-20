@@ -23,6 +23,7 @@ use regex::Regex;
 #[derive(Debug)]
 pub(crate) struct AssetPicker<'a> {
     matching: Option<&'a str>,
+    matching_regex: Option<&'a str>,
     platform: Platform,
     is_musl: bool,
     archive_only: bool,
@@ -31,12 +32,14 @@ pub(crate) struct AssetPicker<'a> {
 impl<'a> AssetPicker<'a> {
     pub(crate) fn new(
         matching: Option<&'a str>,
+        matching_regex: Option<&'a str>,
         platform: Platform,
         is_musl: bool,
         archive_only: bool,
     ) -> Self {
         Self {
             matching,
+            matching_regex,
             platform,
             is_musl,
             archive_only,
@@ -56,6 +59,20 @@ impl<'a> AssetPicker<'a> {
             return Err(anyhow!(
                 "could not find a release asset after filtering {filter} from {all_names}",
             ));
+        }
+
+        if let Some(r) = self.matching_regex {
+            let re = Regex::new(r)?;
+            assets.retain(|a| {
+                debug!("matching regex `{r}` against asset name = {}", a.name);
+                re.is_match(&a.name)
+            });
+            if assets.is_empty() {
+                return Err(anyhow!(
+                    "could not find a release asset matching the regex {} from {all_names}",
+                    r,
+                ));
+            }
         }
 
         if assets.len() == 1 {
@@ -436,12 +453,14 @@ mod test {
         "x86_64-unknown-linux-gnu",
         &["project-Linux-x86_64.tar.gz"],
         None,
+        None,
         0 ;
         "x86_64-unknown-linux-gnu - only one asset"
     )]
     #[test_case(
         "x86_64-unknown-linux-gnu",
         &["project-Linux-i686.tar.gz", "project-Linux-x86_64.tar.gz"],
+        None,
         None,
         1 ;
         "x86_64-unknown-linux-gnu - pick x86-64 asset"
@@ -450,6 +469,7 @@ mod test {
         "x86_64-unknown-linux-gnu",
         &["project-Linux-i686-gnu.tar.gz", "project-Linux-i686-musl.tar.gz"],
         None,
+        None,
         0 ;
         "x86_64-unknown-linux-gnu - pick first asset from two matching 32-bit assets"
     )]
@@ -457,6 +477,7 @@ mod test {
         "x86_64-unknown-linux-gnu",
         &["project-Linux-x86_64-gnu.tar.gz", "project-Linux-x86_64-musl.tar.gz"],
         Some("musl"),
+        None,
         1 ;
         "x86_64-unknown-linux-gnu - pick asset with matching string when matching is set"
     )]
@@ -464,12 +485,22 @@ mod test {
         "x86_64-unknown-linux-gnu",
         &["project-Linux-i686-gnu.tar.gz", "project-Linux-i686-musl.tar.gz"],
         Some("musl"),
+        None,
         1 ;
         "x86_64-unknown-linux-gnu - pick asset with matching string from two 32-bit assets when matching is set"
     )]
     #[test_case(
+        "x86_64-unknown-linux-gnu",
+        &["project-Linux-x86_64-suffix.tar.gz", "project-Linux-x86_64.tar.gz"],
+        None,
+        Some(r"\d+\.tar"),
+        1 ;
+        "x86_64-unknown-linux-gnu - pick asset without a suffix when matching_regex is set"
+    )]
+    #[test_case(
         "i686-unknown-linux-gnu",
         &["project-Linux-i686.tar.gz"],
+        None,
         None,
         0 ;
         "i686-unknown-linux-gnu - pick one asset"
@@ -478,12 +509,14 @@ mod test {
         "i686-unknown-linux-gnu",
         &["project-Linux-i686-gnu.tar.gz", "project-Linux-i686-musl.tar.gz"],
         Some("musl"),
+        None,
         1 ;
         "i686-unknown-linux-gnu - pick asset with matching string when matching is set"
     )]
     #[test_case(
         "aarch64-apple-darwin",
         &["project-Macos-aarch64.tar.gz"],
+        None,
         None,
         0 ;
         "aarch64-apple-darwin - pick one asset"
@@ -492,12 +525,14 @@ mod test {
         "aarch64-apple-darwin",
         &["project-Linux-x86-64.tar.gz", "project-Mac-x86-64.tar.gz"],
         None,
+        None,
         1 ;
         "aarch64-apple-darwin - pick asset with 'mac' in the name"
     )]
     #[test_case(
         "aarch64-apple-darwin",
         &["project-Linux-x86-64.tar.gz", "project-Macosx-x86-64.tar.gz"],
+        None,
         None,
         1 ;
         "aarch64-apple-darwin - pick asset with 'macosx' in the name"
@@ -506,12 +541,14 @@ mod test {
         "aarch64-apple-darwin",
         &["project-Macos-x86-64.tar.gz", "project-Macos-aarch64.tar.gz"],
         None,
+        None,
         1 ;
         "aarch64-apple-darwin - pick the aarch64 asset on macOS ARM"
     )]
     #[test_case(
         "aarch64-apple-darwin",
         &["project-Macos-x86-64.tar.gz"],
+        None,
         None,
         0 ;
         "aarch64-apple-darwin - pick the x86-64 asset on macOS ARM if no aarch64 asset is available"
@@ -520,12 +557,14 @@ mod test {
         "aarch64-apple-darwin",
         &["project-Macos-all.tar.gz"],
         None,
+        None,
         0 ;
         "aarch64-apple-darwin - pick the all asset on macOS ARM if no aarch64 asset is available"
     )]
     #[test_case(
         "x86_64-unknown-linux-musl",
         &["project-Linux-x86_64.tar.gz"],
+        None,
         None,
         0 ;
         "x86_64-unknown-linux-musl - only one asset"
@@ -534,12 +573,14 @@ mod test {
         "x86_64-unknown-linux-musl",
         &["project-Linux-x86_64-gnu.tar.gz", "project-Linux-x86_64-musl.tar.gz"],
         None,
+        None,
         1 ;
         "x86_64-unknown-linux-musl - pick the musl asset over gnu on a musl platform"
     )]
     #[test_case(
         "x86_64-unknown-linux-musl",
         &["project-Linux-x86_64-glibc.tar.gz", "project-Linux-x86_64-musl.tar.gz"],
+        None,
         None,
         1 ;
         "x86_64-unknown-linux-musl - pick the musl asset over glibc on a musl platform"
@@ -548,12 +589,14 @@ mod test {
         "x86_64-unknown-linux-musl",
         &["project-Linux-x86_64.tar.gz", "project-Linux-x86_64-musl.tar.gz"],
         None,
+        None,
         1 ;
         "x86_64-unknown-linux-musl - pick the musl asset over unspecified libc on a musl platform"
     )]
     #[test_case(
         "aarch64-unknown-linux-gnu",
         &["project-aarch64-linux-android.tar.gz", "project-aarch64-unknown-linux.tar.gz"],
+        None,
         None,
         1 ;
         "project-aarch64-unknown-linux - pick the non-Android asset when not on Android"
@@ -562,6 +605,7 @@ mod test {
         platform_name: &str,
         asset_names: &[&str],
         matching: Option<&str>,
+        matching_regex: Option<&str>,
         expect_idx: usize,
     ) -> Result<()> {
         crate::test_case::init_logging();
@@ -571,6 +615,7 @@ mod test {
             .clone();
         let mut picker = AssetPicker {
             matching,
+            matching_regex,
             platform,
             is_musl: platform_name.contains("musl"),
             archive_only: false,
@@ -595,12 +640,14 @@ mod test {
         "x86_64-unknown-linux-gnu",
         &["project-Linux-x86_64.tar.gz", "project-Linux-x86_64.gz"],
         None,
+        None,
         0 ;
         "picks tarball from multiple matches - tarball first"
     )]
     #[test_case(
         "x86_64-unknown-linux-gnu",
         &["project-Linux-x86_64.gz", "project-Linux-x86_64.tar.gz"],
+        None,
         None,
         1 ;
         "picks tarball from multiple matches - tarball last"
@@ -609,12 +656,14 @@ mod test {
         "x86_64-unknown-linux-gnu",
         &["project-Linux-x86_64.tar.gz", "project-Linux-x86_64.zip"],
         None,
+        None,
         0 ;
         "picks tarball over zip - tarball first"
     )]
     #[test_case(
         "x86_64-unknown-linux-gnu",
         &["project-Linux-x86_64.zip", "project-Linux-x86_64.tar.gz"],
+        None,
         None,
         1 ;
         "picks tarball over zip - tarball last"
@@ -623,6 +672,7 @@ mod test {
         platform_name: &str,
         asset_names: &[&str],
         matching: Option<&str>,
+        matching_regex: Option<&str>,
         expect_idx: usize,
     ) -> Result<()> {
         crate::test_case::init_logging();
@@ -632,6 +682,7 @@ mod test {
             .clone();
         let mut picker = AssetPicker {
             matching,
+            matching_regex,
             platform,
             is_musl: platform_name.contains("musl"),
             archive_only: true,
@@ -655,7 +706,17 @@ mod test {
     #[test_case(
         "x86_64-unknown-linux-gnu",
         false,
+        &["project-Linux-x86_64-suffix.tar.gz", "project-Linux-x86_64.tar.gz"],
+        None,
+        Some(r"\d+\.zip"),
+        "could not find a release asset matching the regex \\d+\\.zip from " ;
+        "project-Linux-x86_64-suffix.tar.gz, project-Linux-x86_64.tar.gz"
+    )]
+    #[test_case(
+        "x86_64-unknown-linux-gnu",
+        false,
         &["project-macOS-arm64.tar.gz", "project-Windows-i686-gnu.tar.gz"],
+        None,
         None,
         "could not find a release asset for this OS (linux) from" ;
         "x86_64-unknown-linux-gnu - no assets for this OS"
@@ -665,6 +726,7 @@ mod test {
         false,
         &["project-Linux-x86_64-gnu.tar.gz", "project-Windows-i686-gnu.tar.gz"],
         None,
+        None,
         "could not find a release asset for this OS (linux) and architecture (x86) from" ;
         "i686-unknown-linux-gnu - no assets for this arch"
     )]
@@ -672,6 +734,7 @@ mod test {
         "x86_64-unknown-linux-musl",
         false,
         &["project-Linux-x86_64-gnu.tar.gz", "project-Windows-i686-gnu.tar.gz"],
+        None,
         None,
         "could not find a release asset for this OS (linux), architecture (x86_64), and libc (musl) from" ;
         "x86_64-unknown-linux-musl - only one Linux asset and it is gnu"
@@ -681,6 +744,7 @@ mod test {
         false,
         &["project-Linux-x86_64-gnu.glorp", "project-Linux-x86-64-gnu.asfasf"],
         None,
+        None,
         "could not find a release asset after filtering for valid extensions from" ;
         "x86_64-unknown-linux-musl - no valid extensions"
     )]
@@ -688,6 +752,7 @@ mod test {
         "x86_64-unknown-linux-musl",
         true,
         &["project-Linux-x86_64-gnu.gz", "project-Linux-x86-64-gnu.bz", "project-Linux-x86-64-gnu"],
+        None,
         None,
         "could not find a release asset after filtering for archive files (tarball or zip) from" ;
         "x86_64-unknown-linux-musl - no archive files"
@@ -697,6 +762,7 @@ mod test {
         false,
         &["project.exe"],
         None,
+        None,
         "could not find a release asset after filtering for valid extensions" ;
         "x86_64-unknown-linux-musl - does not pick .exe files"
     )]
@@ -704,6 +770,7 @@ mod test {
         "x86_64-pc-windows-msvc",
         false,
         &["project.AppImage"],
+        None,
         None,
         "could not find a release asset after filtering for valid extensions" ;
         "x86_64-pc-windows-msvc - does not pick .AppImage files"
@@ -713,6 +780,7 @@ mod test {
         false,
         &["project.AppImage"],
         None,
+        None,
         "could not find a release asset after filtering for valid extensions" ;
         "aarch64-apple-darwin - does not pick .AppImage files"
     )]
@@ -721,6 +789,7 @@ mod test {
         archive_only: bool,
         asset_names: &[&str],
         matching: Option<&str>,
+        matching_regex: Option<&str>,
         expect_err: &str,
     ) -> Result<()> {
         crate::test_case::init_logging();
@@ -730,6 +799,7 @@ mod test {
             .clone();
         let mut picker = AssetPicker {
             matching,
+            matching_regex,
             platform,
             is_musl: platform_name.contains("musl"),
             archive_only,

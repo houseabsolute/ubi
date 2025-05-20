@@ -1,5 +1,9 @@
 ## 0.6.2
 
+- Added a new `--matching-regex` CLI flag and `UbiBuilder::matching_regex` method. This regex is
+  matched against potential release filenames _before_ attempting to find a release with a matching
+  OS, architecture, etc. This is useful for doing things like filtering for a single tool when a
+  project releases multiple tools in a single GitHub release.
 - Changed dependency declarations to mostly eliminate default features, which removed quite a few
   transitive dependencies.
 
