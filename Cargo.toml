@@ -44,7 +44,7 @@ xz2 = "0.1.7"
 #
 # This set of features disables all the features that require C compilation, which greatly
 # simplifies cross-platform builds.
-zip = { version = "3.0.0", default-features = false, features = [
+zip = { version = ">= 3.0.0, < 4.0.0", default-features = false, features = [
     "aes-crypto",
     "bzip2",
     "deflate",
