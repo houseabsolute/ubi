@@ -709,6 +709,15 @@ mod test {
     #[test_case(
         "x86_64-unknown-linux-gnu",
         false,
+        &["project-Linux-x86_64-suffix.tar.gz", "project-Linux-x86_64.tar.gz"],
+        None,
+        Some(r"\d+\.zip"),
+        "could not find a release asset matching the regex \\d+\\.zip from " ;
+        "project-Linux-x86_64-suffix.tar.gz, project-Linux-x86_64.tar.gz"
+    )]
+    #[test_case(
+        "x86_64-unknown-linux-gnu",
+        false,
         &["project-macOS-arm64.tar.gz", "project-Windows-i686-gnu.tar.gz"],
         None,
         None,
