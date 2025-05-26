@@ -11,37 +11,6 @@ use std::{
 use tempfile::TempDir;
 use which::which;
 
-struct PreservableTempdir {
-    td: Option<TempDir>,
-    preserved: Option<PathBuf>,
-}
-
-impl PreservableTempdir {
-    fn new() -> Result<Self> {
-        let orig_td = TempDir::new()?;
-        match env::var("UBI_TESTS_PRESERVE_TEMPDIR") {
-            Ok(v) if !(v.is_empty() || v == "0") => {
-                println!("Saving tempdir: {}", orig_td.path().display());
-                Ok(PreservableTempdir {
-                    td: None,
-                    preserved: Some(orig_td.into_path()),
-                })
-            }
-            _ => Ok(PreservableTempdir {
-                td: Some(orig_td),
-                preserved: None,
-            }),
-        }
-    }
-
-    fn path(&self) -> &Path {
-        match &self.td {
-            Some(td) => td.path(),
-            None => self.preserved.as_ref().unwrap(),
-        }
-    }
-}
-
 // Getting these running on other archs would be challenging. First, we'd have
 // to use `cross build` when building the ubi that's run for tests. Second,
 // the tests would have to be adjusted to account to account for every
@@ -64,7 +33,13 @@ fn integration_tests() -> Result<()> {
     ubi.push(if cfg!(windows) { "ubi.exe" } else { "ubi" });
     ubi = ubi.canonicalize()?;
 
-    let td = PreservableTempdir::new()?;
+    let mut td = TempDir::new()?;
+    if let Ok(p) = env::var("UBI_TESTS_PRESERVE_TEMPDIR") {
+        if !(p.is_empty() || p == "0") {
+            println!("Preserving tempdir: {}", td.path().display());
+            td.disable_cleanup(true);
+        }
+    }
 
     run_test(
         td.path(),
