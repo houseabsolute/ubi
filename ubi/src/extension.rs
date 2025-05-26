@@ -148,12 +148,18 @@ impl Extension {
         }
 
         if extension_is_part_of_version(path, ext_str_from_path) {
-            debug!("the extension {ext_str_from_path:?} is part of the version, ignoring");
+            debug!(
+                "the extension {} is part of the version, ignoring",
+                ext_str_from_path.display()
+            );
             return Ok(None);
         }
 
         if extension_is_platform(ext_str_from_path) {
-            debug!("the extension {ext_str_from_path:?} is a platform name, ignoring");
+            debug!(
+                "the extension {} is a platform name, ignoring",
+                ext_str_from_path.display()
+            );
             return Ok(None);
         }
 
