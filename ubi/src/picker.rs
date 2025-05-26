@@ -61,16 +61,19 @@ impl<'a> AssetPicker<'a> {
             ));
         }
 
-        if self.matching_regex.is_some() {
-            let re = Regex::new(self.matching_regex.unwrap())?;
+        if let Some(r) = self.matching_regex {
+            let re = Regex::new(r)?;
             assets = assets
                 .into_iter()
-                .filter(|a| re.is_match(&a.name))
+                .filter(|a| {
+                    debug!("matching regex `{r}` against asset name = {}", a.name);
+                    re.is_match(&a.name)
+                })
                 .collect();
             if assets.is_empty() {
                 return Err(anyhow!(
                     "could not find a release asset matching the regex {} from {all_names}",
-                    self.matching_regex.unwrap(),
+                    r,
                 ));
             }
         }

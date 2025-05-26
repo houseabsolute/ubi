@@ -97,9 +97,10 @@ impl<'a> UbiBuilder<'a> {
         self
     }
 
-    /// Set a regular expression string that will be matched against recognizable release filenames
-    /// before matching against your OS/arch. If the pattern yields a single match, that release
-    /// will be selected. Otherwise, the results will be filtered using the standard process.
+    /// Set a regular expression string that will be matched against release filenames before
+    /// matching against your OS/arch. If the pattern yields a single match, that release will be
+    /// selected. If no matches are found, then the `Ubu::install_binary` method will return an
+    /// error when it is run.
     #[must_use]
     pub fn matching_regex(mut self, matching_regex: &'a str) -> Self {
         self.matching_regex = Some(matching_regex);

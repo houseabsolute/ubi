@@ -141,10 +141,9 @@ fn cmd() -> Command {
             .long("matching-regex")
             .short('r')
             .help(concat!(
-                "A regular expression string that will be matched against recognizable release",
-                " filenames before matching against your OS/arch. If the pattern yields a single",
-                " match, that release will be selected. Otherwise, the results will be filtered",
-                " using the standard process.",
+                "A regular expression string that will be matched against release filenames before",
+                " matching against your OS/arch. If the pattern yields a single match, that release",
+                " will be selected. If no matches are found, this will result in an error.",
             )),
         )
         .arg(
