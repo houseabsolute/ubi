@@ -1,3 +1,8 @@
+## 0.6.2
+
+- Changed dependency declarations to mostly eliminate default features, which removed quite a few
+  transitive dependencies.
+
 ## 0.6.1 2025-03-18
 
 - Upgraded the dependency on `zip` to 2.4.1. Previously, `ubi` pinned `zip` 2.2.3, which was yanked,
