@@ -20,7 +20,7 @@
 
 - This is identical to 0.5.1, but it was necessary to work around a bug in my GitHub release
   automation. The 0.5.1 is no longer available on GitHub, but the crates.io releases still exist and
-  there's no issue with using them.
+  there's no issue with using it.
 
 ## 0.5.1 - 2025-02-22
 
