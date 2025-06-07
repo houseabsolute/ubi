@@ -504,6 +504,22 @@ fn integration_tests() -> Result<()> {
         make_exe_pathbuf(&["bin", "scorecard"]),
     )?;
 
+    run_test(
+        td.path(),
+        ubi.as_ref(),
+        &[
+            "--project",
+            "shader-slang/slang",
+            "--tag",
+            "v2025.9.2",
+            "--exe",
+            "slangc",
+            "--matching-regex",
+            r"\d+\.tar",
+        ],
+        make_exe_pathbuf(&["bin", "slangc"]),
+    )?;
+
     Ok(())
 }
 
