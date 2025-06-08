@@ -126,6 +126,8 @@ executables with names like `rust-analyzer-x86_64-apple-darwin` and
 `rust-analyzer-x86_64-unknown-linux-musl`, so installing these as `rust-analyzer` seems like better
 behavior.
 
+If you want to explicitly rename the executable, you can use the `--rename-exe` flag for this.
+
 ## How `ubi` Finds the Right Release Artifact
 
 <!-- prettier-ignore-start -->
