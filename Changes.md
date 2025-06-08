@@ -1,4 +1,4 @@
-## 0.6.2
+## 0.7.0 2025-06-08
 
 - Added a new `--matching-regex` CLI flag and `UbiBuilder::matching_regex` method. This regex is
   matched against potential release filenames _before_ attempting to find a release with a matching
