@@ -65,30 +65,24 @@ fn cmd() -> Command {
         .about("The universal binary release installer")
         .arg(Arg::new("project").long("project").short('p').help(concat!(
             "The project you want to install, like houseabsolute/precious",
-            " or https://github.com/houseabsolute/precious.",
+            " or https://github.com/houseabsolute/precious. You cannot pass",
+            " this with the `--url` flag.",
         )))
         .arg(
             Arg::new("tag")
                 .long("tag")
                 .short('t')
-                .help("The tag to download. Defaults to the latest release."),
+                .help(concat!(
+                    "The tag to download. Defaults to the latest release.",
+                    " This is only valid if you also pass `--project`."
+                )),
         )
         .arg(Arg::new("url").long("url").short('u').help(concat!(
             "The url of the file to download. This can be provided instead of a project or",
             " tag. This will not use the forge site's API, so you will never hit its API",
             " limits. With this parameter, you do not need to set a token env var except for",
-            " private repos."
+            " private repos. You cannot pass `--project` or `--tag` with this flag."
         )))
-        .arg(
-            Arg::new("self-upgrade")
-                .long("self-upgrade")
-                .action(ArgAction::SetTrue)
-                .help(concat!(
-                    "Use ubi to upgrade to the latest version of ubi. The",
-                    " --exe, --in, --project, --tag, and --url args will be",
-                    " ignored."
-                )),
-        )
         .arg(
             Arg::new("in")
                 .long("in")
@@ -98,9 +92,9 @@ fn cmd() -> Command {
         .arg(Arg::new("exe").long("exe").short('e').help(concat!(
             "The name of the file to look for in an archive file, or the name of the downloadable",
             " file excluding its extension, e.g. `ubi.gz`. By default this is the same as the",
-            " project name, so for houseabsolute/precious we look for precious or",
-            " precious.exe. When running on Windows the `.exe` suffix will be added, as needed. You",
-            " cannot pass `--extract-all` when this is set.",
+            " project name, so for houseabsolute/precious we look for `precious` or",
+            " `precious.exe`. When running on Windows the `.exe` suffix will be added, as needed.",
+            "You cannot pass `--extract-all` when this is set.",
         )))
         .arg(Arg::new("rename-exe-to").long("rename-exe").help(concat!(
             "The name to use for the executable after it is unpacked. By default this is the same",
@@ -153,16 +147,26 @@ fn cmd() -> Command {
                     ForgeType::VARIANTS,
                 ))
                 .help(concat!(
-                    "The forge to use. If this isn't set, then the value of --project or --url",
+                    "The forge to use. If this isn't set, then the value of `--project` or `--url`",
                     " will be checked for gitlab.com. If this contains any other domain _or_ if it",
                     " does not have a domain at all, then the default is GitHub.",
                 )),
         )
         .arg(Arg::new("api-base-url").long("api-base-url").help(concat!(
-            "The the base URL for the forge site's API. This is useful for testing or if you want",
+            "The base URL for the forge site's API. This is useful for testing or if you want",
             " to operate against an Enterprise version of GitHub or GitLab. This should be",
             " something like `https://github.my-corp.example.com/api/v4`.",
         )))
+        .arg(
+            Arg::new("self-upgrade")
+                .long("self-upgrade")
+                .action(ArgAction::SetTrue)
+                .help(concat!(
+                    "Use ubi to upgrade to the latest version of ubi. The",
+                    " --exe, --in, --project, --tag, and --url args will be",
+                    " ignored."
+                )),
+        )
         .arg(
             Arg::new("verbose")
                 .short('v')
