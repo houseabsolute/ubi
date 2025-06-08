@@ -38,6 +38,7 @@ test-log = { version = "0.2.17", default-features = false }
 thiserror = { version = "2.0.12" }
 tokio = { version = "1.45.1", default-features = false, features = ["macros", "rt"] }
 url = { version = "2.5.4", default-features = false, features = ["serde"] }
+walkdir = { version = "2.5.0", default-features = false }
 which = { version = "7.0.3", default-features = false }
 xz2 = { version = "0.1.7", default-features = false }
 # The 4.0.0 version is not compatible with xz2, as they have conflicting requirements on lzma-sys.

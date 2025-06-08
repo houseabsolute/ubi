@@ -4,6 +4,14 @@
   matched against potential release filenames _before_ attempting to find a release with a matching
   OS, architecture, etc. This is useful for doing things like filtering for a single tool when a
   project releases multiple tools in a single GitHub release. PR by @yjoer (Yeoh Joer). GH #122.
+- The logic for determining whether or not to include a top-level directory when `--extract-all` is
+  passed has been fixed. Previously, if the directory where the archive was extracted into was not
+  empty, then when `ubi` checked for whether it should ignore a top-level directory in the archive,
+  it would see these files, and never ignore the top-level directory. Now it extracts the archive
+  into a temp directory and checks that. This makes the behavior of `--extract-all` more
+  predictable, and it means you can use to, for example, extract an archive into an existing tree,
+  like `~/.local`, that contains `~/.local/bin`, `~/.local/share`, etc. Reported by @jinnatar (Jinna
+  Kiisuo). GH #106.
 - Changed dependency declarations to mostly eliminate default features, which removed quite a few
   transitive dependencies.
 

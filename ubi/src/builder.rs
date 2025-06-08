@@ -262,7 +262,10 @@ impl<'a> UbiBuilder<'a> {
     fn new_installer(&self, project_name: &str, platform: &Platform) -> Result<Box<dyn Installer>> {
         if self.extract_all {
             let install_path = install_path(self.install_dir.as_deref(), None)?;
-            Ok(Box::new(ArchiveInstaller::new(install_path)))
+            Ok(Box::new(ArchiveInstaller::new(
+                project_name.to_string(),
+                install_path,
+            )))
         } else {
             let expect_exe_stem_name = expect_exe_stem_name(self.exe, project_name);
             let install_path = install_path(

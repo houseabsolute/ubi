@@ -520,6 +520,42 @@ fn integration_tests() -> Result<()> {
         make_exe_pathbuf(&["bin", "slangc"]),
     )?;
 
+    {
+        if run_test(
+            td.path(),
+            ubi.as_ref(),
+            &[
+                "--project",
+                "neovim/neovim",
+                "--tag",
+                "v0.11.2",
+                "--extract-all",
+                "--in",
+                ".",
+            ],
+            make_exe_pathbuf(&["bin", "nvim"]),
+        )? {
+            const DYN_LIB: &str = if cfg!(windows) { "c.dll" } else { "c.so" };
+
+            let root = td.path().to_path_buf();
+
+            let build_path = |components| {
+                let mut pb = root.clone();
+                pb.extend(components);
+                pb
+            };
+
+            let mut extra_paths = vec![build_path(vec!["lib", "nvim", "parser", DYN_LIB])];
+            if cfg!(target_os = "linux") {
+                extra_paths.push(build_path(vec!["share", "applications", "nvim.desktop"]));
+            }
+
+            for p in extra_paths {
+                assert!(fs::exists(&p)?, "expected file to exist: {}", p.display());
+            }
+        }
+    }
+
     Ok(())
 }
 
@@ -563,7 +599,7 @@ fn run_test(td: &Path, cmd: &Path, args: &[&str], expect: PathBuf) -> Result<boo
     }
 
     check_command_result(cmd, &args, debug)?;
-    if let Err(e) = check_installed_binary(expect) {
+    if let Err(e) = check_installed_binary(td, expect) {
         dump_tree(td)?;
         return Err(e);
     }
@@ -695,13 +731,17 @@ fn signal_from_status(_: process::ExitStatus) -> i32 {
     0
 }
 
-fn check_installed_binary(mut expect: PathBuf) -> Result<()> {
+fn check_installed_binary(td: &Path, mut expect: PathBuf) -> Result<()> {
     if cfg!(windows) && !expect.to_string_lossy().ends_with(".exe") {
         expect.set_extension("exe");
     }
 
     let expect_str = expect.to_string_lossy();
 
+    let exists = fs::exists(&expect)?;
+    if !exists {
+        dump_tree(td)?;
+    }
     assert!(fs::exists(&expect)?);
     let meta = fs::metadata(&expect).context(format!("getting fs metadata for {expect_str}"))?;
     assert!(meta.is_file(), "downloaded file into expected location");

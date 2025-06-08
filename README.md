@@ -215,6 +215,43 @@ only be considered if the file's mode includes an executable bit. On Windows, it
 match that is a `.bat` or `.exe` file, and the extracted file will be renamed to `precious.bat` or
 `precious.exe`.
 
+## Installing an Entire Archive
+
+When you pass `--extract-all`, `ubi` will install the entire contents of the archive instead of just
+looking for an executable. When it does this, it will sometimes skip the top level directory of an
+archive. So, for example, let's assume you invoke `ubi` like this:
+
+```
+$> ubi --project some-org/borkinator --extract-all --in ~/.local
+```
+
+If the release archive is structured like this:
+
+```
+└── borkinator-linux-x86_64
+    ├── bin
+    │   └── borkinator
+    ├── lib
+    │   └── borkinator
+    │      └── parser
+    │           └── c.so
+```
+
+It will be installed like this:
+
+```
+└── .local
+    ├── bin
+    │   └── borkinator
+    ├── lib
+    │   └── borkinator
+    │       └── parser
+    │           └── c.so
+```
+
+In other words, the installer essentially treats the top-level directory in the archive as if it
+doesn't exist.
+
 ## Upgrading `ubi`
 
 You can run `ubi --self-upgrade` to upgrade `ubi` using `ubi`. Note that you must have write

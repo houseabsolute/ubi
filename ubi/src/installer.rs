@@ -5,7 +5,7 @@ use bzip2::read::BzDecoder;
 use flate2::read::GzDecoder;
 use log::{debug, info};
 use std::{
-    collections::HashSet,
+    collections::HashMap,
     ffi::OsString,
     fmt::Debug,
     fs::{self, create_dir_all, File},
@@ -13,6 +13,8 @@ use std::{
     path::{Path, PathBuf},
 };
 use strum::IntoEnumIterator;
+use tempfile::{tempdir, TempDir};
+use walkdir::WalkDir;
 use xz2::read::XzDecoder;
 use zip::{read::ZipFile, ZipArchive};
 
@@ -35,6 +37,7 @@ pub(crate) struct ExeInstaller {
 
 #[derive(Debug)]
 pub(crate) struct ArchiveInstaller {
+    project_name: String,
     install_root: PathBuf,
 }
 
@@ -367,13 +370,16 @@ impl Installer for ExeInstaller {
 }
 
 impl ArchiveInstaller {
-    pub(crate) fn new(install_path: PathBuf) -> Self {
+    pub(crate) fn new(project_name: String, install_path: PathBuf) -> Self {
         ArchiveInstaller {
+            project_name,
             install_root: install_path,
         }
     }
 
     fn extract_entire_archive(&self, downloaded_file: &Path) -> Result<()> {
+        let td = tempdir()?;
+
         match Extension::from_path(downloaded_file)? {
             Some(
                 Extension::Tar
@@ -384,8 +390,8 @@ impl ArchiveInstaller {
                 | Extension::Tbz
                 | Extension::Tgz
                 | Extension::Txz,
-            ) => self.extract_entire_tarball(downloaded_file)?,
-            Some(Extension::Zip) => self.extract_entire_zip(downloaded_file)?,
+            ) => Self::extract_entire_tarball(downloaded_file, td.path())?,
+            Some(Extension::Zip) => Self::extract_entire_zip(downloaded_file, td.path())?,
             _ => {
                 return Err(anyhow!(
                     concat!(
@@ -397,30 +403,78 @@ impl ArchiveInstaller {
             }
         }
 
-        if self.should_move_up_one_dir()? {
-            Self::move_contents_up_one_dir(&self.install_root)?;
-        } else {
-            debug!("extracted archive did not contain a common top-level directory");
+        self.copy_extracted_contents(&td)?;
+
+        Ok(())
+    }
+
+    fn extract_entire_tarball(downloaded_file: &Path, into: &Path) -> Result<()> {
+        debug!(
+            "extracting entire tarball at {} to {}",
+            downloaded_file.display(),
+            into.display()
+        );
+
+        let mut arch = tar_reader_for(downloaded_file)?;
+        arch.unpack(into)?;
+
+        Ok(())
+    }
+
+    fn extract_entire_zip(downloaded_file: &Path, into: &Path) -> Result<()> {
+        debug!(
+            "extracting entire zip file at {} to {}",
+            downloaded_file.display(),
+            into.display(),
+        );
+
+        let mut zip = ZipArchive::new(open_file(downloaded_file)?)?;
+        Ok(zip.extract(into)?)
+    }
+
+    fn copy_extracted_contents(&self, td: &TempDir) -> Result<()> {
+        let copy_from = match self.extracted_contents_top_level_dir(td.path())? {
+            Some(dir) => dir,
+            None => td.path().to_path_buf(),
+        };
+
+        debug!(
+            "copying extracted contents from {} to {}",
+            copy_from.display(),
+            self.install_root.display(),
+        );
+
+        for entry in WalkDir::new(&copy_from).into_iter().filter_map(Result::ok) {
+            let full_path = entry.path();
+            let target_path = self.install_root.join(full_path.strip_prefix(&copy_from)?);
+
+            if full_path.is_dir() {
+                debug!("creating directory {}", target_path.display(),);
+                create_dir_all(&target_path)?;
+            } else {
+                debug!(
+                    "copying file {} to {}",
+                    full_path.display(),
+                    target_path.display(),
+                );
+                fs::copy(full_path, target_path)?;
+            }
         }
 
         Ok(())
     }
 
-    fn extract_entire_tarball(&self, downloaded_file: &Path) -> Result<()> {
-        debug!("extracting entire tarball at {}", downloaded_file.display(),);
-
-        let mut arch = tar_reader_for(downloaded_file)?;
-        arch.unpack(&self.install_root)?;
-
-        Ok(())
-    }
-
-    // We do this because some projects use a top-level dir like `project-x86-64-Linux`, which is
-    // pretty annoying to work with. In this case, it's a lot easier to install this into
-    // `~/bin/project` so the directory tree ends up with the same structure on all platforms.
-    fn should_move_up_one_dir(&self) -> Result<bool> {
-        let mut prefixes: HashSet<OsString> = HashSet::new();
-        for entry in fs::read_dir(&self.install_root).with_context(|| {
+    // We check for this because some projects use a top-level dir like `project-x86-64-Linux`,
+    // which is pretty annoying to work with. In this case, it's a lot friendlier to install this
+    // into `~/bin/project`, so the directory tree ends up with the same structure on all platforms.
+    fn extracted_contents_top_level_dir(&self, contents_dir: &Path) -> Result<Option<PathBuf>> {
+        let mut prefixes: HashMap<PathBuf, OsString> = HashMap::new();
+        debug!(
+            "checking whether extracted contents at {} share a single-top level dir with the project name `{}`",
+            contents_dir.display(),
+            &self.project_name,
+        );
+        for entry in fs::read_dir(contents_dir).with_context(|| {
             format!(
                 "could not read {} after unpacking the tarball into this directory",
                 self.install_root.display(),
@@ -430,68 +484,46 @@ impl ArchiveInstaller {
                 .context("could not get path for tarball entry")?
                 .path();
 
+            debug!("found entry in temp dir: {}", full_path.display());
+
             // If the entry is a file in the top-level of the install dir, then there's no common
             // directory prefix.
             if full_path.is_file()
                 && full_path
                     .parent()
-                    .expect("path of entry in install root somehow has no parent")
-                    == self.install_root
+                    .expect("path of entry in temp dir somehow has no parent")
+                    == contents_dir
             {
-                return Ok(false);
+                return Ok(None);
             }
 
-            let path = if let Ok(path) = full_path.strip_prefix(&self.install_root) {
-                path
-            } else {
-                &full_path
+            let Ok(path) = full_path.strip_prefix(contents_dir) else {
+                return Err(anyhow!(
+                    "temp dir {} contains a path {} that somehow isn't in itself",
+                    contents_dir.display(),
+                    full_path.display(),
+                ));
             };
 
             if let Some(prefix) = path.components().next() {
-                prefixes.insert(prefix.as_os_str().to_os_string());
+                prefixes.insert(full_path.clone(), prefix.as_os_str().to_os_string());
             } else {
                 return Err(anyhow!("directory entry has no path components"));
             }
         }
 
-        // If all the entries
-        Ok(prefixes.len() == 1)
-    }
-
-    fn move_contents_up_one_dir(path: &Path) -> Result<()> {
-        let mut entries = fs::read_dir(path)?;
-        let top_level_path = if let Some(dir_entry) = entries.next() {
-            let dir_entry = dir_entry?;
-            dir_entry.path()
-        } else {
-            return Err(anyhow!("no directory found in path"));
-        };
-
-        debug!(
-            "moving extracted archive contents up one directory from {} to {}",
-            top_level_path.display(),
-            path.display(),
-        );
-
-        for entry in fs::read_dir(&top_level_path)? {
-            let entry = entry?;
-            let target = path.join(entry.file_name());
-            fs::rename(entry.path(), target)?;
+        if prefixes.len() == 1 {
+            let (path, prefix) = prefixes.into_iter().next().unwrap();
+            debug!(
+                "the extracted archive has a single common prefix: `{}`",
+                prefix.display()
+            );
+            return Ok(Some(path));
         }
 
-        fs::remove_dir(top_level_path)?;
+        debug!("the extracted archive has multiple top-level files or directories");
 
-        Ok(())
-    }
-
-    fn extract_entire_zip(&self, downloaded_file: &Path) -> Result<()> {
-        debug!(
-            "extracting entire zip file at {}",
-            downloaded_file.display(),
-        );
-
-        let mut zip = ZipArchive::new(open_file(downloaded_file)?)?;
-        Ok(zip.extract(&self.install_root)?)
+        Ok(None)
     }
 }
 
@@ -665,7 +697,7 @@ mod tests {
         path_with_subdir.extend(&["subdir", "project"]);
 
         for install_root in [path_without_subdir, path_with_subdir] {
-            let installer = ArchiveInstaller::new(install_root.clone());
+            let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
             installer.install(&Download {
                 // It doesn't matter what we use here. We're not actually going to
                 // put anything in this temp dir.
@@ -699,7 +731,7 @@ mod tests {
         path_with_subdir.extend(&["subdir", "project"]);
 
         for install_root in [path_without_subdir, path_with_subdir] {
-            let installer = ArchiveInstaller::new(install_root.clone());
+            let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
             installer.install(&Download {
                 // It doesn't matter what we use here. We're not actually going to
                 // put anything in this temp dir.
@@ -719,7 +751,7 @@ mod tests {
     }
 
     #[test]
-    fn archive_installer_no_root_path() -> Result<()> {
+    fn archive_installer_no_shared_root_path() -> Result<()> {
         let td = tempdir()?;
         let mut path_without_subdir = td.path().to_path_buf();
         path_without_subdir.push("project");
@@ -727,7 +759,7 @@ mod tests {
         path_with_subdir.extend(&["subdir", "project"]);
 
         for install_root in [path_without_subdir, path_with_subdir] {
-            let installer = ArchiveInstaller::new(install_root.clone());
+            let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
             installer.install(&Download {
                 // It doesn't matter what we use here. We're not actually going to
                 // put anything in this temp dir.
@@ -749,6 +781,46 @@ mod tests {
             let readme = install_root.join("README.md");
             assert!(readme.exists());
             assert!(readme.is_file());
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn archive_installer_to_existing_tree() -> Result<()> {
+        let td = tempdir()?;
+        let mut path_without_subdir = td.path().to_path_buf();
+        path_without_subdir.push("project");
+        let mut path_with_subdir = td.path().to_path_buf();
+        path_with_subdir.extend(&["subdir", "project"]);
+
+        {
+            let install_root = path_without_subdir;
+            //, path_with_subdir] {
+            let bin_dir = install_root.join("bin");
+            create_dir_all(&bin_dir)?;
+
+            let share_dir = install_root.join("share");
+            create_dir_all(&share_dir)?;
+
+            let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
+            installer.install(&Download {
+                // It doesn't matter what we use here. We're not actually going to
+                // put anything in this temp dir.
+                _temp_dir: tempdir()?,
+                archive_path: PathBuf::from("test-data/shared-root.tar.gz"),
+            })?;
+
+            assert!(install_root.exists());
+            assert!(install_root.is_dir());
+
+            let exe = bin_dir.join("project");
+            assert!(exe.exists());
+            assert!(exe.is_file());
+
+            let rsrc = share_dir.join("resources.toml");
+            assert!(rsrc.exists());
+            assert!(rsrc.is_file());
         }
 
         Ok(())
