@@ -302,8 +302,8 @@ platform-specific packages for your platforms, you should probably consider usin
 
 Isn't literally anything else better than this?
 
-In all seriousness, `ubi` does not execute arbitrary code when you install anything. That seems like
-a good thing.
+In all seriousness, `ubi` does not download arbitrary code from a random website and execute it
+locally when you install anything. That seems like a good thing.
 
 ## Linting and Tidying this Code
 
