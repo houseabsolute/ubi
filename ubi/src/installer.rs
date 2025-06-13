@@ -148,7 +148,8 @@ impl ExeInstaller {
         let mut possible_matches: Vec<usize> = vec![];
         for (i, entry) in arch.entries()?.enumerate() {
             let entry = entry?;
-            if !entry.header().entry_type().is_file() {
+            let entry_type = entry.header().entry_type();
+            if !entry_type.is_file() && !entry_type.is_symlink() {
                 continue;
             }
 
