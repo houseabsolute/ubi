@@ -1,3 +1,7 @@
+## 0.7.1 2025-06-13
+
+- Set the minimum support Rust version (MSRV) of the `ubi` crate to 1.85.
+
 ## 0.7.0 2025-06-08
 
 - Added a new `--matching-regex` CLI flag and `UbiBuilder::matching_regex` method. This regex is
