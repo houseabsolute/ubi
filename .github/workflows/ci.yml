@@ -164,3 +164,17 @@ jobs:
       - name: Run tests
         shell: sh
         run: cargo test --locked
+
+  msrv:
+    name: Verify MSRV
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-msrv
+        run: |
+          cargo run -p ubi-cli -- --project foresterre/cargo-msrv --in ..
+      - name: Verify MSRV
+        run: |
+          cd ubi
+          PATH=../../:"$PATH" cargo msrv verify
