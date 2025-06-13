@@ -516,7 +516,7 @@ impl ArchiveInstaller {
             let (path, prefix) = prefixes.into_iter().next().unwrap();
             debug!(
                 "the extracted archive has a single common prefix: `{}`",
-                prefix.display()
+                prefix.to_string_lossy(),
             );
             return Ok(Some(path));
         }
