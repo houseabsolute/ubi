@@ -340,8 +340,36 @@ fn parse_project_name(
         );
     };
 
-    let parts = parsed.path().split('/').collect::<Vec<_>>();
-    if parts.len() < 3 || parts[1].is_empty() || parts[2].is_empty() {
+    let forge_type = ForgeType::from_url(&parsed);
+
+    let mut parts = parsed.path().split('/').collect::<Vec<_>>();
+
+    if parts.len() < 3 {
+        return Err(anyhow!("could not parse project from {from}"));
+    }
+
+    // GitLab supports deeply nested projects (more than org/project)
+    if forge_type == ForgeType::GitLab {
+        parts.remove(0);
+
+        // Remove the trailing / if there is one
+        if let Some(last) = parts.last() {
+            if last.is_empty() {
+                parts.pop();
+            }
+        }
+
+        if !parts.iter().all(|s| !s.is_empty()) {
+            return Err(anyhow!("could not parse project from {from}"));
+        }
+
+        return Ok((
+            parts.join("/"),
+            forge_type,
+        ));
+    }
+
+    if parts[1].is_empty() || parts[2].is_empty() {
         return Err(anyhow!("could not parse org and repo name from {from}"));
     }
 
@@ -353,7 +381,7 @@ fn parse_project_name(
         format!("{org}/{proj}"),
         // If the forge argument was not `None` this is kind of pointless, but it should never
         // be _wrong_ in that case.
-        ForgeType::from_url(&parsed),
+        forge_type,
     ))
 }
 
@@ -478,6 +506,12 @@ mod test {
         "houseabsolute/precious",
         "foo";
         "passed exe"
+    )]
+    #[test_case(
+        None,
+        "https://gitlab.com/gitlab-com/gl-infra/terra-transformer",
+        "terra-transformer";
+        "gitlab"
     )]
     fn expect_exe_stem_name(
         exe: Option<&'static str>,
