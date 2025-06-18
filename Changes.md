@@ -1,3 +1,8 @@
+## 0.7.2
+
+- - Added support for release artifacts with a `.jar` extension. Based on PR #126 from @dpassen
+    (Derek Passen).
+
 ## 0.7.1 2025-06-13
 
 - Set the minimum support Rust version (MSRV) of the `ubi` crate to 1.85.
