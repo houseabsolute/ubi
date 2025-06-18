@@ -149,6 +149,7 @@ doesn't match one of the following:
 - `.exe` (Windows only)
 - `.gz`
 - `.jar`
+- `.phar`
 - `.pyz`
 - `.tar`
 - `.tar.bz`

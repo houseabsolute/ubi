@@ -90,6 +90,7 @@ impl ExeInstaller {
                 | Extension::Bat
                 | Extension::Exe
                 | Extension::Jar
+                | Extension::Phar
                 | Extension::Pyz,
             )
             | None => Ok(Some(self.copy_executable(downloaded_file)?)),
@@ -582,6 +583,7 @@ mod tests {
     #[test_case("test-data/project.exe", Some("exe"))]
     #[test_case("test-data/project.gz", None)]
     #[test_case("test-data/project.jar", Some("jar"))]
+    #[test_case("test-data/project.phar", Some("phar"))]
     #[test_case("test-data/project.pyz", Some("pyz"))]
     #[test_case("test-data/project.tar", None)]
     #[test_case("test-data/project.tar.bz", None)]
