@@ -1,4 +1,4 @@
-## 0.7.2
+## 0.7.2 2025-06-19
 
 - - Added support for release artifacts with a `.jar` extension. Based on PR #126 from @dpassen
     (Derek Passen).
