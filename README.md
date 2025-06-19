@@ -59,7 +59,7 @@ curl --silent --location \
     TAG=v0.0.15 sh
 ```
 
-**Note for GitHub Enterprise:** If you are running this script from an Action in a GitHub Enteprise
+**Note for GitHub Enterprise:** If you are running this script from an Action in a GitHub Enterprise
 installation, the `GITHUB_TOKEN` environment variable will be for that GH Enterprise setup. You will
 need to create a separate token for github.com, and explicitly pass that as your `GITHUB_TOKEN`.
 
