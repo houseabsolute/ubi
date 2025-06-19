@@ -1,6 +1,6 @@
 use std::env;
 
-use crate::{github::GitHub, gitlab::GitLab, ubi::Asset};
+use crate::{forgejo::Forgejo, github::GitHub, gitlab::GitLab, ubi::Asset};
 use anyhow::Result;
 use async_trait::async_trait;
 use log::debug;
@@ -21,6 +21,8 @@ pub enum ForgeType {
     GitHub,
     #[strum(serialize = "gitlab")]
     GitLab,
+    #[strum(serialize = "forgejo")]
+    Forgejo,
 }
 
 #[async_trait]
@@ -50,9 +52,11 @@ pub(crate) trait Forge: std::fmt::Debug {
 
 const GITHUB_DOMAIN: &str = "github.com";
 const GITLAB_DOMAIN: &str = "gitlab.com";
+const FORGEJO_DOMAIN: &str = "codegerg.org";
 
 const GITHUB_API_BASE: &str = "https://api.github.com";
 const GITLAB_API_BASE: &str = "https://gitlab.com/api/v4";
+const CODEBERG_API_BASE: &str = "https://codeberg.org/api/v1";
 
 impl ForgeType {
     pub(crate) fn from_url(url: &Url) -> ForgeType {
@@ -92,6 +96,7 @@ impl ForgeType {
         Ok(match self {
             ForgeType::GitHub => Box::new(GitHub::new(project_name, tag, api_base_url, token)),
             ForgeType::GitLab => Box::new(GitLab::new(project_name, tag, api_base_url, token)),
+            ForgeType::Forgejo => Box::new(Forgejo::new(project_name, tag, api_base_url, token)),
         })
     }
 
@@ -99,6 +104,7 @@ impl ForgeType {
         match self {
             ForgeType::GitHub => Url::parse(&format!("https://{GITHUB_DOMAIN}")).unwrap(),
             ForgeType::GitLab => Url::parse(&format!("https://{GITLAB_DOMAIN}")).unwrap(),
+            ForgeType::Forgejo => Url::parse(&format!("https://{FORGEJO_DOMAIN}")).unwrap(),
         }
     }
 
@@ -106,6 +112,9 @@ impl ForgeType {
         match self {
             ForgeType::GitHub => Url::parse(GITHUB_API_BASE).unwrap(),
             ForgeType::GitLab => Url::parse(GITLAB_API_BASE).unwrap(),
+            // The maintainers of Forgejo is Codeberg, hence why the URL
+            // doesn't align with the name of the Git forge.
+            ForgeType::Forgejo => Url::parse(CODEBERG_API_BASE).unwrap(),
         }
     }
 
@@ -113,6 +122,7 @@ impl ForgeType {
         match self {
             ForgeType::GitHub => &["GITHUB_TOKEN"],
             ForgeType::GitLab => &["CI_TOKEN", "GITLAB_TOKEN"],
+            ForgeType::Forgejo => &["FORGEJO_TOKEN"],
         }
     }
 
@@ -120,6 +130,7 @@ impl ForgeType {
         match self {
             ForgeType::GitHub => "GitHub",
             ForgeType::GitLab => "GitLab",
+            ForgeType::Forgejo => "Forgejo",
         }
     }
 }
