@@ -501,11 +501,7 @@ async fn matching_unusual_names() -> Result<()> {
             expect: "protoc-22.2-win64.zip",
         },
         Test {
-            platforms: &[
-                "i586-pc-windows-msvc",
-                "i686-pc-windows-gnu",
-                "i686-pc-windows-msvc",
-            ],
+            platforms: &["i686-pc-windows-gnu", "i686-pc-windows-msvc"],
             expect: "protoc-22.2-win32.zip",
         },
     ];
@@ -720,11 +716,7 @@ async fn jq_matching() -> Result<()> {
             expect: "jq-linux64",
         },
         Test {
-            platforms: &[
-                "i586-pc-windows-msvc",
-                "i686-pc-windows-gnu",
-                "i686-pc-windows-msvc",
-            ],
+            platforms: &["i686-pc-windows-gnu", "i686-pc-windows-msvc"],
             expect: "jq-win32.exe",
         },
     ];
