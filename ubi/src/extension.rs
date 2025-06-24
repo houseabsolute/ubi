@@ -30,6 +30,7 @@ pub(crate) enum Extension {
     Gz,
     Jar,
     Phar,
+    Py,
     Pyz,
     Tar,
     TarBz,
@@ -39,6 +40,7 @@ pub(crate) enum Extension {
     Tbz,
     Tgz,
     Txz,
+    Sh,
     Xz,
     Zip,
 }
@@ -54,7 +56,9 @@ impl Extension {
             Extension::Gz => ".gz",
             Extension::Jar => ".jar",
             Extension::Phar => ".phar",
+            Extension::Py => ".py",
             Extension::Pyz => ".pyz",
+            Extension::Sh => ".sh",
             Extension::Tar => ".tar",
             Extension::TarBz => ".tar.bz",
             Extension::TarBz2 => ".tar.bz2",
@@ -82,7 +86,9 @@ impl Extension {
             | Extension::Gz
             | Extension::Jar
             | Extension::Phar
+            | Extension::Py
             | Extension::Pyz
+            | Extension::Sh
             | Extension::Xz => false,
             Extension::Tar
             | Extension::TarBz
@@ -103,7 +109,9 @@ impl Extension {
             | Extension::Exe
             | Extension::Jar
             | Extension::Phar
-            | Extension::Pyz => true,
+            | Extension::Py
+            | Extension::Pyz
+            | Extension::Sh => true,
             Extension::Bz
             | Extension::Gz
             | Extension::Bz2
@@ -226,7 +234,9 @@ mod test {
     #[test_case("foo.gz", Ok(Some(Extension::Gz)))]
     #[test_case("foo.jar", Ok(Some(Extension::Jar)))]
     #[test_case("foo.phar", Ok(Some(Extension::Phar)))]
+    #[test_case("foo.py", Ok(Some(Extension::Py)))]
     #[test_case("foo.pyz", Ok(Some(Extension::Pyz)))]
+    #[test_case("foo.sh", Ok(Some(Extension::Sh)))]
     #[test_case("foo.tar", Ok(Some(Extension::Tar)))]
     #[test_case("foo.tar.bz", Ok(Some(Extension::TarBz)))]
     #[test_case("foo.tar.bz2", Ok(Some(Extension::TarBz2)))]

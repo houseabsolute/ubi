@@ -96,6 +96,7 @@ labels = ["default", "fast-tidy"]
 [commands.shellcheck]
 type = "lint"
 include = "**/*.sh"
+exclude = "ubi/test-data/project.sh"
 cmd = "shellcheck"
 ok_exit_codes = 0
 lint_failure_exit_codes = 1
@@ -103,6 +104,7 @@ lint_failure_exit_codes = 1
 [commands.shfmt]
 type = "both"
 include = "**/*.sh"
+exclude = "ubi/test-data/project.sh"
 cmd = ["shfmt", "--simplify", "--indent", "4"]
 lint_flags = "--diff"
 tidy_flags = "--write"
