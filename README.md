@@ -150,7 +150,9 @@ doesn't match one of the following:
 - `.gz`
 - `.jar`
 - `.phar`
+- `.py`
 - `.pyz`
+- `.sh`
 - `.tar`
 - `.tar.bz`
 - `.tar.bz2`

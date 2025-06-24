@@ -1,3 +1,8 @@
+## 0.7.3 2025-06-24
+
+- Added support for release artifacts with `.sh` and `.py` extension. Based on PR #127 from
+  @Finkregh (Oluf Lorenzen ).
+
 ## 0.7.2 2025-06-19
 
 - Added support for release artifacts with a `.phar` extension. Based on PR #126 from @dpassen
