@@ -4,7 +4,7 @@ use binstall_tar::Archive;
 use bzip2::read::BzDecoder;
 use flate2::read::GzDecoder;
 use log::{debug, info};
-use sevenz_rust2::{ArchiveReader, Password};
+use sevenz_rust2::{ArchiveEntry, ArchiveReader, Password};
 use std::{
     collections::HashMap,
     ffi::OsString,
@@ -494,7 +494,24 @@ impl ArchiveInstaller {
             into.display()
         );
 
-        Ok(sevenz_rust2::decompress_file(downloaded_file, into)?)
+        fn extract_fn(
+            entry: &ArchiveEntry,
+            reader: &mut dyn Read,
+            dest: &PathBuf,
+        ) -> Result<bool, sevenz_rust2::Error> {
+            sevenz_rust2::default_entry_extract_fn(entry, reader, dest)?;
+
+            #[cfg(target_family = "unix")]
+            set_permissions(dest.as_path(), Permissions::from_mode(0o755))?;
+
+            Ok(true)
+        }
+
+        Ok(sevenz_rust2::decompress_file_with_extract_fn(
+            downloaded_file,
+            into,
+            extract_fn,
+        )?)
     }
 
     fn extract_entire_zip(downloaded_file: &Path, into: &Path) -> Result<()> {
