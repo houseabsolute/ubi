@@ -520,6 +520,22 @@ fn integration_tests() -> Result<()> {
         make_exe_pathbuf(&["bin", "slangc"]),
     )?;
 
+    run_test(
+        td.path(),
+        ubi.as_ref(),
+        &[
+            "--project",
+            "ip7z/7zip",
+            "--tag",
+            "25.00",
+            "--exe",
+            "7za",
+            "--matching-regex",
+            r"extra\.7z",
+        ],
+        make_exe_pathbuf(&["bin", "7za"]),
+    )?;
+
     {
         if run_test(
             td.path(),
