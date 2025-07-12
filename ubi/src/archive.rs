@@ -48,6 +48,52 @@ impl<R: Read> ArchiveEntry for binstall_tar::Entry<'_, R> {
     }
 }
 
+pub(crate) struct SevenZipEntriesIterator<R: Read + io::Seek> {
+    archive: sevenz_rust2::ArchiveReader<R>,
+    current_index: usize,
+}
+
+impl<R: Read + io::Seek> SevenZipEntriesIterator<R> {
+    pub(crate) fn new(archive: sevenz_rust2::ArchiveReader<R>) -> Self {
+        Self {
+            archive,
+            current_index: 0,
+        }
+    }
+}
+
+impl<R: Read + io::Seek> Iterator for SevenZipEntriesIterator<R> {
+    type Item = Result<Box<dyn ArchiveEntry>, anyhow::Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let files = &self.archive.archive().files;
+        if self.current_index >= files.len() {
+            return None;
+        }
+
+        let entry = &files[self.current_index];
+
+        self.current_index += 1;
+
+        Some(Ok(Box::new(entry.clone())))
+    }
+}
+
+impl ArchiveEntry for sevenz_rust2::ArchiveEntry {
+    fn path(&self) -> Result<PathBuf> {
+        Ok(PathBuf::from(self.name()))
+    }
+
+    fn is_file(&self) -> bool {
+        !self.is_directory()
+    }
+
+    fn is_executable(&self) -> Result<Option<bool>> {
+        // SevenZip entries do not mark whether something is executable.
+        Ok(None)
+    }
+}
+
 pub(crate) struct ZipEntriesIterator<'a, R: Read + io::Seek> {
     archive: &'a mut zip::ZipArchive<R>,
     current_index: usize,
