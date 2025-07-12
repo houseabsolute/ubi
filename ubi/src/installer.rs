@@ -488,12 +488,6 @@ impl ArchiveInstaller {
     }
 
     fn extract_entire_7z(downloaded_file: &Path, into: &Path) -> Result<()> {
-        debug!(
-            "extracting entire 7z file at {} to {}",
-            downloaded_file.display(),
-            into.display()
-        );
-
         fn extract_fn(
             entry: &ArchiveEntry,
             reader: &mut dyn Read,
@@ -506,6 +500,12 @@ impl ArchiveInstaller {
 
             Ok(true)
         }
+
+        debug!(
+            "extracting entire 7z file at {} to {}",
+            downloaded_file.display(),
+            into.display()
+        );
 
         Ok(sevenz_rust2::decompress_file_with_extract_fn(
             downloaded_file,
