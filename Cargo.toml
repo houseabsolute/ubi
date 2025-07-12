@@ -31,6 +31,7 @@ reqwest = { version = "0.12.22", default-features = false, features = ["gzip", "
 serde = { version = "1.0.219", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.141", default-features = false }
 serial_test = { version = "3.2.0", default-features = false }
+sevenz-rust2 = { version = "0.17.1", default-features = false, features = ["util"] }
 strum = { version = "0.27.2", features = ["derive"] }
 tempfile = { version = "3.20.0", default-features = false }
 test-case = { version = "3.3.1", default-features = false }

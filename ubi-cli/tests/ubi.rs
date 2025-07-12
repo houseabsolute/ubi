@@ -552,6 +552,40 @@ fn integration_tests() -> Result<()> {
         make_exe_pathbuf(&["bin", "slangc"]),
     )?;
 
+    #[cfg(target_os = "windows")]
+    {
+        run_test(
+            td.path(),
+            ubi.as_ref(),
+            &[
+                "--project",
+                "ip7z/7zip",
+                "--tag",
+                "25.00",
+                "--exe",
+                "7za.exe",
+                "--matching-regex",
+                r"extra\.7z",
+            ],
+            make_exe_pathbuf(&["bin", "7za.exe"]),
+        )?;
+
+        run_test(
+            td.path(),
+            ubi.as_ref(),
+            &[
+                "--project",
+                "ip7z/7zip",
+                "--tag",
+                "25.00",
+                "--matching-regex",
+                r"extra\.7z",
+                "--extract-all",
+            ],
+            make_exe_pathbuf(&["bin", "7za.exe"]),
+        )?;
+    }
+
     {
         if run_test(
             td.path(),

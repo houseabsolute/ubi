@@ -1,5 +1,5 @@
 use crate::{
-    archive::{ArchiveEntry, TarEntriesIterator, ZipEntriesIterator},
+    archive::{ArchiveEntry, SevenZipEntriesIterator, TarEntriesIterator, ZipEntriesIterator},
     extension::Extension,
     ubi::Download,
 };
@@ -88,6 +88,9 @@ impl ExeInstaller {
                 self.unxz(downloaded_file)?;
                 Ok(None)
             }
+            Some(Extension::SevenZip) => {
+                Ok(Some(self.extract_executable_from_7z(downloaded_file)?))
+            }
             Some(Extension::Zip) => Ok(Some(self.extract_executable_from_zip(downloaded_file)?)),
             Some(
                 Extension::AppImage
@@ -150,6 +153,53 @@ impl ExeInstaller {
 
                 return Ok(install_path);
             }
+        }
+
+        self.could_not_find_archive_matches_error()
+    }
+
+    fn extract_executable_from_7z(&self, downloaded_file: &Path) -> Result<PathBuf> {
+        debug!(
+            "extracting executable from 7z file at {}",
+            downloaded_file.display()
+        );
+
+        let best_match = self.best_match_from_archive(
+            SevenZipEntriesIterator::new(sevenz_rust2::ArchiveReader::new(
+                open_file(downloaded_file)?,
+                sevenz_rust2::Password::empty(),
+            )?),
+            "sevenzip",
+        )?;
+
+        if let Some(idx) = best_match {
+            let mut archive = sevenz_rust2::ArchiveReader::new(
+                open_file(downloaded_file)?,
+                sevenz_rust2::Password::empty(),
+            )?;
+
+            let entry = archive.archive().files[idx].clone();
+            let path = entry.path()?;
+
+            let mut install_path = self.install_path.clone();
+            if let Some(ext) = Extension::from_path(&path)? {
+                if ext.should_preserve_extension_on_install() {
+                    debug!("preserving the {} extension on install", ext.extension());
+                    install_path.set_extension(ext.extension_without_dot());
+                }
+            }
+
+            debug!(
+                "extracting 7z entry named {} to {}",
+                path.display(),
+                install_path.display(),
+            );
+            let buffer = archive.read_file(entry.name())?;
+            self.create_install_dir()?;
+
+            File::create(&install_path)?.write_all(&buffer)?;
+
+            return Ok(install_path);
         }
 
         self.could_not_find_archive_matches_error()
@@ -377,6 +427,7 @@ impl ArchiveInstaller {
                 | Extension::Tgz
                 | Extension::Txz,
             ) => Self::extract_entire_tarball(downloaded_file, td.path())?,
+            Some(Extension::SevenZip) => Self::extract_entire_7z(downloaded_file, td.path())?,
             Some(Extension::Zip) => Self::extract_entire_zip(downloaded_file, td.path())?,
             _ => {
                 return Err(anyhow!(
@@ -405,6 +456,16 @@ impl ArchiveInstaller {
         arch.unpack(into)?;
 
         Ok(())
+    }
+
+    fn extract_entire_7z(downloaded_file: &Path, into: &Path) -> Result<()> {
+        debug!(
+            "extracting entire 7z file at {} to {}",
+            downloaded_file.display(),
+            into.display()
+        );
+
+        Ok(sevenz_rust2::decompress_file(downloaded_file, into)?)
     }
 
     fn extract_entire_zip(downloaded_file: &Path, into: &Path) -> Result<()> {
@@ -561,6 +622,7 @@ mod tests {
     use test_case::test_case;
     use test_log::test;
 
+    #[test_case("test-data/project.7z", None)]
     #[test_case("test-data/project.AppImage", Some("AppImage"))]
     #[test_case("test-data/project.bat", Some("bat"))]
     #[test_case("test-data/project.bz", None)]
@@ -605,6 +667,7 @@ mod tests {
 
     // These tests check that we look for project.bat and project.exe in archive files when running
     // on Windows.
+    #[test_case("test-data/windows-project-exe.7z", "exe")]
     #[test_case("test-data/windows-project-bat.tar.gz", "bat")]
     #[test_case("test-data/windows-project-exe.tar.gz", "exe")]
     #[test_case("test-data/windows-project-bat.zip", "bat")]
@@ -670,6 +733,7 @@ mod tests {
         Ok(())
     }
 
+    #[test_case("test-data/project.7z")]
     #[test_case("test-data/project.tar")]
     #[test_case("test-data/project.tar.bz")]
     #[test_case("test-data/project.tar.bz2")]
