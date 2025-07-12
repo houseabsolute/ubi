@@ -189,9 +189,9 @@ impl ExeInstaller {
 
         let mut archive = ArchiveReader::new(open_file(downloaded_file)?, Password::empty())?;
 
-        if let Some(file_name) = self.best_match_from_7z_archive(&archive)? {
+        if let Some(file_name) = self.best_match_from_7z_archive(&archive) {
             let mut install_path = self.install_path.clone();
-            if let Some(ext) = Extension::from_path(&PathBuf::from(file_name))? {
+            if let Some(ext) = Extension::from_path(&PathBuf::from(&file_name))? {
                 if ext.should_preserve_extension_on_install() {
                     debug!("preserving the {} extension on install", ext.extension());
                     install_path.set_extension(ext.extension_without_dot());
@@ -203,7 +203,7 @@ impl ExeInstaller {
                 file_name,
                 install_path.display(),
             );
-            let buffer = archive.read_file(&file_name.to_owned())?;
+            let buffer = archive.read_file(&file_name)?;
             self.create_install_dir()?;
 
             File::create(&install_path)?.write_all(&buffer)?;
@@ -214,11 +214,8 @@ impl ExeInstaller {
         self.could_not_find_archive_matches_error()
     }
 
-    fn best_match_from_7z_archive<'a>(
-        &self,
-        archive: &'a ArchiveReader<File>,
-    ) -> Result<Option<&'a str>> {
-        let mut possible_matches: Vec<&str> = vec![];
+    fn best_match_from_7z_archive(&self, archive: &ArchiveReader<File>) -> Option<String> {
+        let mut possible_matches: Vec<String> = vec![];
 
         for file in &archive.archive().files {
             if file.is_directory() {
@@ -230,16 +227,16 @@ impl ExeInstaller {
                 if let Some(file_name) = file_name.to_str() {
                     if self.archive_member_is_exact_match(file_name) {
                         debug!("found 7z file entry with exact match: {file_name}");
-                        return Ok(Some(file.name()));
+                        return Some(file.name().to_string());
                     } else if self.archive_member_is_partial_match(file_name) {
                         debug!("found 7z file entry with partial match: {file_name}");
-                        possible_matches.push(file.name());
+                        possible_matches.push(file.name().to_string());
                     }
                 }
             }
         }
 
-        Ok(possible_matches.into_iter().next())
+        possible_matches.into_iter().next()
     }
 
     fn extract_executable_from_zip(&self, downloaded_file: &Path) -> Result<PathBuf> {

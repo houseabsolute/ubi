@@ -529,7 +529,7 @@ fn integration_tests() -> Result<()> {
             "--tag",
             "25.00",
             "--exe",
-            "7za",
+            if cfg!(windows) { "7za" } else { "7za.exe" },
             "--matching-regex",
             r"extra\.7z",
         ],
