@@ -533,7 +533,7 @@ fn integration_tests() -> Result<()> {
             "--matching-regex",
             r"extra\.7z",
         ],
-        make_exe_pathbuf(&["bin", "7za"]),
+        make_exe_pathbuf(&["bin", if cfg!(windows) { "7za" } else { "7za.exe" }]),
     )?;
 
     {
