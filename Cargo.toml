@@ -15,7 +15,7 @@ anyhow = { version = "1.0.98", default-features = false }
 async-trait = { version = "0.1.88", default-features = false }
 binstall-tar = { version = "0.4.42", default-features = false }
 bzip2 = { version = "0.6.0" }
-clap = { version = "4.5.40", default-features = false, features = ["std", "wrap_help"] }
+clap = { version = "4.5.41", default-features = false, features = ["std", "wrap_help"] }
 document-features = { version = "0.2" }
 # Used in some test code which can't use test_log.
 env_logger = { version = "0.11.8", default-features = false }
@@ -27,16 +27,16 @@ log = { version = "0.4.27", default-features = false }
 mockito = { version = "1.7.0", default-features = false }
 platforms = { version = "3.6.0" }
 regex = { version = "1.11.1", default-features = false }
-reqwest = { version = "0.12.20", default-features = false, features = ["gzip", "json"] }
+reqwest = { version = "0.12.22", default-features = false, features = ["gzip", "json"] }
 serde = { version = "1.0.219", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.140", default-features = false }
 serial_test = { version = "3.2.0", default-features = false }
 strum = { version = "0.27.1", features = ["derive"] }
 tempfile = { version = "3.20.0", default-features = false }
 test-case = { version = "3.3.1", default-features = false }
-test-log = { version = "0.2.17", default-features = false }
+test-log = { version = "0.2.18", default-features = false }
 thiserror = { version = "2.0.12" }
-tokio = { version = "1.45.1", default-features = false, features = ["macros", "rt"] }
+tokio = { version = "1.46.1", default-features = false, features = ["macros", "rt"] }
 url = { version = "2.5.4", default-features = false, features = ["serde"] }
 walkdir = { version = "2.5.0", default-features = false }
 which = { version = "8.0.0" }
