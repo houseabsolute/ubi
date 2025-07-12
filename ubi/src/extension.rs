@@ -90,10 +90,10 @@ impl Extension {
             | Extension::Phar
             | Extension::Py
             | Extension::Pyz
-            | Extension::SevenZip
             | Extension::Sh
             | Extension::Xz => false,
-            Extension::Tar
+            Extension::SevenZip
+            | Extension::Tar
             | Extension::TarBz
             | Extension::TarBz2
             | Extension::TarGz

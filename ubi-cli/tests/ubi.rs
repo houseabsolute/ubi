@@ -520,6 +520,9 @@ fn integration_tests() -> Result<()> {
         make_exe_pathbuf(&["bin", "slangc"]),
     )?;
 
+    // This project provides a Windows-only release that includes a .7z archive containing some
+    // executables. The presence of the .exe file is used to verify that the archive was
+    // successfully extracted.
     run_test(
         td.path(),
         ubi.as_ref(),
@@ -532,6 +535,21 @@ fn integration_tests() -> Result<()> {
             if cfg!(windows) { "7za" } else { "7za.exe" },
             "--matching-regex",
             r"extra\.7z",
+        ],
+        make_exe_pathbuf(&["bin", if cfg!(windows) { "7za" } else { "7za.exe" }]),
+    )?;
+
+    run_test(
+        td.path(),
+        ubi.as_ref(),
+        &[
+            "--project",
+            "ip7z/7zip",
+            "--tag",
+            "25.00",
+            "--matching-regex",
+            r"extra\.7z",
+            "--extract-all",
         ],
         make_exe_pathbuf(&["bin", if cfg!(windows) { "7za" } else { "7za.exe" }]),
     )?;
