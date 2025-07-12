@@ -6,6 +6,8 @@ on:
   release:
     types: [published]
 
+permissions: read-all
+
 env:
   GITHUB_TOKEN: ${{ github.token }}
 

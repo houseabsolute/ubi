@@ -1,9 +1,14 @@
 name: Tests and release
+
 on: [push, pull_request]
+
+permissions: read-all
+
 env:
   CRATE_NAME: ubi
   GITHUB_TOKEN: ${{ github.token }}
   RUST_BACKTRACE: 1
+
 jobs:
   test-matrix:
     name: ${{ matrix.platform.os-name }} with rust ${{ matrix.toolchain }}

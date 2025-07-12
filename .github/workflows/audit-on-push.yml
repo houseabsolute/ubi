@@ -6,6 +6,8 @@ on:
       - "**/Cargo.toml"
       - "**/Cargo.lock"
 
+permissions: read-all
+
 jobs:
   security_audit:
     runs-on: ubuntu-24.04

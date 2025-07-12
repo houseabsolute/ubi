@@ -2,6 +2,8 @@ name: Linting
 
 on: [push, pull_request]
 
+permissions: read-all
+
 env:
   CRATE_NAME: precious
   GITHUB_TOKEN: ${{ github.token }}
