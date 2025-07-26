@@ -32,6 +32,7 @@ pub(crate) enum Extension {
     Phar,
     Py,
     Pyz,
+    SevenZip,
     Tar,
     TarBz,
     TarBz2,
@@ -58,6 +59,7 @@ impl Extension {
             Extension::Phar => ".phar",
             Extension::Py => ".py",
             Extension::Pyz => ".pyz",
+            Extension::SevenZip => ".7z",
             Extension::Sh => ".sh",
             Extension::Tar => ".tar",
             Extension::TarBz => ".tar.bz",
@@ -90,7 +92,8 @@ impl Extension {
             | Extension::Pyz
             | Extension::Sh
             | Extension::Xz => false,
-            Extension::Tar
+            Extension::SevenZip
+            | Extension::Tar
             | Extension::TarBz
             | Extension::TarBz2
             | Extension::TarGz
@@ -115,6 +118,7 @@ impl Extension {
             Extension::Bz
             | Extension::Gz
             | Extension::Bz2
+            | Extension::SevenZip
             | Extension::Tar
             | Extension::TarBz
             | Extension::TarBz2
@@ -238,6 +242,7 @@ mod test {
     #[test_case("foo.pyz", Ok(Some(Extension::Pyz)))]
     #[test_case("foo.sh", Ok(Some(Extension::Sh)))]
     #[test_case("foo.tar", Ok(Some(Extension::Tar)))]
+    #[test_case("foo.7z", Ok(Some(Extension::SevenZip)))]
     #[test_case("foo.tar.bz", Ok(Some(Extension::TarBz)))]
     #[test_case("foo.tar.bz2", Ok(Some(Extension::TarBz2)))]
     #[test_case("foo.tar.gz", Ok(Some(Extension::TarGz)))]

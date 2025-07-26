@@ -1051,6 +1051,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "lzma-rust2"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e004a649120b31c06728257815826e075f638502ba49a9677c3c112e324e044d"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
 name = "lzma-sys"
 version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1709,6 +1718,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "sevenz-rust2"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5375315e26d60d20f13d74c5bb0b6b627d334b68aa63f0d6d33d828af499d8d2"
+dependencies = [
+ "byteorder",
+ "crc32fast",
+ "js-sys",
+ "lzma-rust2",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "sha1"
 version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2105,6 +2127,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
+ "sevenz-rust2",
  "strum",
  "tempfile",
  "test-case",

@@ -4,6 +4,7 @@ use binstall_tar::Archive;
 use bzip2::read::BzDecoder;
 use flate2::read::GzDecoder;
 use log::{debug, info};
+use sevenz_rust2::{ArchiveEntry, ArchiveReader, Password};
 use std::{
     collections::HashMap,
     ffi::OsString,
@@ -83,6 +84,9 @@ impl ExeInstaller {
             Some(Extension::Xz) => {
                 self.unxz(downloaded_file)?;
                 Ok(None)
+            }
+            Some(Extension::SevenZip) => {
+                Ok(Some(self.extract_executable_from_7z(downloaded_file)?))
             }
             Some(Extension::Zip) => Ok(Some(self.extract_executable_from_zip(downloaded_file)?)),
             Some(
@@ -175,6 +179,64 @@ impl ExeInstaller {
         }
 
         Ok(possible_matches.into_iter().next())
+    }
+
+    fn extract_executable_from_7z(&self, downloaded_file: &Path) -> Result<PathBuf> {
+        debug!(
+            "extracting executable from 7z file at {}",
+            downloaded_file.display()
+        );
+
+        let mut archive = ArchiveReader::new(open_file(downloaded_file)?, Password::empty())?;
+
+        if let Some(file_name) = self.best_match_from_7z_archive(&archive) {
+            let mut install_path = self.install_path.clone();
+            if let Some(ext) = Extension::from_path(&PathBuf::from(&file_name))? {
+                if ext.should_preserve_extension_on_install() {
+                    debug!("preserving the {} extension on install", ext.extension());
+                    install_path.set_extension(ext.extension_without_dot());
+                }
+            }
+
+            debug!(
+                "extracting 7z entry named {} to {}",
+                file_name,
+                install_path.display(),
+            );
+            let buffer = archive.read_file(&file_name)?;
+            self.create_install_dir()?;
+
+            File::create(&install_path)?.write_all(&buffer)?;
+
+            return Ok(install_path);
+        }
+
+        self.could_not_find_archive_matches_error()
+    }
+
+    fn best_match_from_7z_archive(&self, archive: &ArchiveReader<File>) -> Option<String> {
+        let mut possible_matches: Vec<String> = vec![];
+
+        for file in &archive.archive().files {
+            if file.is_directory() {
+                continue;
+            }
+
+            let path = PathBuf::from(file.name());
+            if let Some(file_name) = path.file_name() {
+                if let Some(file_name) = file_name.to_str() {
+                    if self.archive_member_is_exact_match(file_name) {
+                        debug!("found 7z file entry with exact match: {file_name}");
+                        return Some(file.name().to_string());
+                    } else if self.archive_member_is_partial_match(file_name) {
+                        debug!("found 7z file entry with partial match: {file_name}");
+                        possible_matches.push(file.name().to_string());
+                    }
+                }
+            }
+        }
+
+        possible_matches.into_iter().next()
     }
 
     fn extract_executable_from_zip(&self, downloaded_file: &Path) -> Result<PathBuf> {
@@ -394,6 +456,7 @@ impl ArchiveInstaller {
                 | Extension::Tgz
                 | Extension::Txz,
             ) => Self::extract_entire_tarball(downloaded_file, td.path())?,
+            Some(Extension::SevenZip) => Self::extract_entire_7z(downloaded_file, td.path())?,
             Some(Extension::Zip) => Self::extract_entire_zip(downloaded_file, td.path())?,
             _ => {
                 return Err(anyhow!(
@@ -422,6 +485,33 @@ impl ArchiveInstaller {
         arch.unpack(into)?;
 
         Ok(())
+    }
+
+    fn extract_entire_7z(downloaded_file: &Path, into: &Path) -> Result<()> {
+        fn extract_fn(
+            entry: &ArchiveEntry,
+            reader: &mut dyn Read,
+            dest: &PathBuf,
+        ) -> Result<bool, sevenz_rust2::Error> {
+            sevenz_rust2::default_entry_extract_fn(entry, reader, dest)?;
+
+            #[cfg(target_family = "unix")]
+            set_permissions(dest.as_path(), Permissions::from_mode(0o755))?;
+
+            Ok(true)
+        }
+
+        debug!(
+            "extracting entire 7z file at {} to {}",
+            downloaded_file.display(),
+            into.display()
+        );
+
+        Ok(sevenz_rust2::decompress_file_with_extract_fn(
+            downloaded_file,
+            into,
+            extract_fn,
+        )?)
     }
 
     fn extract_entire_zip(downloaded_file: &Path, into: &Path) -> Result<()> {
@@ -624,6 +714,7 @@ mod tests {
     // on Windows.
     #[test_case("test-data/windows-project-bat.tar.gz", "bat")]
     #[test_case("test-data/windows-project-exe.tar.gz", "exe")]
+    #[test_case("test-data/windows-project-exe.7z", "exe")]
     #[test_case("test-data/windows-project-bat.zip", "bat")]
     #[test_case("test-data/windows-project-exe.zip", "exe")]
     // And these check that we match project-with-stuff.exe.
@@ -692,6 +783,7 @@ mod tests {
     #[test_case("test-data/project.tar.bz2")]
     #[test_case("test-data/project.tar.gz")]
     #[test_case("test-data/project.tar.xz")]
+    #[test_case("test-data/project.7z")]
     #[test_case("test-data/project.zip")]
     fn archive_installer(archive_path: &str) -> Result<()> {
         crate::test_case::init_logging();
