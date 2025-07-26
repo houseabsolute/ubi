@@ -1,4 +1,8 @@
-use crate::{extension::Extension, ubi::Download};
+use crate::{
+    archive::{ArchiveEntry, TarEntriesIterator, ZipEntriesIterator},
+    extension::Extension,
+    ubi::Download,
+};
 use anyhow::{anyhow, Context, Result};
 use binstall_tar::Archive;
 use bzip2::read::BzDecoder;
@@ -16,7 +20,7 @@ use strum::IntoEnumIterator;
 use tempfile::{tempdir, TempDir};
 use walkdir::WalkDir;
 use xz2::read::XzDecoder;
-use zip::{read::ZipFile, ZipArchive};
+use zip::ZipArchive;
 
 #[cfg(target_family = "unix")]
 use std::fs::{set_permissions, Permissions};
@@ -105,7 +109,7 @@ impl ExeInstaller {
             downloaded_file.display(),
         );
 
-        // Iterating through the archive both here and in `best_match_from_tarball` is really
+        // Iterating through the archive both here and in `best_match_from_archive` is really
         // gross. But this is necessary because the underlying `Entry` structs returned by
         // `arch.entries` are only valid for the duration of the loop iteration. That's because they
         // rely on the position of the underlying file handle. It'd be nice to just be able to seek
@@ -114,9 +118,14 @@ impl ExeInstaller {
         //
         // So the only viable solution is find the entry, then _re-open_ the file and go through the
         // entries again until we find the one we want.
-        if let Some(idx) = self.best_match_from_tarball(downloaded_file)? {
-            let mut arch = tar_reader_for(downloaded_file)?;
-            for (i, entry) in arch.entries()?.enumerate() {
+
+        let mut arch = tar_reader_for(downloaded_file)?;
+        let entries = arch.entries()?;
+        if let Some(idx) =
+            self.best_match_from_archive(TarEntriesIterator::new(entries), "tarball")?
+        {
+            let mut arch2 = tar_reader_for(downloaded_file)?;
+            for (i, entry) in arch2.entries()?.enumerate() {
                 let mut entry = entry?;
                 if i != idx {
                     continue;
@@ -146,37 +155,6 @@ impl ExeInstaller {
         self.could_not_find_archive_matches_error()
     }
 
-    fn best_match_from_tarball(&self, downloaded_file: &Path) -> Result<Option<usize>> {
-        let mut arch = tar_reader_for(downloaded_file)?;
-        let mut possible_matches: Vec<usize> = vec![];
-        for (i, entry) in arch.entries()?.enumerate() {
-            let entry = entry?;
-            if !entry.header().entry_type().is_file() {
-                continue;
-            }
-
-            let path = entry.path()?;
-            debug!("found tarball entry with path {}", path.display());
-            if let Some(file_name) = path.file_name() {
-                if let Some(file_name) = file_name.to_str() {
-                    if self.archive_member_is_exact_match(file_name) {
-                        debug!("found tar file entry with exact match: {file_name}");
-                        return Ok(Some(i));
-                    } else if self.archive_member_is_partial_match(file_name) {
-                        // This checks if the entry is marked as an executable, but a tarball
-                        // created on Windows may not have file modes set.
-                        if self.is_windows || entry.header().mode()? & 0o111 != 0 {
-                            debug!("found tar file entry with partial match: {file_name}");
-                            possible_matches.push(i);
-                        }
-                    }
-                }
-            }
-        }
-
-        Ok(possible_matches.into_iter().next())
-    }
-
     fn extract_executable_from_zip(&self, downloaded_file: &Path) -> Result<PathBuf> {
         debug!(
             "extracting executable from zip file at {}",
@@ -184,7 +162,8 @@ impl ExeInstaller {
         );
 
         let mut zip = ZipArchive::new(open_file(downloaded_file)?)?;
-        if let Some(mut zf) = self.best_match_from_zip_archive(&mut zip)? {
+        if let Some(idx) = self.best_match_from_archive(ZipEntriesIterator::new(&mut zip), "zip")? {
+            let mut zf = zip.by_index(idx)?;
             let zf_path = Path::new(zf.name());
             let mut install_path = self.install_path.clone();
             if let Some(ext) = Extension::from_path(zf_path)? {
@@ -211,28 +190,36 @@ impl ExeInstaller {
         self.could_not_find_archive_matches_error()
     }
 
-    fn best_match_from_zip_archive<'a>(
+    fn best_match_from_archive<'a>(
         &self,
-        zip: &'a mut ZipArchive<File>,
-    ) -> Result<Option<ZipFile<'a, File>>> {
+        archive: impl Iterator<Item = Result<Box<dyn ArchiveEntry + 'a>>>,
+        archive_type: &'static str,
+    ) -> Result<Option<usize>> {
         let mut possible_matches: Vec<usize> = vec![];
-        for i in 0..zip.len() {
-            let zf = zip.by_index(i)?;
-            if zf.is_file() {
-                let path = PathBuf::from(zf.name());
-                if let Some(file_name) = path.file_name() {
-                    if let Some(file_name) = file_name.to_str() {
-                        if self.archive_member_is_exact_match(file_name) {
-                            debug!("found zip file entry with exact match: {file_name}");
-                            // It'd be nicer to immediately return `zf`, but that runs into lifetime
-                            // issues, because `zip.by_index` takes `&mut self`. Yeesh.
-                            possible_matches.clear();
-                            possible_matches.push(i);
-                            break;
-                        } else if self.archive_member_is_partial_match(file_name) {
-                            debug!("found zip file entry with partial match: {file_name}");
-                            // Note that we don't test if the file is executable on Unix systems
-                            // because preserving the mode is not a standard Zip behavior, AFAICT.
+
+        for (i, entry) in archive.enumerate() {
+            let entry = entry?;
+            if !entry.is_file() {
+                continue;
+            }
+
+            let path = entry.path()?;
+
+            debug!("found {archive_type} entry with path `{}`", path.display());
+            if let Some(file_name) = path.file_name() {
+                if let Some(file_name) = file_name.to_str() {
+                    if self.archive_member_is_exact_match(file_name) {
+                        debug!("found {archive_type} file entry with exact match: `{file_name}`");
+                        return Ok(Some(i));
+                    } else if self.archive_member_is_partial_match(file_name) {
+                        // On Windows, we assume that the file is executable if it matches the
+                        // expected name, because Windows doesn't have executable bits. We treat
+                        // "None" as true because some archive types don't record whether a file is
+                        // executable.
+                        if self.is_windows || matches!(entry.is_executable()?, None | Some(true)) {
+                            debug!(
+                                "found {archive_type} file entry with partial match: `{file_name}`"
+                            );
                             possible_matches.push(i);
                         }
                     }
@@ -240,11 +227,7 @@ impl ExeInstaller {
             }
         }
 
-        if let Some(i) = possible_matches.first() {
-            return Ok(Some(zip.by_index(*i)?));
-        }
-
-        Ok(None)
+        Ok(possible_matches.into_iter().next())
     }
 
     fn archive_member_is_exact_match(&self, file_name: &str) -> bool {
