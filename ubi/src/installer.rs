@@ -399,7 +399,7 @@ impl ArchiveInstaller {
                 return Err(anyhow!(
                     concat!(
                         "the downloaded release asset, {}, does not appear to be an",
-                        " archive file so we cannopt extract all of its contents",
+                        " archive file so we cannot extract all of its contents",
                     ),
                     downloaded_file.display(),
                 ))
