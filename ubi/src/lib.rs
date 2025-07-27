@@ -43,7 +43,6 @@
 //! `rust-analyzer-x86_64-unknown-linux-musl`, so installing these as `rust-analyzer` seems like
 //! better behavior.
 //!
-//!
 //! ## How `ubi` Finds the Right Release Artifact
 //!
 //! <div class="warning">Note that the exact set of steps that are followed to find a release
