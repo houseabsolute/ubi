@@ -48,6 +48,11 @@
 //! <div class="warning">Note that the exact set of steps that are followed to find a release
 //! artifacts is not considered part of the API, and may change in any future release.</div>
 //!
+//! If you work on a project and you'd like to make sure that `ubi` can install it, please see [my
+//! blog post, Naming Your Binary Executable
+//! Releases](https://blog.urth.org/2023/04/16/naming-your-binary-executable-releases/) for more
+//! details.
+//!
 //! When you call [`Ubi::install_binary`], it looks at the release assets (downloadable files) for a
 //! project and tries to find the "right" asset for the platform it's running on. The matching logic
 //! currently works like this:

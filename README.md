@@ -136,6 +136,10 @@ If you want to explicitly rename the executable, you can use the `--rename-exe` 
 > part of the API, and may change in any future release.
 <!-- prettier-ignore-end -->
 
+If you work on a project and you'd like to make sure that `ubi` can install it, please see
+[my blog post, Naming Your Binary Executable Releases](https://blog.urth.org/2023/04/16/naming-your-binary-executable-releases/)
+for more details.
+
 When `ubi` looks at the release assets (downloadable files) for a project, it tries to find the
 "right" asset for the platform it's running on. The matching logic currently works like this:
 
