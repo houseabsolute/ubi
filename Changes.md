@@ -1,6 +1,6 @@
 ## 0.7.3 2025-07-27
 
-- Added support for 7-Zip archive (`\.7z`). Based on PR #115130 from @yjoer (Yeoh Joer).
+- Added support for 7-Zip archive (`.7z`). Based on PR #115130 from @yjoer (Yeoh Joer).
 - Added support for projects on GitLab with more than one slash in the path name, like
   https://gitlab.com/gitlab-com/gl-infra/terra-transformer. GitLab allows for more path components
   in project names, unlike GitHub. Based on PR #115 from @suprememoocow (Andrew Newdigate).
