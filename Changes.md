@@ -1,3 +1,7 @@
+## 0.7.4
+
+- Added support for the loongarch64 architecture.
+
 ## 0.7.3 2025-07-27
 
 - Added support for 7-Zip archives (`.7z`). Based on PR #115130 from @yjoer (Yeoh Joer).

@@ -75,6 +75,24 @@ pub(crate) fn arm_re() -> &'static Lazy<Regex> {
     )
 }
 
+pub(crate) fn loongarch_re() -> &'static Lazy<Regex> {
+    regex!(
+        r"(?ix)
+        (?:
+            \b
+            |
+            _
+        )
+        loongarch(?:64)?
+        (?:
+            \b
+            |
+            _
+        )
+        "
+    )
+}
+
 pub(crate) fn mipsle_re() -> &'static Lazy<Regex> {
     regex!(
         r"(?ix)
@@ -354,6 +372,7 @@ pub(crate) static ALL_ARCHES_RE: LazyLock<Regex> = LazyLock::new(|| {
         &[
             aarch64_re(),
             arm_re(),
+            loongarch_re(),
             mipsle_re(),
             mips_re(),
             mips64le_re(),

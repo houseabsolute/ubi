@@ -57,6 +57,14 @@ async fn asset_picking() -> Result<()> {
             expect_omegasort: Some((62, "omegasort_0.0.7_Linux_386.tar.gz")),
         },
         Test {
+            platforms: &[
+                "loongarch64-unknown-linux-gnu",
+                "loongarch64-unknown-linux-musl",
+            ],
+            expect_ubi: Some((501, "ubi-Linux-loongarch-musl.tar.gz")),
+            expect_omegasort: Some((501, "omegasort_0.0.7_Linux_loongarch64.tar.gz")),
+        },
+        Test {
             platforms: &["mips-unknown-linux-gnu", "mips-unknown-linux-musl"],
             expect_ubi: Some((50, "ubi-Linux-mips-musl.tar.gz")),
             expect_omegasort: Some((50, "omegasort_0.0.7_Linux_mips.tar.gz")),
@@ -264,6 +272,10 @@ const UBI_LATEST_RESPONSE: &str = r#"
       "name": "ubi-Linux-i586-musl.tar.gz"
     },
     {
+      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/501",
+      "name": "ubi-Linux-loongarch-musl.tar.gz"
+    },
+    {
       "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/50",
       "name": "ubi-Linux-mips-musl.tar.gz"
     },
@@ -385,6 +397,10 @@ const OMEGASORT_LATEST_RESPONSE: &str = r#"
     {
       "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/62",
       "name": "omegasort_0.0.7_Linux_386.tar.gz"
+    },
+    {
+      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/501",
+      "name": "omegasort_0.0.7_Linux_loongarch64.tar.gz"
     },
     {
       "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/50",

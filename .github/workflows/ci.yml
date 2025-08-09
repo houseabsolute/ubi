@@ -50,6 +50,10 @@ jobs:
             runs-on: ubuntu-24.04
             target: i686-unknown-linux-musl
             skip-tests: true
+          - os-name: Linux-loongarch64
+            runs-on: ubuntu-24.04
+            target: loongarch64-unknown-linux-musl
+            skip-tests: true
           - os-name: Linux-powerpc
             runs-on: ubuntu-24.04
             target: powerpc-unknown-linux-gnu

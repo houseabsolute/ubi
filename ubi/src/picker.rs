@@ -2,9 +2,9 @@ use std::path::Path;
 
 use crate::{
     arch::{
-        aarch64_re, arm_re, macos_aarch64_re, mips64_re, mips64le_re, mips_re, mipsle_re, ppc32_re,
-        ppc64_re, ppc64le_re, riscv64_re, s390x_re, sparc64_re, x86_32_re, x86_64_re,
-        ALL_ARCHES_RE,
+        aarch64_re, arm_re, loongarch_re, macos_aarch64_re, mips64_re, mips64le_re, mips_re,
+        mipsle_re, ppc32_re, ppc64_re, ppc64le_re, riscv64_re, s390x_re, sparc64_re, x86_32_re,
+        x86_64_re, ALL_ARCHES_RE,
     },
     extension::Extension,
     os::{
@@ -302,6 +302,7 @@ impl<'a> AssetPicker<'a> {
         if !matches!(
             self.platform.target_arch,
             Arch::AArch64
+                | Arch::Loongarch64
                 | Arch::Mips64
                 | Arch::PowerPc64
                 | Arch::Riscv64
@@ -416,6 +417,7 @@ impl<'a> AssetPicker<'a> {
         match (self.platform.target_arch, self.platform.target_endian) {
             (Arch::AArch64, _) => aarch64_re(),
             (Arch::Arm, _) => arm_re(),
+            (Arch::Loongarch64, _) => loongarch_re(),
             (Arch::Mips, Endian::Little) => mipsle_re(),
             (Arch::Mips, Endian::Big) => mips_re(),
             (Arch::Mips64, Endian::Little) => mips64le_re(),
