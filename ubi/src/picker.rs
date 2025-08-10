@@ -2,9 +2,9 @@ use std::path::Path;
 
 use crate::{
     arch::{
-        aarch64_re, arm_re, macos_aarch64_all_re, macos_aarch64_re, mips64_re, mips64le_re, mips_re, mipsle_re, ppc32_re,
-        ppc64_re, ppc64le_re, riscv64_re, s390x_re, sparc64_re, x86_32_re, x86_64_re,
-        ALL_ARCHES_RE,
+        aarch64_re, arm_re, macos_aarch64_all_re, macos_aarch64_re, mips64_re, mips64le_re,
+        mips_re, mipsle_re, ppc32_re, ppc64_re, ppc64le_re, riscv64_re, s390x_re, sparc64_re,
+        x86_32_re, x86_64_re, ALL_ARCHES_RE,
     },
     extension::Extension,
     os::{
