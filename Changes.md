@@ -1,3 +1,9 @@
+## 0.7.4
+
+- Changed macOS on ARM artifact name matching to look for "arm", not just "arm64", _before_ looking
+  for 64-bit names. This means that `ubi` will pick something like "foo-macos-arm.tgz" over
+  "foo-macos-x86-64.tgz" on the macOS ARM platform. Implemented by !itochan (Kazunori Jo). GH #132.
+
 ## 0.7.3 2025-07-27
 
 - Added support for 7-Zip archives (`.7z`). Based on PR #115130 from @yjoer (Yeoh Joer).
