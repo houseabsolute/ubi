@@ -5,7 +5,7 @@ use std::sync::LazyLock;
 
 // This is a special case to account for the fact that MacOS ARM systems can
 // also run x86-64 binaries.
-pub(crate) fn macos_aarch64_re() -> &'static Lazy<Regex> {
+pub(crate) fn macos_aarch64_and_x86_64_re() -> &'static Lazy<Regex> {
     regex!(
         r"(?ix)
         (?:
@@ -18,6 +18,8 @@ pub(crate) fn macos_aarch64_re() -> &'static Lazy<Regex> {
             |
             arm_?64
             |
+            arm
+            |
             x86[_-]64
             |
             x64
@@ -25,6 +27,30 @@ pub(crate) fn macos_aarch64_re() -> &'static Lazy<Regex> {
             amd64
             |
             all
+        )
+        (?:
+            \b
+            |
+            _
+        )
+        "
+    )
+}
+
+pub(crate) fn macos_aarch64_only_re() -> &'static Lazy<Regex> {
+    regex!(
+        r"(?ix)
+        (?:
+            \b
+            |
+            _
+        )
+        (?:
+            aarch_?64
+            |
+            arm_?64
+            |
+            arm
         )
         (?:
             \b

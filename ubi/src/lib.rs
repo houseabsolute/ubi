@@ -99,7 +99,7 @@
 //! - First it filters based on your OS, which is something like Linux, macOS, Windows, FreeBSD,
 //!   etc. It looks at the asset filenames to see which ones match your OS, using a (hopefully
 //!   complete) regex.
-//! - Next it filters based on your CPU architecture, which is something like x86-64, ARM64, PowerPC,
+//! - Next it filters based on your CPU architecture, which is something like x86-64, ARM64, `PowerPC`,
 //!   etc. Again, this is done with a regex.
 //! - If you are running on a Linux system using musl as its libc, it will also filter out anything
 //!   _not_ compiled against musl. This filter looks to see if the file name contains an indication

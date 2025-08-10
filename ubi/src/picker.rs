@@ -2,9 +2,9 @@ use std::path::Path;
 
 use crate::{
     arch::{
-        aarch64_re, arm_re, macos_aarch64_re, mips64_re, mips64le_re, mips_re, mipsle_re, ppc32_re,
-        ppc64_re, ppc64le_re, riscv64_re, s390x_re, sparc64_re, x86_32_re, x86_64_re,
-        ALL_ARCHES_RE,
+        aarch64_re, arm_re, macos_aarch64_and_x86_64_re, macos_aarch64_only_re, mips64_re,
+        mips64le_re, mips_re, mipsle_re, ppc32_re, ppc64_re, ppc64le_re, riscv64_re, s390x_re,
+        sparc64_re, x86_32_re, x86_64_re, ALL_ARCHES_RE,
     },
     extension::Extension,
     os::{
@@ -269,7 +269,14 @@ impl<'a> AssetPicker<'a> {
             return Ok(matches.remove(0));
         }
 
-        let filtered = self.maybe_filter_for_64_bit_arch(matches);
+        // This comes first so that we pick assets with just "arm" in the name (not "arm64") on
+        // macOS ARM, over something with "x86-64" in the name.
+        let (filtered, asset) = self.maybe_pick_asset_for_macos_arm(matches);
+        if let Some(asset) = asset {
+            return Ok(asset);
+        }
+
+        let filtered = self.maybe_filter_for_64_bit_arch(filtered);
 
         let (mut filtered, asset) = self.maybe_filter_for_matching_string(filtered)?;
         if let Some(asset) = asset {
@@ -279,11 +286,6 @@ impl<'a> AssetPicker<'a> {
         if filtered.len() == 1 {
             debug!("only found one candidate asset after filtering");
             return Ok(filtered.remove(0));
-        }
-
-        let (filtered, asset) = self.maybe_pick_asset_for_macos_arm(filtered);
-        if let Some(asset) = asset {
-            return Ok(asset);
         }
 
         debug!(
@@ -365,7 +367,7 @@ impl<'a> AssetPicker<'a> {
             "found multiple candidate assets and running on macOS ARM, filtering for arm64 binaries in {asset_names:?}",
         );
 
-        let arch_matcher = aarch64_re();
+        let arch_matcher = macos_aarch64_only_re();
 
         if let Some(idx) = matches.iter().position(|a| arch_matcher.is_match(&a.name)) {
             debug!("found ARM binary named {}", matches[idx].name);
@@ -410,7 +412,7 @@ impl<'a> AssetPicker<'a> {
         debug!("current CPU architecture = {}", self.platform.target_arch);
 
         if self.running_on_macos_arm() {
-            return macos_aarch64_re();
+            return macos_aarch64_and_x86_64_re();
         }
 
         match (self.platform.target_arch, self.platform.target_endian) {
@@ -544,6 +546,14 @@ mod test {
         None,
         1 ;
         "aarch64-apple-darwin - pick the aarch64 asset on macOS ARM"
+    )]
+    #[test_case(
+        "aarch64-apple-darwin",
+        &["project-Macos-x86-64.tar.gz", "project-Macos-arm.tar.gz"],
+        None,
+        None,
+        1 ;
+        "aarch64-apple-darwin - pick the arm asset on macOS ARM"
     )]
     #[test_case(
         "aarch64-apple-darwin",
