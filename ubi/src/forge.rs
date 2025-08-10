@@ -56,12 +56,14 @@ const FORGEJO_DOMAIN: &str = "codeberg.org";
 
 const GITHUB_API_BASE: &str = "https://api.github.com";
 const GITLAB_API_BASE: &str = "https://gitlab.com/api/v4";
-const CODEBERG_API_BASE: &str = "https://codeberg.org/api/v1";
+const FORGEJO_API_BASE: &str = "https://codeberg.org/api/v1";
 
 impl ForgeType {
     pub(crate) fn from_url(url: &Url) -> ForgeType {
         if url.domain().unwrap().contains(GITLAB_DOMAIN) {
             ForgeType::GitLab
+        } else if url.domain().unwrap().contains(FORGEJO_DOMAIN) {
+            ForgeType::Forgejo
         } else {
             ForgeType::default()
         }
@@ -122,7 +124,7 @@ impl ForgeType {
             ForgeType::GitLab => Url::parse(GITLAB_API_BASE).unwrap(),
             // The maintainers of Forgejo is Codeberg, hence why the URL
             // doesn't align with the name of the Git forge.
-            ForgeType::Forgejo => Url::parse(CODEBERG_API_BASE).unwrap(),
+            ForgeType::Forgejo => Url::parse(FORGEJO_API_BASE).unwrap(),
         }
     }
 

@@ -103,6 +103,22 @@ impl Forgejo {
             token,
         }
     }
+
+    pub(crate) fn parse_project_name_from_url(url: &Url, from: &str) -> Result<String> {
+        let parts = url.path().split('/').collect::<Vec<_>>();
+        if parts.len() < 3 {
+            return Err(anyhow::anyhow!("could not parse project from {from}"));
+        }
+        if parts[1].is_empty() || parts[2].is_empty() {
+            return Err(anyhow::anyhow!(
+                "could not parse org and repo name from {from}"
+            ));
+        }
+        // The first part is an empty string for the leading '/' in the path.
+        let (org, proj) = (parts[1], parts[2]);
+        debug!("Parsed {url} = {org} / {proj}");
+        Ok(format!("{org}/{proj}"))
+    }
 }
 
 #[cfg(test)]
@@ -134,8 +150,7 @@ mod tests {
 
     async fn fetch_assets(tag: Option<&str>, token: Option<&str>) -> Result<()> {
         let vars = env::vars();
-        env::remove_var("GITLAB_TOKEN");
-        env::remove_var("CI_JOB_TOKEN");
+        env::remove_var("FORGEJO_TOKEN");
 
         let assets = vec![Asset {
             name: "asset1".to_string(),
