@@ -2145,6 +2145,7 @@ dependencies = [
  "which",
  "xz2",
  "zip",
+ "zstd",
 ]
 
 [[package]]

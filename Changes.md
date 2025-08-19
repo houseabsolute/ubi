@@ -3,6 +3,8 @@
 - Changed macOS on ARM artifact name matching to look for "arm", not just "arm64", _before_ looking
   for 64-bit names. This means that `ubi` will pick something like "foo-macos-arm.tgz" over
   "foo-macos-x86-64.tgz" on the macOS ARM platform. Implemented by !itochan (Kazunori Jo). GH #132.
+- Added support for Zstd compression with both standalone files and tarballs. Implemented by
+  @alaviss. GH #134.
 
 ## 0.7.3 2025-07-27
 
