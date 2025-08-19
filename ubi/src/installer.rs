@@ -21,6 +21,7 @@ use tempfile::{tempdir, TempDir};
 use walkdir::WalkDir;
 use xz2::read::XzDecoder;
 use zip::ZipArchive;
+use zstd::stream::read::Decoder as ZstdDecoder;
 
 #[cfg(target_family = "unix")]
 use std::fs::{set_permissions, Permissions};
@@ -72,9 +73,11 @@ impl ExeInstaller {
                 | Extension::TarBz2
                 | Extension::TarGz
                 | Extension::TarXz
+                | Extension::TarZst
                 | Extension::Tbz
                 | Extension::Tgz
-                | Extension::Txz,
+                | Extension::Txz
+                | Extension::Tzst,
             ) => Ok(Some(self.extract_executable_from_tarball(downloaded_file)?)),
             Some(Extension::Bz | Extension::Bz2) => {
                 self.unbzip(downloaded_file)?;
@@ -86,6 +89,10 @@ impl ExeInstaller {
             }
             Some(Extension::Xz) => {
                 self.unxz(downloaded_file)?;
+                Ok(None)
+            }
+            Some(Extension::Zst) => {
+                self.unzstd(downloaded_file)?;
                 Ok(None)
             }
             Some(Extension::SevenZip) => {
@@ -339,6 +346,12 @@ impl ExeInstaller {
         self.write_to_install_path(reader)
     }
 
+    fn unzstd(&self, downloaded_file: &Path) -> Result<()> {
+        debug!("uncompressing executable from zstd file");
+        let reader = ZstdDecoder::new(open_file(downloaded_file)?)?;
+        self.write_to_install_path(reader)
+    }
+
     fn write_to_install_path(&self, mut reader: impl Read) -> Result<()> {
         self.create_install_dir()?;
         let mut writer = File::create(&self.install_path)
@@ -423,9 +436,11 @@ impl ArchiveInstaller {
                 | Extension::TarBz2
                 | Extension::TarGz
                 | Extension::TarXz
+                | Extension::TarZst
                 | Extension::Tbz
                 | Extension::Tgz
-                | Extension::Txz,
+                | Extension::Txz
+                | Extension::Tzst,
             ) => Self::extract_entire_tarball(downloaded_file, td.path())?,
             Some(Extension::SevenZip) => Self::extract_entire_7z(downloaded_file, td.path())?,
             Some(Extension::Zip) => Self::extract_entire_zip(downloaded_file, td.path())?,
@@ -596,6 +611,7 @@ fn tar_reader_for(downloaded_file: &Path) -> Result<Archive<Box<dyn Read>>> {
             Some("bz" | "tbz" | "bz2" | "tbz2") => Ok(Archive::new(Box::new(BzDecoder::new(file)))),
             Some("gz" | "tgz") => Ok(Archive::new(Box::new(GzDecoder::new(file)))),
             Some("xz" | "txz") => Ok(Archive::new(Box::new(XzDecoder::new(file)))),
+            Some("zst" | "tzst") => Ok(Archive::new(Box::new(ZstdDecoder::new(file)?))),
             Some(e) => Err(anyhow!(
                 "don't know how to uncompress a tarball with extension = {}",
                 e,
@@ -639,8 +655,10 @@ mod tests {
     #[test_case("test-data/project.tar.bz2", None)]
     #[test_case("test-data/project.tar.gz", None)]
     #[test_case("test-data/project.tar.xz", None)]
+    #[test_case("test-data/project.tar.zst", None)]
     #[test_case("test-data/project.xz", None)]
     #[test_case("test-data/project.zip", None)]
+    #[test_case("test-data/project.zst", None)]
     #[test_case("test-data/project", None)]
     // This tests a bug where zip files with partial matches before an exact match would pick the wrong file.
     #[test_case("test-data/project-with-partial-before-exact.zip", None)]
@@ -739,6 +757,7 @@ mod tests {
     #[test_case("test-data/project.tar.bz2")]
     #[test_case("test-data/project.tar.gz")]
     #[test_case("test-data/project.tar.xz")]
+    #[test_case("test-data/project.tar.zst")]
     #[test_case("test-data/project.zip")]
     fn archive_installer(archive_path: &str) -> Result<()> {
         crate::test_case::init_logging();

@@ -38,12 +38,15 @@ pub(crate) enum Extension {
     TarBz2,
     TarGz,
     TarXz,
+    TarZst,
     Tbz,
     Tgz,
     Txz,
+    Tzst,
     Sh,
     Xz,
     Zip,
+    Zst,
 }
 
 impl Extension {
@@ -66,11 +69,14 @@ impl Extension {
             Extension::TarBz2 => ".tar.bz2",
             Extension::TarGz => ".tar.gz",
             Extension::TarXz => ".tar.xz",
+            Extension::TarZst => ".tar.zst",
             Extension::Tbz => ".tbz",
             Extension::Tgz => ".tgz",
             Extension::Txz => ".txz",
+            Extension::Tzst => ".tzst",
             Extension::Xz => ".xz",
             Extension::Zip => ".zip",
+            Extension::Zst => ".zst",
         }
     }
 
@@ -91,16 +97,19 @@ impl Extension {
             | Extension::Py
             | Extension::Pyz
             | Extension::Sh
-            | Extension::Xz => false,
+            | Extension::Xz
+            | Extension::Zst => false,
             Extension::SevenZip
             | Extension::Tar
             | Extension::TarBz
             | Extension::TarBz2
             | Extension::TarGz
             | Extension::TarXz
+            | Extension::TarZst
             | Extension::Tbz
             | Extension::Tgz
             | Extension::Txz
+            | Extension::Tzst
             | Extension::Zip => true,
         }
     }
@@ -124,11 +133,14 @@ impl Extension {
             | Extension::TarBz2
             | Extension::TarGz
             | Extension::TarXz
+            | Extension::TarZst
             | Extension::Tbz
             | Extension::Tgz
             | Extension::Txz
+            | Extension::Tzst
             | Extension::Xz
-            | Extension::Zip => false,
+            | Extension::Zip
+            | Extension::Zst => false,
         }
     }
 
@@ -247,6 +259,7 @@ mod test {
     #[test_case("foo.tar.bz2", Ok(Some(Extension::TarBz2)))]
     #[test_case("foo.tar.gz", Ok(Some(Extension::TarGz)))]
     #[test_case("foo.tar.xz", Ok(Some(Extension::TarXz)))]
+    #[test_case("foo.tar.zst", Ok(Some(Extension::TarZst)))]
     #[test_case("foo.xz", Ok(Some(Extension::Xz)))]
     #[test_case("foo.zip", Ok(Some(Extension::Zip)))]
     #[test_case("foo", Ok(None))]

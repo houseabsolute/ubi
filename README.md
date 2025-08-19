@@ -162,12 +162,15 @@ doesn't match one of the following:
 - `.tar.bz`
 - `.tar.gz`
 - `.tar.xz`
+- `.tar.zst`
 - `.tar`
 - `.tbz`
 - `.tgz`
 - `.txz`
+- `.tzst`
 - `.xz`
 - `.zip`
+- `.zst`
 - No extension
 
 It tries to be careful about what constitutes an extension. It's common for release filenames to

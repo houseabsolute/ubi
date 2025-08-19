@@ -54,3 +54,4 @@ zip = { version = ">= 3.0.0, < 4.0.0", default-features = false, features = [
     "lzma",
     "zstd",
 ] }
+zstd = { version = "0.13.3", default-features = false }
