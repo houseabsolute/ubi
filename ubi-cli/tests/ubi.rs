@@ -622,6 +622,21 @@ fn integration_tests() -> Result<()> {
         }
     }
 
+    #[cfg(target_os = "linux")]
+    {
+        run_test(
+            td.path(),
+            ubi.as_ref(),
+            &[
+                "--project",
+                "https://codeberg.org/Cyborus/forgejo-cli/",
+                "--tag",
+                "v0.3.0",
+            ],
+            make_exe_pathbuf(&["bin", "forgejo-cli"]),
+        )?;
+    }
+
     Ok(())
 }
 

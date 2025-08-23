@@ -1,3 +1,9 @@
+## 0.8.0
+
+- Added support for releases done via
+  [Codeberg](https://codeberg.org/)/[Forgejo](https://forgejo.org/). Based on PR #107 from @pepicrft
+  (Pedro Piñera Buendía).
+
 ## 0.7.4 2025-08-24
 
 - Changed macOS on ARM artifact name matching to look for "arm", not just "arm64", _before_ looking
