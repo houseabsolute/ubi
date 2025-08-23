@@ -4,7 +4,7 @@ use crate::{
     ubi::Download,
 };
 use anyhow::{anyhow, Context, Result};
-use binstall_tar::Archive;
+use binstall_tar::Archive as TarArchive;
 use bzip2::read::BzDecoder;
 use flate2::read::GzDecoder;
 use log::{debug, info};
@@ -601,17 +601,19 @@ impl Installer for ArchiveInstaller {
     }
 }
 
-fn tar_reader_for(downloaded_file: &Path) -> Result<Archive<Box<dyn Read>>> {
+fn tar_reader_for(downloaded_file: &Path) -> Result<TarArchive<Box<dyn Read>>> {
     let file = open_file(downloaded_file)?;
 
     let ext = downloaded_file.extension();
     match ext {
         Some(ext) => match ext.to_str() {
-            Some("tar") => Ok(Archive::new(Box::new(file))),
-            Some("bz" | "tbz" | "bz2" | "tbz2") => Ok(Archive::new(Box::new(BzDecoder::new(file)))),
-            Some("gz" | "tgz") => Ok(Archive::new(Box::new(GzDecoder::new(file)))),
-            Some("xz" | "txz") => Ok(Archive::new(Box::new(XzDecoder::new(file)))),
-            Some("zst" | "tzst") => Ok(Archive::new(Box::new(ZstdDecoder::new(file)?))),
+            Some("tar") => Ok(TarArchive::new(Box::new(file))),
+            Some("bz" | "tbz" | "bz2" | "tbz2") => {
+                Ok(TarArchive::new(Box::new(BzDecoder::new(file))))
+            }
+            Some("gz" | "tgz") => Ok(TarArchive::new(Box::new(GzDecoder::new(file)))),
+            Some("xz" | "txz") => Ok(TarArchive::new(Box::new(XzDecoder::new(file)))),
+            Some("zst" | "tzst") => Ok(TarArchive::new(Box::new(ZstdDecoder::new(file)?))),
             Some(e) => Err(anyhow!(
                 "don't know how to uncompress a tarball with extension = {}",
                 e,
@@ -621,7 +623,7 @@ fn tar_reader_for(downloaded_file: &Path) -> Result<Archive<Box<dyn Read>>> {
                 downloaded_file,
             )),
         },
-        None => Ok(Archive::new(Box::new(file))),
+        None => Ok(TarArchive::new(Box::new(file))),
     }
 }
 
