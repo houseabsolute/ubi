@@ -1,6 +1,6 @@
 /// The `builder` module contains the `UbiBuilder` struct which is used to create a `Ubi` instance.
 use crate::{
-    forge::{Forge, ForgeType},
+    forge::ForgeType,
     installer::{ArchiveInstaller, ExeInstaller, Installer},
     picker::AssetPicker,
     ubi::Ubi,
@@ -241,7 +241,12 @@ impl<'a> UbiBuilder<'a> {
         let (project_name, forge_type) =
             parse_project_name(self.project, asset_url.as_ref(), self.forge.clone())?;
         let installer = self.new_installer(&project_name, &platform)?;
-        let forge = self.new_forge(project_name, &forge_type)?;
+        let forge = forge_type.new_forge(
+            project_name,
+            self.tag.map(String::from),
+            self.api_base_url.map(String::from),
+            self.token.map(String::from),
+        )?;
         let is_musl = self.is_musl.unwrap_or_else(|| platform_is_musl(&platform));
 
         Ok(Ubi::new(
@@ -281,19 +286,6 @@ impl<'a> UbiBuilder<'a> {
         }
     }
 
-    fn new_forge(
-        &self,
-        project_name: String,
-        forge_type: &ForgeType,
-    ) -> Result<Box<dyn Forge + Send + Sync>> {
-        forge_type.make_forge_impl(
-            project_name,
-            self.tag.map(String::from),
-            self.api_base_url.map(String::from),
-            self.token.map(String::from),
-        )
-    }
-
     fn determine_platform(&self) -> Result<Platform> {
         if let Some(p) = self.platform {
             Ok(p.clone())
@@ -330,7 +322,7 @@ fn parse_project_name(
         if project.starts_with("http") {
             (Url::parse(project)?, format!("--project {project}"))
         } else {
-            let base = forge.unwrap_or_default().url_base();
+            let base = forge.unwrap_or_default().project_base_url();
             (base.join(project)?, format!("--project {project}"))
         }
     } else if let Some(u) = url {

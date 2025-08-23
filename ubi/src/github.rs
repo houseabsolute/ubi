@@ -1,205 +1,68 @@
-use crate::{forge::Forge, ubi::Asset};
+use crate::ubi::Asset;
 use anyhow::{anyhow, Result};
-use async_trait::async_trait;
 use log::debug;
-use reqwest::{
-    header::{HeaderValue, AUTHORIZATION},
-    Client, RequestBuilder,
-};
 use serde::{Deserialize, Serialize};
+use std::sync::LazyLock;
 use url::Url;
 
-#[derive(Debug)]
-pub(crate) struct GitHub {
-    project_name: String,
-    tag: Option<String>,
-    api_base_url: Url,
-    token: Option<String>,
-}
+pub(crate) static PROJECT_BASE_URL: LazyLock<Url> =
+    LazyLock::new(|| Url::parse("https://github.com").unwrap());
 
-unsafe impl Send for GitHub {}
-unsafe impl Sync for GitHub {}
+pub(crate) static DEFAULT_API_BASE_URL: LazyLock<Url> =
+    LazyLock::new(|| Url::parse("https://api.github.com").unwrap());
 
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct Release {
     pub(crate) assets: Vec<Asset>,
 }
 
-#[async_trait]
-impl Forge for GitHub {
-    async fn fetch_assets(&self, client: &Client) -> Result<Vec<Asset>> {
-        Ok(self
-            .make_release_info_request(client)
-            .await?
-            .json::<Release>()
-            .await?
-            .assets)
+pub(crate) fn parse_project_name_from_url(url: &Url, from: &str) -> Result<String> {
+    let parts = url.path().split('/').collect::<Vec<_>>();
+
+    if parts.len() < 3 {
+        return Err(anyhow!("could not parse project from {from}"));
     }
 
-    fn release_info_url(&self) -> Url {
-        let mut parts = self.project_name.split('/');
-        let owner = parts.next().unwrap();
-        let repo = parts.next().unwrap();
-
-        let mut url = self.api_base_url.clone();
-        url.path_segments_mut()
-            .expect("could not get path segments for url")
-            .push("repos")
-            .push(owner)
-            .push(repo)
-            .push("releases");
-        if let Some(tag) = &self.tag {
-            url.path_segments_mut()
-                .expect("could not get path segments for url")
-                .push("tags")
-                .push(tag);
-        } else {
-            url.path_segments_mut()
-                .expect("could not get path segments for url")
-                .push("latest");
-        }
-
-        url
+    if parts[1].is_empty() || parts[2].is_empty() {
+        return Err(anyhow!("could not parse org and repo name from {from}"));
     }
 
-    fn maybe_add_token_header(&self, mut req_builder: RequestBuilder) -> Result<RequestBuilder> {
-        if let Some(token) = self.token.as_deref() {
-            debug!("Adding GitHub token to GitHub request.");
-            let bearer = format!("Bearer {token}");
-            let mut auth_val = HeaderValue::from_str(&bearer)?;
-            auth_val.set_sensitive(true);
-            req_builder = req_builder.header(AUTHORIZATION, auth_val);
-        }
-        Ok(req_builder)
-    }
+    // The first part is an empty string for the leading '/' in the path.
+    let (org, proj) = (parts[1], parts[2]);
+    debug!("Parsed {url} = {org} / {proj}");
+
+    Ok(format!("{org}/{proj}"))
 }
 
-impl GitHub {
-    pub(crate) fn new(
-        project_name: String,
-        tag: Option<String>,
-        api_base_url: Url,
-        token: Option<String>,
-    ) -> Self {
-        Self {
-            project_name,
-            tag,
-            api_base_url,
-            token,
-        }
+pub(crate) fn release_info_url(project_name: &str, mut url: Url, tag: Option<&str>) -> Url {
+    let mut parts = project_name.split('/');
+    let owner = parts.next().unwrap();
+    let repo = parts.next().unwrap();
+
+    url.path_segments_mut()
+        .expect("could not get path segments for url")
+        .push("repos")
+        .push(owner)
+        .push(repo)
+        .push("releases");
+    if let Some(tag) = &tag {
+        url.path_segments_mut()
+            .expect("could not get path segments for url")
+            .push("tags")
+            .push(tag);
+    } else {
+        url.path_segments_mut()
+            .expect("could not get path segments for url")
+            .push("latest");
     }
 
-    pub(crate) fn parse_project_name_from_url(url: &Url, from: &str) -> Result<String> {
-        let parts = url.path().split('/').collect::<Vec<_>>();
-
-        if parts.len() < 3 {
-            return Err(anyhow!("could not parse project from {from}"));
-        }
-
-        if parts[1].is_empty() || parts[2].is_empty() {
-            return Err(anyhow!("could not parse org and repo name from {from}"));
-        }
-
-        // The first part is an empty string for the leading '/' in the path.
-        let (org, proj) = (parts[1], parts[2]);
-        debug!("Parsed {url} = {org} / {proj}");
-
-        Ok(format!("{org}/{proj}"))
-    }
+    url
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mockito::Server;
-    use reqwest::Client;
-    use serial_test::serial;
-    use std::env;
     use test_case::test_case;
-    use test_log::test;
-
-    #[test(tokio::test)]
-    #[serial]
-    async fn fetch_assets_without_token() -> Result<()> {
-        fetch_assets(None, None).await
-    }
-
-    #[test(tokio::test)]
-    #[serial]
-    async fn fetch_assets_with_token() -> Result<()> {
-        fetch_assets(None, Some("ghp_fakeToken")).await
-    }
-
-    #[test(tokio::test)]
-    #[serial]
-    async fn fetch_assets_with_tag() -> Result<()> {
-        fetch_assets(Some("v1.0.0"), None).await
-    }
-
-    async fn fetch_assets(tag: Option<&str>, token: Option<&str>) -> Result<()> {
-        let vars = env::vars();
-        env::remove_var("GITHUB_TOKEN");
-
-        let assets = vec![Asset {
-            name: "asset1".to_string(),
-            url: Url::parse("https://api.github.com/repos/houseabsolute/ubi/releases/assets/1")?,
-        }];
-
-        let expect_path = if let Some(tag) = tag {
-            format!("/repos/houseabsolute/ubi/releases/tags/{tag}")
-        } else {
-            "/repos/houseabsolute/ubi/releases/latest".to_string()
-        };
-        let authorization_header_matcher = if token.is_some() {
-            mockito::Matcher::Exact(format!("Bearer {}", token.unwrap()))
-        } else {
-            mockito::Matcher::Missing
-        };
-        let mut server = Server::new_async().await;
-        let m = server
-            .mock("GET", expect_path.as_str())
-            .match_header("Authorization", authorization_header_matcher)
-            .with_status(200)
-            .with_body(serde_json::to_string(&Release {
-                assets: assets.clone(),
-            })?)
-            .create_async()
-            .await;
-
-        let github = GitHub::new(
-            "houseabsolute/ubi".to_string(),
-            tag.map(String::from),
-            Url::parse(&server.url())?,
-            token.map(String::from),
-        );
-
-        let client = Client::new();
-        let got_assets = github.fetch_assets(&client).await?;
-        assert_eq!(got_assets, assets);
-
-        m.assert_async().await;
-
-        for (k, v) in vars {
-            env::set_var(k, v);
-        }
-
-        Ok(())
-    }
-
-    #[test]
-    fn api_base_url() {
-        let github = GitHub::new(
-            "houseabsolute/ubi".to_string(),
-            None,
-            Url::parse("https://github.example.com/api/v4").unwrap(),
-            None,
-        );
-        let url = github.release_info_url();
-        assert_eq!(
-            url.as_str(),
-            "https://github.example.com/api/v4/repos/houseabsolute/ubi/releases/latest"
-        );
-    }
 
     enum ParseTestExpect {
         Success(&'static str),
@@ -238,7 +101,7 @@ mod tests {
     )]
     fn parse_project_name(url: &'static str, expect: ParseTestExpect) -> Result<()> {
         let url = Url::parse(url)?;
-        let result = GitHub::parse_project_name_from_url(&url, "test");
+        let result = super::parse_project_name_from_url(&url, "test");
         match (result, expect) {
             (Ok(r), ParseTestExpect::Success(e)) => assert_eq!(r, e),
             (Err(r), ParseTestExpect::Fail(e)) => assert!(r.to_string().contains(e)),

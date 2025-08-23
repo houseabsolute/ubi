@@ -14,7 +14,7 @@ use url::Url;
 /// [`UbiBuilder`](crate::UbiBuilder) struct to create a new `Ubi` instance.
 #[derive(Debug)]
 pub struct Ubi<'a> {
-    forge: Box<dyn Forge + Send + Sync>,
+    forge: Forge,
     asset_url: Option<Url>,
     asset_picker: AssetPicker<'a>,
     installer: Box<dyn Installer>,
@@ -38,7 +38,7 @@ pub(crate) struct Download {
 impl<'a> Ubi<'a> {
     /// Create a new Ubi instance.
     pub(crate) fn new(
-        forge: Box<dyn Forge + Send + Sync>,
+        forge: Forge,
         asset_url: Option<Url>,
         asset_picker: AssetPicker<'a>,
         installer: Box<dyn Installer>,
