@@ -1,9 +1,8 @@
-use crate::{github::GitHub, gitlab::GitLab, ubi::Asset};
+use crate::{github, gitlab, ubi::Asset};
 use anyhow::Result;
-use async_trait::async_trait;
 use log::debug;
 use reqwest::{
-    header::{HeaderValue, ACCEPT},
+    header::{HeaderValue, ACCEPT, AUTHORIZATION},
     Client, RequestBuilder, Response,
 };
 use std::env;
@@ -22,16 +21,33 @@ pub enum ForgeType {
     GitLab,
 }
 
-#[async_trait]
-pub(crate) trait Forge: std::fmt::Debug {
-    async fn fetch_assets(&self, client: &Client) -> Result<Vec<Asset>>;
+#[derive(Debug)]
+pub(crate) struct Forge {
+    project_name: String,
+    tag: Option<String>,
+    api_base_url: Url,
+    token: Option<String>,
+    #[allow(clippy::struct_field_names)] // We can't call this `type`.
+    forge_type: ForgeType,
+}
 
-    fn release_info_url(&self) -> Url;
-    fn maybe_add_token_header(&self, req_builder: RequestBuilder) -> Result<RequestBuilder>;
+unsafe impl Send for Forge {}
+unsafe impl Sync for Forge {}
+
+impl Forge {
+    pub(crate) async fn fetch_assets(&self, client: &Client) -> Result<Vec<Asset>> {
+        debug!("Fetching assets for project `{}`", self.project_name);
+        let response = self.make_release_info_request(client).await?;
+        self.forge_type.response_into_assets(response).await
+    }
 
     async fn make_release_info_request(&self, client: &Client) -> Result<Response> {
-        let url = self.release_info_url();
-        debug!("Getting release info from {url}");
+        let url = self.forge_type.release_info_url(
+            &self.project_name,
+            self.api_base_url.clone(),
+            self.tag.as_deref(),
+        );
+        debug!("Getting release info from `{url}`");
 
         let mut req_builder = client
             .get(url)
@@ -45,17 +61,27 @@ pub(crate) trait Forge: std::fmt::Debug {
 
         Ok(resp)
     }
+
+    pub(crate) fn maybe_add_token_header(
+        &self,
+        mut req_builder: RequestBuilder,
+    ) -> Result<RequestBuilder> {
+        if let Some(token) = self.token.as_deref() {
+            debug!("Adding token to {} request.", self.forge_type.forge_name());
+            let bearer = format!("Bearer {token}");
+            let mut auth_val = HeaderValue::from_str(&bearer)?;
+            auth_val.set_sensitive(true);
+            req_builder = req_builder.header(AUTHORIZATION, auth_val);
+        } else {
+            debug!("No token given.");
+        }
+        Ok(req_builder)
+    }
 }
-
-const GITHUB_DOMAIN: &str = "github.com";
-const GITLAB_DOMAIN: &str = "gitlab.com";
-
-const GITHUB_API_BASE: &str = "https://api.github.com";
-const GITLAB_API_BASE: &str = "https://gitlab.com/api/v4";
 
 impl ForgeType {
     pub(crate) fn from_url(url: &Url) -> ForgeType {
-        if url.domain().unwrap().contains(GITLAB_DOMAIN) {
+        if url.domain().unwrap() == gitlab::PROJECT_BASE_URL.domain().unwrap() {
             ForgeType::GitLab
         } else {
             ForgeType::default()
@@ -64,18 +90,46 @@ impl ForgeType {
 
     pub(crate) fn parse_project_name_from_url(&self, url: &Url, from: &str) -> Result<String> {
         match self {
-            ForgeType::GitHub => GitHub::parse_project_name_from_url(url, from),
-            ForgeType::GitLab => GitLab::parse_project_name_from_url(url, from),
+            ForgeType::GitHub => github::parse_project_name_from_url(url, from),
+            ForgeType::GitLab => gitlab::parse_project_name_from_url(url, from),
         }
     }
 
-    pub(crate) fn make_forge_impl(
-        &self,
+    pub(crate) fn project_base_url(&self) -> Url {
+        match self {
+            ForgeType::GitHub => github::PROJECT_BASE_URL.clone(),
+            ForgeType::GitLab => gitlab::PROJECT_BASE_URL.clone(),
+        }
+    }
+
+    pub(crate) fn api_base_url(&self) -> Url {
+        match self {
+            ForgeType::GitHub => github::DEFAULT_API_BASE_URL.clone(),
+            ForgeType::GitLab => gitlab::DEFAULT_API_BASE_URL.clone(),
+        }
+    }
+
+    pub(crate) fn env_var_names(&self) -> &'static [&'static str] {
+        match self {
+            ForgeType::GitHub => &["GITHUB_TOKEN"],
+            ForgeType::GitLab => &["CI_TOKEN", "GITLAB_TOKEN"],
+        }
+    }
+
+    pub(crate) fn forge_name(&self) -> &'static str {
+        match self {
+            ForgeType::GitHub => "GitHub",
+            ForgeType::GitLab => "GitLab",
+        }
+    }
+
+    pub(crate) fn new_forge(
+        self,
         project_name: String,
         tag: Option<String>,
         api_base: Option<String>,
         mut token: Option<String>,
-    ) -> Result<Box<dyn Forge + Send + Sync>> {
+    ) -> Result<Forge> {
         let api_base_url = if let Some(api_base) = api_base {
             Url::parse(&api_base)?
         } else {
@@ -95,37 +149,209 @@ impl ForgeType {
             }
         }
 
-        Ok(match self {
-            ForgeType::GitHub => Box::new(GitHub::new(project_name, tag, api_base_url, token)),
-            ForgeType::GitLab => Box::new(GitLab::new(project_name, tag, api_base_url, token)),
+        Ok(Forge {
+            project_name,
+            tag,
+            api_base_url,
+            token,
+            forge_type: self,
         })
     }
 
-    pub(crate) fn url_base(&self) -> Url {
+    fn release_info_url(&self, project_name: &str, url: Url, tag: Option<&str>) -> Url {
         match self {
-            ForgeType::GitHub => Url::parse(&format!("https://{GITHUB_DOMAIN}")).unwrap(),
-            ForgeType::GitLab => Url::parse(&format!("https://{GITLAB_DOMAIN}")).unwrap(),
+            ForgeType::GitHub => github::release_info_url(project_name, url, tag),
+            ForgeType::GitLab => gitlab::release_info_url(project_name, url, tag),
         }
     }
 
-    pub(crate) fn api_base_url(&self) -> Url {
-        match self {
-            ForgeType::GitHub => Url::parse(GITHUB_API_BASE).unwrap(),
-            ForgeType::GitLab => Url::parse(GITLAB_API_BASE).unwrap(),
-        }
+    async fn response_into_assets(&self, response: Response) -> Result<Vec<Asset>> {
+        Ok(match self {
+            ForgeType::GitLab => response
+                .json::<gitlab::Release>()
+                .await
+                .map(|release| release.assets.links)?,
+            ForgeType::GitHub => response
+                .json::<github::Release>()
+                .await
+                .map(|release| release.assets)?,
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mockito::Server;
+    use reqwest::Client;
+    use serial_test::serial;
+    use std::env;
+    use test_log::test;
+
+    #[test(tokio::test)]
+    #[serial]
+    async fn github_fetch_assets_without_token() -> Result<()> {
+        github_fetch_assets(None, None).await
     }
 
-    pub(crate) fn env_var_names(&self) -> &'static [&'static str] {
-        match self {
-            ForgeType::GitHub => &["GITHUB_TOKEN"],
-            ForgeType::GitLab => &["CI_TOKEN", "GITLAB_TOKEN"],
-        }
+    #[test(tokio::test)]
+    #[serial]
+    async fn github_fetch_assets_with_token() -> Result<()> {
+        github_fetch_assets(None, Some("ghp_fakeToken")).await
     }
 
-    pub(crate) fn forge_name(&self) -> &'static str {
-        match self {
-            ForgeType::GitHub => "GitHub",
-            ForgeType::GitLab => "GitLab",
+    #[test(tokio::test)]
+    #[serial]
+    async fn github_fetch_assets_with_tag() -> Result<()> {
+        github_fetch_assets(Some("v1.0.0"), None).await
+    }
+
+    async fn github_fetch_assets(tag: Option<&str>, token: Option<&str>) -> Result<()> {
+        let vars = env::vars();
+        env::remove_var("GITHUB_TOKEN");
+
+        let assets = vec![Asset {
+            name: "asset1".to_string(),
+            url: Url::parse("https://api.github.com/repos/houseabsolute/ubi/releases/assets/1")?,
+        }];
+
+        let expect_path = if let Some(tag) = tag {
+            format!("/repos/houseabsolute/ubi/releases/tags/{tag}")
+        } else {
+            "/repos/houseabsolute/ubi/releases/latest".to_string()
+        };
+        let authorization_header_matcher = if token.is_some() {
+            mockito::Matcher::Exact(format!("Bearer {}", token.unwrap()))
+        } else {
+            mockito::Matcher::Missing
+        };
+        let mut server = Server::new_async().await;
+        let m = server
+            .mock("GET", expect_path.as_str())
+            .match_header("Authorization", authorization_header_matcher)
+            .with_status(200)
+            .with_body(serde_json::to_string(&github::Release {
+                assets: assets.clone(),
+            })?)
+            .create_async()
+            .await;
+
+        let forge = ForgeType::GitHub.new_forge(
+            "houseabsolute/ubi".to_string(),
+            tag.map(String::from),
+            Some(server.url()),
+            token.map(String::from),
+        )?;
+
+        let client = Client::new();
+        let got_assets = forge.fetch_assets(&client).await?;
+        assert_eq!(got_assets, assets);
+
+        m.assert_async().await;
+
+        for (k, v) in vars {
+            env::set_var(k, v);
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn github_api_base_url() -> Result<()> {
+        let url = ForgeType::GitHub.release_info_url(
+            "houseabsolute/ubi",
+            Url::parse("https://github.example.com/api/v4")?,
+            None,
+        );
+        assert_eq!(
+            url.as_str(),
+            "https://github.example.com/api/v4/repos/houseabsolute/ubi/releases/latest"
+        );
+        Ok(())
+    }
+
+    #[test(tokio::test)]
+    #[serial]
+    async fn gitlab_fetch_assets_without_token() -> Result<()> {
+        gitlab_fetch_assets(None, None).await
+    }
+
+    #[test(tokio::test)]
+    #[serial]
+    async fn gitlab_fetch_assets_with_token() -> Result<()> {
+        gitlab_fetch_assets(None, Some("glpat-fakeToken")).await
+    }
+
+    #[test(tokio::test)]
+    #[serial]
+    async fn gitlab_fetch_assets_with_tag() -> Result<()> {
+        gitlab_fetch_assets(Some("v1.0.0"), None).await
+    }
+
+    async fn gitlab_fetch_assets(tag: Option<&str>, token: Option<&str>) -> Result<()> {
+        let vars = env::vars();
+        env::remove_var("GITLAB_TOKEN");
+        env::remove_var("CI_JOB_TOKEN");
+
+        let assets = vec![Asset {
+            name: "asset1".to_string(),
+            url: Url::parse("https://gitlab.com/api/v4/projects/owner%2Frepo/releases/assets/1")?,
+        }];
+
+        let expect_path = if let Some(tag) = tag {
+            format!("/projects/houseabsolute%2Fubi/releases/{tag}")
+        } else {
+            "/projects/houseabsolute%2Fubi/releases/permalink/latest".to_string()
+        };
+        let authorization_header_matcher = if token.is_some() {
+            mockito::Matcher::Exact(format!("Bearer {}", token.unwrap()))
+        } else {
+            mockito::Matcher::Missing
+        };
+        let mut server = Server::new_async().await;
+        let m = server
+            .mock("GET", expect_path.as_str())
+            .match_header("Authorization", authorization_header_matcher)
+            .with_status(200)
+            .with_body(serde_json::to_string(&gitlab::Release {
+                assets: gitlab::Assets {
+                    links: assets.clone(),
+                },
+            })?)
+            .create_async()
+            .await;
+
+        let forge = ForgeType::GitLab.new_forge(
+            "houseabsolute/ubi".to_string(),
+            tag.map(String::from),
+            Some(server.url()),
+            token.map(String::from),
+        )?;
+
+        let client = Client::new();
+        let got_assets = forge.fetch_assets(&client).await?;
+        assert_eq!(got_assets, assets);
+
+        m.assert_async().await;
+
+        for (k, v) in vars {
+            env::set_var(k, v);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn gitlab_api_base_url() -> Result<()> {
+        let url = ForgeType::GitLab.release_info_url(
+            "houseabsolute/ubi",
+            Url::parse("https://gitlab.example.com/api/v4")?,
+            None,
+        );
+        assert_eq!(
+            url.as_str(),
+            "https://gitlab.example.com/api/v4/projects/houseabsolute%2Fubi/releases/permalink/latest"
+        );
+        Ok(())
     }
 }
