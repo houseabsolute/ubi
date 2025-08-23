@@ -49,8 +49,8 @@ impl<'a> UbiBuilder<'a> {
 
     /// Set the project to download from. This can either be just the org/name, like
     /// `houseabsolute/precious`, or the complete forge site URL to the project, like
-    /// `https://github.com/houseabsolute/precious` or `https://gitlab.com/gitlab-org/cli`. It also
-    /// accepts a URL to any page in the project, like
+    /// `https://github.com/houseabsolute/precious`, `https://gitlab.com/gitlab-org/cli`, or
+    /// `https://codeberg.org/codeberg/cli`. It also accepts a URL to any page in the project, like
     /// `https://github.com/houseabsolute/precious/releases`.
     ///
     /// You must set this or set `url`, but not both.
@@ -147,6 +147,7 @@ impl<'a> UbiBuilder<'a> {
     ///
     /// * GitHub - `GITHUB_TOKEN`
     /// * GitLab - `CI_TOKEN`, then `GITLAB_TOKEN`.
+    /// * Codeberg/Forgejo - `CODEBERG_TOKEN`, then `FORGEJO_TOKEN`.
     #[must_use]
     pub fn token(mut self, token: &'a str) -> Self {
         self.token = Some(token);

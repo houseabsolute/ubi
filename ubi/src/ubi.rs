@@ -22,9 +22,32 @@ pub struct Ubi<'a> {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(try_from = "AssetHelper")]
 pub(crate) struct Asset {
     pub(crate) name: String,
     pub(crate) url: Url,
+}
+
+#[derive(Debug, Deserialize)]
+struct AssetHelper {
+    name: String,
+    url: Option<Url>,
+    browser_download_url: Option<Url>,
+}
+
+impl TryFrom<AssetHelper> for Asset {
+    type Error = String;
+
+    fn try_from(helper: AssetHelper) -> Result<Self, Self::Error> {
+        let url = helper.browser_download_url.or(helper.url).ok_or(
+            "an asset in the response did not have a `browser_download_url` or `url` field",
+        )?;
+
+        Ok(Asset {
+            name: helper.name,
+            url,
+        })
+    }
 }
 
 #[derive(Debug)]

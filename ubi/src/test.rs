@@ -223,112 +223,112 @@ async fn asset_picking() -> Result<()> {
     Ok(())
 }
 
-// jq '[.assets[] | {"url": .url} + {"name": .name}]' release.json
+// jq '[.assets[] | {"browser_download_url": .url} + {"name": .name}]' release.json
 const UBI_LATEST_RESPONSE: &str = r#"
 {
   "assets": [
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/96252654",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/96252654",
       "name": "ubi-Darwin-aarch64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/96252671",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/96252671",
       "name": "ubi-Darwin-x86_64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/1",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/1",
       "name": "ubi-FreeBSD-x86_64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/2",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/2",
       "name": "ubi-Fuchsia-aarch64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/3",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/3",
       "name": "ubi-Fuchsia-x86_64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/4",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/4",
       "name": "ubi-Illumos-x86_64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/96252412",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/96252412",
       "name": "ubi-Linux-aarch64-musl.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/96252419",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/96252419",
       "name": "ubi-Linux-arm-musl.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/62",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/62",
       "name": "ubi-Linux-i586-musl.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/50",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/50",
       "name": "ubi-Linux-mips-musl.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/52",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/52",
       "name": "ubi-Linux-mipsel-musl.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/51",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/51",
       "name": "ubi-Linux-mips64-musl.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/53",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/53",
       "name": "ubi-Linux-mips64el-musl.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/54",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/54",
       "name": "ubi-Linux-powerpc-gnu.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/55",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/55",
       "name": "ubi-Linux-powerpc64-gnu.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/56",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/56",
       "name": "ubi-Linux-powerpc64le-gnu.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/57",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/57",
       "name": "ubi-Linux-riscv64-gnu.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/58",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/58",
       "name": "ubi-Linux-s390x-gnu.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/59",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/59",
       "name": "ubi-Linux-sparc64-gnu.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/96297448",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/96297448",
       "name": "ubi-Linux-x86_64-musl.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/5",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/5",
       "name": "ubi-NetBSD-x86_64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/61",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/61",
       "name": "ubi-Solaris-sparc64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/6",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/6",
       "name": "ubi-Solaris-x86_64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/60",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/60",
       "name": "ubi-Solaris-sparcv9.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/7",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/7",
       "name": "ubi-Windows-aarch64.zip"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/96252617",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/96252617",
       "name": "ubi-Windows-x86_64.zip"
     }
   ]
@@ -339,115 +339,115 @@ const OMEGASORT_LATEST_RESPONSE: &str = r#"
 {
   "assets": [
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376696",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376696",
       "name": "checksums.txt"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376701",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376701",
       "name": "omegasort_0.0.7_Darwin_arm64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376694",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376694",
       "name": "omegasort_0.0.7_Darwin_x86_64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376698",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376698",
       "name": "omegasort_0.0.7_FreeBSD_arm64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376699",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376699",
       "name": "omegasort_0.0.7_FreeBSD_i386.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376692",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376692",
       "name": "omegasort_0.0.7_FreeBSD_x86_64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/2",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/2",
       "name": "omegasort_0.0.7_Fuchsia_arm64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/3",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/3",
       "name": "omegasort_0.0.7_Fuchsia_x86_64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/4",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/4",
       "name": "omegasort_0.0.7_Illumos_x86_64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/42",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/42",
       "name": "omegasort_0.0.7_Linux_arm.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376697",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376697",
       "name": "omegasort_0.0.7_Linux_arm64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/62",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/62",
       "name": "omegasort_0.0.7_Linux_386.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/50",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/50",
       "name": "omegasort_0.0.7_Linux_mips.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/52",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/52",
       "name": "omegasort_0.0.7_Linux_mipsle.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/51",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/51",
       "name": "omegasort_0.0.7_Linux_mips64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/53",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/53",
       "name": "omegasort_0.0.7_Linux_mips64le.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/54",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/54",
       "name": "omegasort_0.0.7_Linux_ppc.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/55",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/55",
       "name": "omegasort_0.0.7_Linux_ppc64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/56",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/56",
       "name": "omegasort_0.0.7_Linux_ppc64le.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/57",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/57",
       "name": "omegasort_0.0.7_Linux_riscv64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/58",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/58",
       "name": "omegasort_0.0.7_Linux_s390x.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376703",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376703",
       "name": "omegasort_0.0.7_Linux_i386.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376700",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376700",
       "name": "omegasort_0.0.7_Linux_x86_64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/5",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/5",
       "name": "omegasort_0.0.7_NetBSD_x86_64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/6",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/6",
       "name": "omegasort_0.0.7_Solaris_x86_64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376695",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376695",
       "name": "omegasort_0.0.7_Windows_arm64.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376702",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376702",
       "name": "omegasort_0.0.7_Windows_i386.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376693",
+      "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376693",
       "name": "omegasort_0.0.7_Windows_x86_64.tar.gz"
     }
   ]
@@ -545,51 +545,51 @@ const PROTOBUF_LATEST_RESPONSE: &str = r#"
 {
   "assets": [
     {
-      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875803",
+      "browser_download_url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875803",
       "name": "protobuf-22.2.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875802",
+      "browser_download_url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875802",
       "name": "protobuf-22.2.zip"
     },
     {
-      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875801",
+      "browser_download_url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875801",
       "name": "protoc-22.2-linux-aarch_64.zip"
     },
     {
-      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875800",
+      "browser_download_url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875800",
       "name": "protoc-22.2-linux-ppcle_64.zip"
     },
     {
-      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875799",
+      "browser_download_url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875799",
       "name": "protoc-22.2-linux-s390_64.zip"
     },
     {
-      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875810",
+      "browser_download_url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875810",
       "name": "protoc-22.2-linux-x86_32.zip"
     },
     {
-      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875811",
+      "browser_download_url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875811",
       "name": "protoc-22.2-linux-x86_64.zip"
     },
     {
-      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875812",
+      "browser_download_url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875812",
       "name": "protoc-22.2-osx-aarch_64.zip"
     },
     {
-      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875813",
+      "browser_download_url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875813",
       "name": "protoc-22.2-osx-universal_binary.zip"
     },
     {
-      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875814",
+      "browser_download_url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875814",
       "name": "protoc-22.2-osx-x86_64.zip"
     },
     {
-      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875815",
+      "browser_download_url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875815",
       "name": "protoc-22.2-win32.zip"
     },
     {
-      "url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875816",
+      "browser_download_url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875816",
       "name": "protoc-22.2-win64.zip"
     }
   ]
@@ -669,31 +669,31 @@ const MKCERT_LATEST_RESPONSE: &str = r#"
 {
   "assets": [
     {
-      "url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709952",
+      "browser_download_url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709952",
       "name": "mkcert-v1.4.4-darwin-amd64"
     },
     {
-      "url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709954",
+      "browser_download_url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709954",
       "name": "mkcert-v1.4.4-darwin-arm64"
     },
     {
-      "url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709955",
+      "browser_download_url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709955",
       "name": "mkcert-v1.4.4-linux-amd64"
     },
     {
-      "url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709956",
+      "browser_download_url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709956",
       "name": "mkcert-v1.4.4-linux-arm"
     },
     {
-      "url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709957",
+      "browser_download_url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709957",
       "name": "mkcert-v1.4.4-linux-arm64"
     },
     {
-      "url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709958",
+      "browser_download_url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709958",
       "name": "mkcert-v1.4.4-windows-amd64.exe"
     },
     {
-      "url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709963",
+      "browser_download_url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709963",
       "name": "mkcert-v1.4.4-windows-arm64.exe"
     }
   ]
@@ -760,31 +760,31 @@ const JQ_LATEST_RESPONSE: &str = r#"
 {
   "assets": [
     {
-      "url": "https://api.github.com/repos/stedolan/jq/releases/assets/9780532",
+      "browser_download_url": "https://api.github.com/repos/stedolan/jq/releases/assets/9780532",
       "name": "jq-1.6.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/stedolan/jq/releases/assets/9780533",
+      "browser_download_url": "https://api.github.com/repos/stedolan/jq/releases/assets/9780533",
       "name": "jq-1.6.zip"
     },
     {
-      "url": "https://api.github.com/repos/stedolan/jq/releases/assets/9521004",
+      "browser_download_url": "https://api.github.com/repos/stedolan/jq/releases/assets/9521004",
       "name": "jq-linux32"
     },
     {
-      "url": "https://api.github.com/repos/stedolan/jq/releases/assets/9521005",
+      "browser_download_url": "https://api.github.com/repos/stedolan/jq/releases/assets/9521005",
       "name": "jq-linux64"
     },
     {
-      "url": "https://api.github.com/repos/stedolan/jq/releases/assets/9521006",
+      "browser_download_url": "https://api.github.com/repos/stedolan/jq/releases/assets/9521006",
       "name": "jq-osx-amd64"
     },
     {
-      "url": "https://api.github.com/repos/stedolan/jq/releases/assets/9521007",
+      "browser_download_url": "https://api.github.com/repos/stedolan/jq/releases/assets/9521007",
       "name": "jq-win32.exe"
     },
     {
-      "url": "https://api.github.com/repos/stedolan/jq/releases/assets/9521008",
+      "browser_download_url": "https://api.github.com/repos/stedolan/jq/releases/assets/9521008",
       "name": "jq-win64.exe"
     }
   ]
@@ -828,11 +828,11 @@ const MULTIPLE_MATCHES_RESPONSE: &str = r#"
 {
   "assets": [
     {
-      "url": "https://api.github.com/repos/test/multiple-matches/releases/assets/9521007",
+      "browser_download_url": "https://api.github.com/repos/test/multiple-matches/releases/assets/9521007",
       "name": "mm-i686-pc-windows-gnu.zip"
     },
     {
-      "url": "https://api.github.com/repos/test/multiple-matches/releases/assets/9521008",
+      "browser_download_url": "https://api.github.com/repos/test/multiple-matches/releases/assets/9521008",
       "name": "mm-i686-pc-windows-msvc.zip"
     }
   ]
@@ -899,11 +899,11 @@ const MACOS_RESPONSE1: &str = r#"
 {
   "assets": [
     {
-      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100890821",
+      "browser_download_url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100890821",
       "name": "bat-v0.23.0-i686-unknown-linux-gnu.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891186",
+      "browser_download_url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891186",
       "name": "bat-v0.23.0-x86_64-apple-darwin.tar.gz"
     }
   ]
@@ -913,15 +913,15 @@ const MACOS_RESPONSE2: &str = r#"
 {
   "assets": [
     {
-      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100890821",
+      "browser_download_url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100890821",
       "name": "bat-v0.23.0-i686-unknown-linux-gnu.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891186",
+      "browser_download_url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891186",
       "name": "bat-v0.23.0-x86_64-apple-darwin.tar.gz"
     },
     {
-      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891186",
+      "browser_download_url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891186",
       "name": "bat-v0.23.0-aarch64-apple-darwin.tar.gz"
     }
   ]
@@ -994,15 +994,15 @@ const OS_WITHOUT_ARCH_RESPONSE1: &str = r#"
 {
   "assets": [
     {
-      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100890821",
+      "browser_download_url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100890821",
       "name": "gvproxy-darwin"
     },
     {
-      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891186",
+      "browser_download_url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891186",
       "name": "gvproxy-linux-amd64"
     },
     {
-      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891187",
+      "browser_download_url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891187",
       "name": "gvproxy-linux-arm64"
     }
   ]
@@ -1012,15 +1012,15 @@ const OS_WITHOUT_ARCH_RESPONSE2: &str = r#"
 {
   "assets": [
     {
-      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100890821",
+      "browser_download_url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100890821",
       "name": "gvproxy-darwin-arm64"
     },
     {
-      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891186",
+      "browser_download_url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891186",
       "name": "gvproxy-linux-amd64"
     },
     {
-      "url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891187",
+      "browser_download_url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891187",
       "name": "gvproxy-linux-arm64"
     }
   ]

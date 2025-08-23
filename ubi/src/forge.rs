@@ -1,4 +1,4 @@
-use crate::{github, gitlab, ubi::Asset};
+use crate::{forgejo, github, gitlab, ubi::Asset};
 use anyhow::Result;
 use log::debug;
 use reqwest::{
@@ -6,14 +6,17 @@ use reqwest::{
     Client, RequestBuilder, Response,
 };
 use std::env;
-// It'd be nice to use clap::ValueEnum here, but then we'd need to add clap as a dependency for the
-// library code, which would be annoying for downstream users who just want to use the library.
-use strum::{AsRefStr, EnumString, VariantNames};
 use url::Url;
 
-#[derive(AsRefStr, Clone, Debug, Default, EnumString, PartialEq, Eq, VariantNames)]
+// It'd be nice to use clap::ValueEnum here, but then we'd need to add clap as a dependency for the
+// library code, which would be annoying for downstream users who just want to use the library.
+#[derive(
+    strum::AsRefStr, Clone, Debug, Default, strum::EnumString, PartialEq, Eq, strum::VariantNames,
+)]
 #[allow(clippy::module_name_repetitions)]
 pub enum ForgeType {
+    #[strum(serialize = "forgejo")]
+    Forgejo,
     #[strum(serialize = "github")]
     #[default]
     GitHub,
@@ -81,7 +84,9 @@ impl Forge {
 
 impl ForgeType {
     pub(crate) fn from_url(url: &Url) -> ForgeType {
-        if url.domain().unwrap() == gitlab::PROJECT_BASE_URL.domain().unwrap() {
+        if url.domain().unwrap() == forgejo::PROJECT_BASE_URL.domain().unwrap() {
+            ForgeType::Forgejo
+        } else if url.domain().unwrap() == gitlab::PROJECT_BASE_URL.domain().unwrap() {
             ForgeType::GitLab
         } else {
             ForgeType::default()
@@ -90,13 +95,16 @@ impl ForgeType {
 
     pub(crate) fn parse_project_name_from_url(&self, url: &Url, from: &str) -> Result<String> {
         match self {
-            ForgeType::GitHub => github::parse_project_name_from_url(url, from),
+            ForgeType::Forgejo | ForgeType::GitHub => {
+                github::parse_project_name_from_url(url, from)
+            }
             ForgeType::GitLab => gitlab::parse_project_name_from_url(url, from),
         }
     }
 
     pub(crate) fn project_base_url(&self) -> Url {
         match self {
+            ForgeType::Forgejo => forgejo::PROJECT_BASE_URL.clone(),
             ForgeType::GitHub => github::PROJECT_BASE_URL.clone(),
             ForgeType::GitLab => gitlab::PROJECT_BASE_URL.clone(),
         }
@@ -104,6 +112,7 @@ impl ForgeType {
 
     pub(crate) fn api_base_url(&self) -> Url {
         match self {
+            ForgeType::Forgejo => forgejo::DEFAULT_API_BASE_URL.clone(),
             ForgeType::GitHub => github::DEFAULT_API_BASE_URL.clone(),
             ForgeType::GitLab => gitlab::DEFAULT_API_BASE_URL.clone(),
         }
@@ -111,6 +120,7 @@ impl ForgeType {
 
     pub(crate) fn env_var_names(&self) -> &'static [&'static str] {
         match self {
+            ForgeType::Forgejo => &["CODEBERG_TOKEN", "FORGEJO_TOKEN"],
             ForgeType::GitHub => &["GITHUB_TOKEN"],
             ForgeType::GitLab => &["CI_TOKEN", "GITLAB_TOKEN"],
         }
@@ -118,6 +128,7 @@ impl ForgeType {
 
     pub(crate) fn forge_name(&self) -> &'static str {
         match self {
+            ForgeType::Forgejo => "Forgjo",
             ForgeType::GitHub => "GitHub",
             ForgeType::GitLab => "GitLab",
         }
@@ -160,21 +171,23 @@ impl ForgeType {
 
     fn release_info_url(&self, project_name: &str, url: Url, tag: Option<&str>) -> Url {
         match self {
-            ForgeType::GitHub => github::release_info_url(project_name, url, tag),
+            ForgeType::Forgejo | ForgeType::GitHub => {
+                github::release_info_url(project_name, url, tag)
+            }
             ForgeType::GitLab => gitlab::release_info_url(project_name, url, tag),
         }
     }
 
     async fn response_into_assets(&self, response: Response) -> Result<Vec<Asset>> {
         Ok(match self {
+            ForgeType::Forgejo | ForgeType::GitHub => response
+                .json::<github::Release>()
+                .await
+                .map(|release| release.assets)?,
             ForgeType::GitLab => response
                 .json::<gitlab::Release>()
                 .await
                 .map(|release| release.assets.links)?,
-            ForgeType::GitHub => response
-                .json::<github::Release>()
-                .await
-                .map(|release| release.assets)?,
         })
     }
 }
@@ -187,6 +200,103 @@ mod tests {
     use serial_test::serial;
     use std::env;
     use test_log::test;
+
+    #[test(tokio::test)]
+    #[serial]
+    async fn forgejo_fetch_assets_without_token() -> Result<()> {
+        forgejo_fetch_assets(None, None).await
+    }
+
+    #[test(tokio::test)]
+    #[serial]
+    async fn forgejo_fetch_assets_with_token() -> Result<()> {
+        forgejo_fetch_assets(None, Some("1234")).await
+    }
+
+    #[test(tokio::test)]
+    #[serial]
+    async fn forgejo_fetch_assets_with_tag() -> Result<()> {
+        forgejo_fetch_assets(Some("v1.0.0"), None).await
+    }
+
+    #[derive(Debug, serde::Deserialize, serde::Serialize)]
+    struct ForgejoRelease {
+        assets: Vec<ForgejoAsset>,
+    }
+    #[derive(Debug, serde::Deserialize, serde::Serialize)]
+    struct ForgejoAsset {
+        name: String,
+        browser_download_url: Url,
+    }
+
+    async fn forgejo_fetch_assets(tag: Option<&str>, token: Option<&str>) -> Result<()> {
+        let vars = env::vars();
+        env::remove_var("CODEBERG_TOKEN");
+        env::remove_var("FORGEJO_TOKEN");
+
+        let asset_url = Url::parse("https://codeberg.org/repos/some/project/releases/assets/1")?;
+        let assets = vec![ForgejoAsset {
+            name: "asset1".to_string(),
+            browser_download_url: asset_url.clone(),
+        }];
+
+        let expect_path = if let Some(tag) = tag {
+            format!("/repos/some/project/releases/tags/{tag}")
+        } else {
+            "/repos/some/project/releases/latest".to_string()
+        };
+        let authorization_header_matcher = if token.is_some() {
+            mockito::Matcher::Exact(format!("Bearer {}", token.unwrap()))
+        } else {
+            mockito::Matcher::Missing
+        };
+        let mut server = Server::new_async().await;
+
+        let m = server
+            .mock("GET", expect_path.as_str())
+            .match_header("Authorization", authorization_header_matcher)
+            .with_status(200)
+            .with_body(serde_json::to_string(&ForgejoRelease { assets })?)
+            .create_async()
+            .await;
+
+        let forge = ForgeType::Forgejo.new_forge(
+            "some/project".to_string(),
+            tag.map(String::from),
+            Some(server.url()),
+            token.map(String::from),
+        )?;
+
+        let client = Client::new();
+        let got_assets = forge.fetch_assets(&client).await?;
+        let expect_assets = vec![Asset {
+            name: "asset1".to_string(),
+            url: asset_url,
+        }];
+        assert_eq!(got_assets, expect_assets);
+
+        m.assert_async().await;
+
+        for (k, v) in vars {
+            env::set_var(k, v);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn forgejo_api_base_url() -> Result<()> {
+        let url = ForgeType::Forgejo.release_info_url(
+            "houseabsolute/ubi",
+            Url::parse("https://codeberg.org/api/v1")?,
+            None,
+        );
+        assert_eq!(
+            url.as_str(),
+            "https://codeberg.org/api/v1/repos/houseabsolute/ubi/releases/latest"
+        );
+        Ok(())
+    }
 
     #[test(tokio::test)]
     #[serial]
@@ -292,6 +402,8 @@ mod tests {
         let vars = env::vars();
         env::remove_var("GITLAB_TOKEN");
         env::remove_var("CI_JOB_TOKEN");
+        env::remove_var("CODEBERG_TOKEN");
+        env::remove_var("FORGEJO_TOKEN");
 
         let assets = vec![Asset {
             name: "asset1".to_string(),
