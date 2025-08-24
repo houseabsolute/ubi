@@ -49,7 +49,8 @@ impl<'a> UbiBuilder<'a> {
 
     /// Set the project to download from. This can either be just the org/name, like
     /// `houseabsolute/precious`, or the complete forge site URL to the project, like
-    /// `https://github.com/houseabsolute/precious` or `https://gitlab.com/gitlab-org/cli`. It also
+    /// `https://github.com/houseabsolute/precious`, `https://gitlab.com/gitlab-org/cli`, or
+    /// `https://codeberg.org/codeberg/cli`. It also
     /// accepts a URL to any page in the project, like
     /// `https://github.com/houseabsolute/precious/releases`.
     ///
