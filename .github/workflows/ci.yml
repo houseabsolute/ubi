@@ -1,6 +1,12 @@
 name: Tests and release
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - "**"
+    tags-ignore:
+      - "ubi-*"
+  pull_request:
 
 env:
   CRATE_NAME: ubi
