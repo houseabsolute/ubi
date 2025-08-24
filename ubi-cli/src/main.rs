@@ -63,11 +63,15 @@ fn cmd() -> Command {
         .version(env!("CARGO_PKG_VERSION"))
         .author("Dave Rolsky <autarch@urth.org>")
         .about("The universal binary release installer")
-        .arg(Arg::new("project").long("project").short('p').help(concat!(
-            "The project you want to install, like houseabsolute/precious",
-            " or https://github.com/houseabsolute/precious. You cannot pass",
-            " this with the `--url` flag.",
-        )))
+        .arg(
+            Arg::new("project")
+                .long("project")
+                .short('p')
+                .help(concat!(
+                    "The project you want to install, like houseabsolute/precious",
+                    " or https://github.com/houseabsolute/precious. You cannot pass",
+                    " this with the `--url` flag.",
+                )),)
         .arg(
             Arg::new("tag")
                 .long("tag")
@@ -77,32 +81,46 @@ fn cmd() -> Command {
                     " This is only valid if you also pass `--project`."
                 )),
         )
-        .arg(Arg::new("url").long("url").short('u').help(concat!(
-            "The url of the file to download. This can be provided instead of a project or",
-            " tag. This will not use the forge site's API, so you will never hit its API",
-            " limits. With this parameter, you do not need to set a token env var except for",
-            " private repos. You cannot pass `--project` or `--tag` with this flag."
-        )))
+        .arg(
+            Arg::new("url")
+                .long("url")
+                .short('u')
+                .help(concat!(
+                    "The url of the file to download. This can be provided instead of a project or",
+                    " tag. This will not use the forge site's API, so you will never hit its API",
+                    " limits. With this parameter, you do not need to set a token env var except for",
+                    " private repos. You cannot pass `--project` or `--tag` with this flag."
+                )),
+        )
         .arg(
             Arg::new("in")
                 .long("in")
                 .short('i')
                 .help("The directory in which the binary should be placed. Defaults to ./bin."),
         )
-        .arg(Arg::new("exe").long("exe").short('e').help(concat!(
-            "The name of the file to look for in an archive file, or the name of the downloadable",
-            " file excluding its extension, e.g. `ubi.gz`. By default this is the same as the",
-            " project name, so for houseabsolute/precious we look for `precious` or",
-            " `precious.exe`. When running on Windows the `.exe` suffix will be added, as needed.",
-            "You cannot pass `--extract-all` when this is set.",
-        )))
-        .arg(Arg::new("rename-exe-to").long("rename-exe").help(concat!(
-            "The name to use for the executable after it is unpacked. By default this is the same",
-            " as the name of the file passed for the `--exe` flag. If that flag isn't passed, this",
-            " is the same as the name of the project. Note that when set, this name is used as-is,",
-            " so on Windows, `.exe` will not be appended to the name given. You cannot pass",
-            " `--extract-all` when this is set.",
-        )))
+        .arg(
+            Arg::new("exe")
+                .long("exe")
+                .short('e')
+                .help(concat!(
+                    "The name of the file to look for in an archive file, or the name of the downloadable",
+                    " file excluding its extension, e.g. `ubi.gz`. By default this is the same as the",
+                    " project name, so for houseabsolute/precious we look for `precious` or",
+                    " `precious.exe`. When running on Windows the `.exe` suffix will be added, as needed.",
+                    "You cannot pass `--extract-all` when this is set.",
+                )),
+        )
+        .arg(
+            Arg::new("rename-exe-to")
+                .long("rename-exe")
+                .help(concat!(
+                    "The name to use for the executable after it is unpacked. By default this is the same",
+                    " as the name of the file passed for the `--exe` flag. If that flag isn't passed, this",
+                    " is the same as the name of the project. Note that when set, this name is used as-is,",
+                    " so on Windows, `.exe` will not be appended to the name given. You cannot pass",
+                    " `--extract-all` when this is set.",
+                )),
+        )
         .arg(
             Arg::new("extract-all")
                 .long("extract-all")
@@ -152,11 +170,15 @@ fn cmd() -> Command {
                     " does not have a domain at all, then the default is GitHub.",
                 )),
         )
-        .arg(Arg::new("api-base-url").long("api-base-url").help(concat!(
-            "The base URL for the forge site's API. This is useful for testing or if you want",
-            " to operate against an Enterprise version of GitHub or GitLab. This should be",
-            " something like `https://github.my-corp.example.com/api/v4`.",
-        )))
+        .arg(
+            Arg::new("api-base-url")
+                .long("api-base-url")
+                .help(concat!(
+                    "The base URL for the forge site's API. This is useful for testing or if you want",
+                    " to operate against an Enterprise version of GitHub or GitLab. This should be",
+                    " something like `https://github.my-corp.example.com/api/v4`.",
+                )),
+        )
         .arg(
             Arg::new("self-upgrade")
                 .long("self-upgrade")
@@ -188,7 +210,10 @@ fn cmd() -> Command {
                 .action(ArgAction::SetTrue)
                 .help("Suppresses most output."),
         )
-        .group(ArgGroup::new("log-level").args(["verbose", "debug", "quiet"]))
+        .group(
+            ArgGroup::new("log-level")
+                .args(["verbose", "debug", "quiet"]),
+        )
         .max_term_width(MAX_TERM_WIDTH)
 }
 
