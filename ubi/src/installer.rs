@@ -35,6 +35,7 @@ pub(crate) trait Installer: Debug {
 #[derive(Debug)]
 pub(crate) struct ExeInstaller {
     install_path: PathBuf,
+    install_path_is_from_rename_exe_to: bool,
     exe_file_stem: String,
     is_windows: bool,
     extensions: Vec<&'static str>,
@@ -47,7 +48,12 @@ pub(crate) struct ArchiveInstaller {
 }
 
 impl ExeInstaller {
-    pub(crate) fn new(install_path: PathBuf, exe: String, is_windows: bool) -> Self {
+    pub(crate) fn new(
+        install_path: PathBuf,
+        install_path_is_from_rename_exe_to: bool,
+        exe: String,
+        is_windows: bool,
+    ) -> Self {
         let extensions = if is_windows {
             Extension::iter()
                 .filter(super::extension::Extension::is_windows_only)
@@ -59,6 +65,7 @@ impl ExeInstaller {
 
         ExeInstaller {
             install_path,
+            install_path_is_from_rename_exe_to,
             exe_file_stem: exe,
             is_windows,
             extensions,
@@ -142,14 +149,7 @@ impl ExeInstaller {
                 }
 
                 let entry_path = entry.path()?;
-                let mut install_path = self.install_path.clone();
-                if let Some(ext) = Extension::from_path(entry_path.as_ref())? {
-                    if ext.should_preserve_extension_on_install() {
-                        debug!("preserving the {} extension on install", ext.extension());
-                        install_path.set_extension(ext.extension_without_dot());
-                    }
-                }
-
+                let install_path = self.maybe_munged_install_path(&entry_path)?;
                 debug!(
                     "extracting tarball entry named {} to {}",
                     entry_path.display(),
@@ -187,15 +187,7 @@ impl ExeInstaller {
 
             let entry = archive.archive().files[idx].clone();
             let path = entry.path()?;
-
-            let mut install_path = self.install_path.clone();
-            if let Some(ext) = Extension::from_path(&path)? {
-                if ext.should_preserve_extension_on_install() {
-                    debug!("preserving the {} extension on install", ext.extension());
-                    install_path.set_extension(ext.extension_without_dot());
-                }
-            }
-
+            let install_path = self.maybe_munged_install_path(&path)?;
             debug!(
                 "extracting 7z entry named {} to {}",
                 path.display(),
@@ -222,14 +214,7 @@ impl ExeInstaller {
         if let Some(idx) = self.best_match_from_archive(ZipEntriesIterator::new(&mut zip), "zip")? {
             let mut zf = zip.by_index(idx)?;
             let zf_path = Path::new(zf.name());
-            let mut install_path = self.install_path.clone();
-            if let Some(ext) = Extension::from_path(zf_path)? {
-                if ext.should_preserve_extension_on_install() {
-                    debug!("preserving the {} extension on install", ext.extension());
-                    install_path.set_extension(ext.extension_without_dot());
-                }
-            }
-
+            let install_path = self.maybe_munged_install_path(zf_path)?;
             debug!(
                 "extracting zip file entry named {} to {}",
                 zf.name(),
@@ -364,13 +349,7 @@ impl ExeInstaller {
         debug!("copying executable to final location");
         self.create_install_dir()?;
 
-        let mut install_path = self.install_path.clone();
-        if let Some(ext) = Extension::from_path(exe_file)? {
-            if ext.should_preserve_extension_on_install() {
-                debug!("preserving the {} extension on install", ext.extension());
-                install_path.set_extension(ext.extension_without_dot());
-            }
-        }
+        let install_path = self.maybe_munged_install_path(exe_file)?;
         std::fs::copy(exe_file, &install_path).context(format!(
             "error copying file from {} to {}",
             exe_file.display(),
@@ -391,6 +370,26 @@ impl ExeInstaller {
         debug!("creating directory at {}", path.display());
         create_dir_all(path)
             .with_context(|| format!("could not create a directory at {}", path.display()))
+    }
+
+    fn maybe_munged_install_path<P: AsRef<Path>>(&self, path: P) -> Result<PathBuf> {
+        let mut install_path = self.install_path.clone();
+
+        // If the user specifies an explicit path with `--rename-exe`, then we want to use that
+        // exactly as given.
+        if self.install_path_is_from_rename_exe_to {
+            debug!("install path was explicitly set, not munging the install path");
+            return Ok(install_path);
+        }
+
+        if let Some(ext) = Extension::from_path(path.as_ref())? {
+            if ext.should_preserve_extension_on_install() {
+                debug!("preserving the {} extension on install", ext.extension());
+                install_path.set_extension(ext.extension_without_dot());
+            }
+        }
+
+        Ok(install_path)
     }
 
     #[cfg(target_family = "windows")]
@@ -672,7 +671,7 @@ mod tests {
 
         let td = tempdir()?;
         let path_without_subdir = td.path().to_path_buf();
-        test_installer(
+        test_exe_installer(
             archive_path,
             installed_extension,
             path_without_subdir,
@@ -682,7 +681,7 @@ mod tests {
         let td = tempdir()?;
         let mut path_with_subdir = td.path().to_path_buf();
         path_with_subdir.push("subdir");
-        test_installer(archive_path, installed_extension, path_with_subdir, false)
+        test_exe_installer(archive_path, installed_extension, path_with_subdir, false)
     }
 
     // These tests check that we look for project.bat and project.exe in archive files when running
@@ -701,22 +700,56 @@ mod tests {
         let td = tempdir()?;
         let install_dir = td.path().to_path_buf();
 
-        test_installer(archive_path, Some(extension), install_dir, true)
+        test_exe_installer(archive_path, Some(extension), install_dir, true)
     }
 
-    fn test_installer(
+    fn test_exe_installer(
         archive_path: &str,
         installed_extension: Option<&str>,
         install_dir: PathBuf,
         is_windows: bool,
     ) -> Result<()> {
-        let exe_file_stem = "project";
-
-        let mut install_path = install_dir;
+        let mut install_path = install_dir.clone();
         install_path.push("project");
 
-        let installer =
-            ExeInstaller::new(install_path.clone(), exe_file_stem.to_string(), is_windows);
+        run_one_exe_installer_test(
+            &install_path,
+            archive_path,
+            installed_extension,
+            is_windows,
+            false,
+        )?;
+
+        let mut install_path = install_dir;
+        install_path.push("project.foo");
+
+        run_one_exe_installer_test(
+            &install_path,
+            archive_path,
+            installed_extension,
+            is_windows,
+            true,
+        )?;
+
+        Ok(())
+    }
+
+    fn run_one_exe_installer_test(
+        install_path: &Path,
+        archive_path: &str,
+        installed_extension: Option<&str>,
+        is_windows: bool,
+        install_path_is_from_rename_exe_to: bool,
+    ) -> Result<()> {
+        let exe_file_stem = "project";
+
+        let installer = ExeInstaller::new(
+            install_path.to_path_buf(),
+            install_path_is_from_rename_exe_to,
+            exe_file_stem.to_string(),
+            is_windows,
+        );
+
         installer.install(&Download {
             // It doesn't matter what we use here. We're not actually going to
             // put anything in this temp dir.
@@ -724,12 +757,14 @@ mod tests {
             archive_path: PathBuf::from(archive_path),
         })?;
 
-        let mut expect_install_path = install_path.clone();
-        if let Some(installed_extension) = installed_extension {
-            let path = PathBuf::from(format!("foo.{installed_extension}"));
-            let ext = Extension::from_path(&path).unwrap().unwrap();
-            if ext.should_preserve_extension_on_install() {
-                expect_install_path.set_extension(ext.extension_without_dot());
+        let mut expect_install_path = install_path.to_path_buf();
+        if !install_path_is_from_rename_exe_to {
+            if let Some(installed_extension) = installed_extension {
+                let path = PathBuf::from(format!("foo.{installed_extension}"));
+                let ext = Extension::from_path(&path).unwrap().unwrap();
+                if ext.should_preserve_extension_on_install() {
+                    expect_install_path.set_extension(ext.extension_without_dot());
+                }
             }
         }
 
@@ -740,7 +775,10 @@ mod tests {
         );
         // Testing the installed file's length is a shortcut to make sure we install the file we
         // expected to install.
-        let expect_len = if expect_install_path.extension().unwrap_or_default() == "pyz" {
+        let expect_len = if Path::new(archive_path)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("pyz"))
+        {
             fs::metadata(archive_path)?.len()
         } else {
             3

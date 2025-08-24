@@ -5,6 +5,10 @@
   "foo-macos-x86-64.tgz" on the macOS ARM platform. Implemented by !itochan (Kazunori Jo). GH #132.
 - Added support for Zstd compression with both standalone files and tarballs. Implemented by
   @alaviss. GH #134.
+- Fixed handling of the `--rename-exe-to` option. For some file types, like `.AppImage` files, this
+  would preserve the extension on the file even if the value passed to `--rename-exe-to` did _not_
+  include the extension. This contradicted the documentation, which said that the name was used as
+  given. Reported by @pale3(Marko Rakamaric). GH #129.
 - Fixed regressions introduced in 0.7.0 by eliminating default features for `clap`, which made the
   CLI experience generally worse.
 
