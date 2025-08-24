@@ -1,16 +1,9 @@
-use anyhow::{anyhow, Error, Result};
+use anyhow::{anyhow, Result};
 use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command};
 use log::{debug, error};
 use std::{env, path::Path, str::FromStr};
 use strum::VariantNames;
-use thiserror::Error;
 use ubi::{ForgeType, Ubi, UbiBuilder};
-
-#[derive(Debug, Error)]
-enum UbiError {
-    #[error("{0:}")]
-    InvalidArgsError(String),
-}
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -30,7 +23,7 @@ async fn main() {
         Ok(p) => p,
         Err(e) => {
             let e = anyhow!("could not find path for current executable: {e}");
-            print_err(&e);
+            error!("{e}");
             std::process::exit(127);
         }
     };
@@ -43,12 +36,12 @@ async fn main() {
                 0
             }
             Err(e) => {
-                print_err(&e);
+                error!("{e}");
                 1
             }
         },
         Err(e) => {
-            print_err(&e);
+            error!("{e}");
             127
         }
     };
@@ -70,26 +63,28 @@ fn cmd() -> Command {
                 .help(concat!(
                     "The project you want to install, like houseabsolute/precious",
                     " or https://github.com/houseabsolute/precious. You cannot pass",
-                    " this with the `--url` flag.",
+                    " this when `--url` is passed.",
                 )),)
         .arg(
             Arg::new("tag")
                 .long("tag")
                 .short('t')
+                .requires("project")
                 .help(concat!(
                     "The tag to download. Defaults to the latest release.",
-                    " This is only valid if you also pass `--project`."
+                    " This can only be passed with `--project`."
                 )),
         )
         .arg(
             Arg::new("url")
                 .long("url")
                 .short('u')
+                .conflicts_with_all(["tag", "project"])
                 .help(concat!(
                     "The url of the file to download. This can be provided instead of a project or",
                     " tag. This will not use the forge site's API, so you will never hit its API",
                     " limits. With this parameter, you do not need to set a token env var except for",
-                    " private repos. You cannot pass `--project` or `--tag` with this flag."
+                    " private repos. You cannot pass this when `--project` or `--tag` are passed."
                 )),
         )
         .arg(
@@ -107,7 +102,7 @@ fn cmd() -> Command {
                     " file excluding its extension, e.g. `ubi.gz`. By default this is the same as the",
                     " project name, so for houseabsolute/precious we look for `precious` or",
                     " `precious.exe`. When running on Windows the `.exe` suffix will be added, as needed.",
-                    "You cannot pass `--extract-all` when this is set.",
+                    " You cannot pass this when `--extract-all` is passed.",
                 )),
         )
         .arg(
@@ -116,15 +111,16 @@ fn cmd() -> Command {
                 .help(concat!(
                     "The name to use for the executable after it is unpacked. By default this is the same",
                     " as the name of the file passed for the `--exe` flag. If that flag isn't passed, this",
-                    " is the same as the name of the project. Note that when set, this name is used as-is,",
-                    " so on Windows, `.exe` will not be appended to the name given. You cannot pass",
-                    " `--extract-all` when this is set.",
+                    " is the same as the name of the project. Note that when passed, this name is used as-is,",
+                    " so on Windows, `.exe` will not be appended to the name given. You cannot pass this",
+                    " when `--extract-all` is passed.",
                 )),
         )
         .arg(
             Arg::new("extract-all")
                 .long("extract-all")
                 .action(ArgAction::SetTrue)
+                .conflicts_with_all(["exe", "rename-exe-to"])
                 .help(concat!(
                     "Pass this to tell `ubi` to extract all files from the archive. By default",
                     " `ubi` will only extract an executable from an archive file. But if this is",
@@ -132,8 +128,8 @@ fn cmd() -> Command {
                     " archive file share a top-level directory, that directory will be removed",
                     " during unpacking. In other words, if an archive contains",
                     " `./project/some-file` and `./project/docs.md`, it will extract them as",
-                    " `some-file` and `docs.md`. You cannot pass `--exe` or `--rename-exe-to`",
-                    " when this is set.",
+                    " `some-file` and `docs.md`. You cannot pass this when `--exe` or",
+                    "  `--rename-exe-to` are passed.",
                 )),
         )
         .arg(
@@ -165,7 +161,7 @@ fn cmd() -> Command {
                     ForgeType::VARIANTS,
                 ))
                 .help(concat!(
-                    "The forge to use. If this isn't set, then the value of `--project` or `--url`",
+                    "The forge to use. If this isn't passed, then the value of `--project` or `--url`",
                     " will be checked for gitlab.com. If this contains any other domain _or_ if it",
                     " does not have a domain at all, then the default is GitHub.",
                 )),
@@ -182,12 +178,9 @@ fn cmd() -> Command {
         .arg(
             Arg::new("self-upgrade")
                 .long("self-upgrade")
+                .conflicts_with_all(["exe", "extract-all", "forge", "in", "project", "tag", "url"])
                 .action(ArgAction::SetTrue)
-                .help(concat!(
-                    "Use ubi to upgrade to the latest version of ubi. The",
-                    " --exe, --in, --project, --tag, and --url args will be",
-                    " ignored."
-                )),
+                .help("Use ubi to upgrade to the latest version of ubi."),
         )
         .arg(
             Arg::new("verbose")
@@ -209,6 +202,11 @@ fn cmd() -> Command {
                 .long("quiet")
                 .action(ArgAction::SetTrue)
                 .help("Suppresses most output."),
+        )
+        .group(
+            ArgGroup::new("require one of")
+                .args(["project", "url", "self-upgrade"])
+                .required(true),
         )
         .group(
             ArgGroup::new("log-level")
@@ -235,7 +233,6 @@ fn make_ubi<'a>(
     matches: &'a ArgMatches,
     ubi_exe_path: &'a Path,
 ) -> Result<(Ubi<'a>, Option<impl FnOnce()>)> {
-    validate_args(matches)?;
     if matches.get_flag("self-upgrade") {
         return self_upgrade_ubi(ubi_exe_path);
     }
@@ -278,41 +275,6 @@ fn make_ubi<'a>(
     Ok((builder.build()?, None))
 }
 
-fn validate_args(matches: &ArgMatches) -> Result<()> {
-    if matches.contains_id("url") {
-        for a in &["project", "tag"] {
-            if matches.contains_id(a) {
-                return Err(UbiError::InvalidArgsError(format!(
-                    "You cannot combine the --url and --{a} options"
-                ))
-                .into());
-            }
-        }
-    }
-
-    if matches.get_flag("self-upgrade") {
-        for a in &["exe", "in", "project", "tag"] {
-            if matches.contains_id(a) {
-                return Err(UbiError::InvalidArgsError(format!(
-                    "You cannot combine the --self-upgrade and --{a} options"
-                ))
-                .into());
-            }
-        }
-    }
-
-    if !(matches.contains_id("project")
-        || matches.contains_id("url")
-        || matches.get_flag("self-upgrade"))
-    {
-        return Err(
-            UbiError::InvalidArgsError("You must pass a --project or --url.".to_string()).into(),
-        );
-    }
-
-    Ok(())
-}
-
 fn self_upgrade_ubi(ubi_exe_path: &Path) -> Result<(Ubi<'_>, Option<impl FnOnce()>)> {
     let ubi =
         UbiBuilder::new()
@@ -342,16 +304,4 @@ fn self_upgrade_ubi(ubi_exe_path: &Path) -> Result<(Ubi<'_>, Option<impl FnOnce(
     };
 
     Ok((ubi, post_run))
-}
-
-fn print_err(e: &Error) {
-    error!("{e}");
-    if let Some(ue) = e.downcast_ref::<UbiError>() {
-        match ue {
-            UbiError::InvalidArgsError(_) => {
-                println!();
-                cmd().print_help().unwrap();
-            }
-        }
-    }
 }
