@@ -5,6 +5,8 @@
   "foo-macos-x86-64.tgz" on the macOS ARM platform. Implemented by !itochan (Kazunori Jo). GH #132.
 - Added support for Zstd compression with both standalone files and tarballs. Implemented by
   @alaviss. GH #134.
+- Fixed regressions introduced in 0.7.0 by eliminating default features for `clap`, which made the
+  CLI experience generally worse.
 
 ## 0.7.3 2025-07-27
 
