@@ -1,4 +1,4 @@
-## 0.7.4
+## 0.7.4 2025-08-24
 
 - Changed macOS on ARM artifact name matching to look for "arm", not just "arm64", _before_ looking
   for 64-bit names. This means that `ubi` will pick something like "foo-macos-arm.tgz" over
