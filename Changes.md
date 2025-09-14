@@ -1,4 +1,4 @@
-## 0.8.0
+## 0.8.0 2025-09-14
 
 - Added support for releases done via
   [Codeberg](https://codeberg.org/)/[Forgejo](https://forgejo.org/). Based on PR #107 from @pepicrft
