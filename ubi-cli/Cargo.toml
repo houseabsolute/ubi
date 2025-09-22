@@ -21,6 +21,8 @@ tokio.workspace = true
 ubi = { version = "0.8.0", path = "../ubi", features = ["default", "logging"] }
 
 [dev-dependencies]
+rstest.workspace = true
+serial_test.workspace = true
 which.workspace = true
 
 [[bin]]
