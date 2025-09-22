@@ -62,44 +62,42 @@ pub(crate) fn release_info_url(project_name: &str, mut url: Url, tag: Option<&st
 #[cfg(test)]
 mod tests {
     use super::*;
-    use test_case::test_case;
+    use rstest::rstest;
 
     enum ParseTestExpect {
         Success(&'static str),
         Fail(&'static str),
     }
 
-    #[test_case(
+    #[rstest]
+    #[case::basic(
         "https://github.com/owner/repo",
-        ParseTestExpect::Success("owner/repo");
-        "basic"
+        ParseTestExpect::Success("owner/repo")
     )]
-    #[test_case(
+    #[case::with_release_in_path(
         "https://github.com/owner/repo/releases",
-        ParseTestExpect::Success("owner/repo");
-        "with /releases"
+        ParseTestExpect::Success("owner/repo")
     )]
-    #[test_case(
+    #[case::with_trailing_slash(
         "https://github.com/owner/repo/",
-        ParseTestExpect::Success("owner/repo");
-        "with trailing slash"
+        ParseTestExpect::Success("owner/repo")
     )]
-    #[test_case(
+    #[case::with_release_tag_in_path(
         "https://github.com/owner/repo/releases/tag/v1.0.0",
-        ParseTestExpect::Success("owner/repo");
-        "with release tag in path"
+        ParseTestExpect::Success("owner/repo")
     )]
-    #[test_case(
+    #[case::with_org_but_no_project(
         "https://github.com/owner",
-        ParseTestExpect::Fail("could not parse project from test");
-        "with org but no project"
+        ParseTestExpect::Fail("could not parse project from test")
     )]
-    #[test_case(
+    #[case::with_empty_path_segments(
         "https://github.com/owner//repo",
-        ParseTestExpect::Fail("could not parse org and repo name from test");
-        "with empty path segments"
+        ParseTestExpect::Fail("could not parse org and repo name from test")
     )]
-    fn parse_project_name(url: &'static str, expect: ParseTestExpect) -> Result<()> {
+    fn parse_project_name(
+        #[case] url: &'static str,
+        #[case] expect: ParseTestExpect,
+    ) -> Result<()> {
         let url = Url::parse(url)?;
         let result = super::parse_project_name_from_url(&url, "test");
         match (result, expect) {

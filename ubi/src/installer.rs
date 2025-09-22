@@ -633,41 +633,44 @@ fn open_file(path: &Path) -> Result<File> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
     #[cfg(target_family = "unix")]
     use std::os::unix::fs::PermissionsExt;
     use tempfile::tempdir;
-    use test_case::test_case;
-    use test_log::test;
 
-    #[test_case("test-data/project.7z", None)]
-    #[test_case("test-data/project.AppImage", Some("AppImage"))]
-    #[test_case("test-data/project.bat", Some("bat"))]
-    #[test_case("test-data/project.bz", None)]
-    #[test_case("test-data/project.bz2", None)]
-    #[test_case("test-data/project.exe", Some("exe"))]
-    #[test_case("test-data/project.gz", None)]
-    #[test_case("test-data/project.jar", Some("jar"))]
-    #[test_case("test-data/project.phar", Some("phar"))]
-    #[test_case("test-data/project.py", Some("py"))]
-    #[test_case("test-data/project.pyz", Some("pyz"))]
-    #[test_case("test-data/project.sh", Some("sh"))]
-    #[test_case("test-data/project.tar", None)]
-    #[test_case("test-data/project.tar.bz", None)]
-    #[test_case("test-data/project.tar.bz2", None)]
-    #[test_case("test-data/project.tar.gz", None)]
-    #[test_case("test-data/project.tar.xz", None)]
-    #[test_case("test-data/project.tar.zst", None)]
-    #[test_case("test-data/project.xz", None)]
-    #[test_case("test-data/project.zip", None)]
-    #[test_case("test-data/project.zst", None)]
-    #[test_case("test-data/project", None)]
+    #[rstest]
+    #[case("test-data/project.7z", None)]
+    #[case("test-data/project.AppImage", Some("AppImage"))]
+    #[case("test-data/project.bat", Some("bat"))]
+    #[case("test-data/project.bz", None)]
+    #[case("test-data/project.bz2", None)]
+    #[case("test-data/project.exe", Some("exe"))]
+    #[case("test-data/project.gz", None)]
+    #[case("test-data/project.jar", Some("jar"))]
+    #[case("test-data/project.phar", Some("phar"))]
+    #[case("test-data/project.py", Some("py"))]
+    #[case("test-data/project.pyz", Some("pyz"))]
+    #[case("test-data/project.sh", Some("sh"))]
+    #[case("test-data/project.tar", None)]
+    #[case("test-data/project.tar.bz", None)]
+    #[case("test-data/project.tar.bz2", None)]
+    #[case("test-data/project.tar.gz", None)]
+    #[case("test-data/project.tar.xz", None)]
+    #[case("test-data/project.tar.zst", None)]
+    #[case("test-data/project.xz", None)]
+    #[case("test-data/project.zip", None)]
+    #[case("test-data/project.zst", None)]
+    #[case("test-data/project", None)]
     // This tests a bug where zip files with partial matches before an exact match would pick the wrong file.
-    #[test_case("test-data/project-with-partial-before-exact.zip", None)]
+    #[case("test-data/project-with-partial-before-exact.zip", None)]
     // These are archive files that just contain a partial match for the expected executable.
-    #[test_case("test-data/project-with-partial-match.tar.gz", None)]
-    #[test_case("test-data/project-with-partial-match.zip", None)]
-    fn exe_installer(archive_path: &str, installed_extension: Option<&str>) -> Result<()> {
-        crate::test_case::init_logging();
+    #[case("test-data/project-with-partial-match.tar.gz", None)]
+    #[case("test-data/project-with-partial-match.zip", None)]
+    fn exe_installer(
+        #[case] archive_path: &str,
+        #[case] installed_extension: Option<&str>,
+    ) -> Result<()> {
+        crate::test_log::init_logging();
 
         let td = tempdir()?;
         let path_without_subdir = td.path().to_path_buf();
@@ -686,16 +689,17 @@ mod tests {
 
     // These tests check that we look for project.bat and project.exe in archive files when running
     // on Windows.
-    #[test_case("test-data/windows-project-exe.7z", "exe")]
-    #[test_case("test-data/windows-project-bat.tar.gz", "bat")]
-    #[test_case("test-data/windows-project-exe.tar.gz", "exe")]
-    #[test_case("test-data/windows-project-bat.zip", "bat")]
-    #[test_case("test-data/windows-project-exe.zip", "exe")]
+    #[rstest]
+    #[case("test-data/windows-project-exe.7z", "exe")]
+    #[case("test-data/windows-project-bat.tar.gz", "bat")]
+    #[case("test-data/windows-project-exe.tar.gz", "exe")]
+    #[case("test-data/windows-project-bat.zip", "bat")]
+    #[case("test-data/windows-project-exe.zip", "exe")]
     // And these check that we match project-with-stuff.exe.
-    #[test_case("test-data/windows-project-exe-with-partial-match.tar.gz", "exe")]
-    #[test_case("test-data/windows-project-exe-with-partial-match.zip", "exe")]
-    fn exe_installer_on_windows(archive_path: &str, extension: &str) -> Result<()> {
-        crate::test_case::init_logging();
+    #[case("test-data/windows-project-exe-with-partial-match.tar.gz", "exe")]
+    #[case("test-data/windows-project-exe-with-partial-match.zip", "exe")]
+    fn exe_installer_on_windows(#[case] archive_path: &str, #[case] extension: &str) -> Result<()> {
+        crate::test_log::init_logging();
 
         let td = tempdir()?;
         let install_dir = td.path().to_path_buf();
@@ -791,16 +795,17 @@ mod tests {
         Ok(())
     }
 
-    #[test_case("test-data/project.7z")]
-    #[test_case("test-data/project.tar")]
-    #[test_case("test-data/project.tar.bz")]
-    #[test_case("test-data/project.tar.bz2")]
-    #[test_case("test-data/project.tar.gz")]
-    #[test_case("test-data/project.tar.xz")]
-    #[test_case("test-data/project.tar.zst")]
-    #[test_case("test-data/project.zip")]
-    fn archive_installer(archive_path: &str) -> Result<()> {
-        crate::test_case::init_logging();
+    #[rstest]
+    #[case("test-data/project.7z")]
+    #[case("test-data/project.tar")]
+    #[case("test-data/project.tar.bz")]
+    #[case("test-data/project.tar.bz2")]
+    #[case("test-data/project.tar.gz")]
+    #[case("test-data/project.tar.xz")]
+    #[case("test-data/project.tar.zst")]
+    #[case("test-data/project.zip")]
+    fn archive_installer(#[case] archive_path: &str) -> Result<()> {
+        crate::test_log::init_logging();
 
         let td = tempdir()?;
         let mut path_without_subdir = td.path().to_path_buf();
@@ -834,7 +839,7 @@ mod tests {
 
     // This tests a bug in the initial implementation where a tarball that just contained files
     // caused us to try to move its contents up to a directory that didn't exist.
-    #[test]
+    #[test_log::test]
     fn archive_installer_one_file_in_archive_root() -> Result<()> {
         let td = tempdir()?;
         let mut path_without_subdir = td.path().to_path_buf();
@@ -862,7 +867,7 @@ mod tests {
         Ok(())
     }
 
-    #[test]
+    #[test_log::test]
     fn archive_installer_no_shared_root_path() -> Result<()> {
         let td = tempdir()?;
         let mut path_without_subdir = td.path().to_path_buf();
@@ -898,7 +903,7 @@ mod tests {
         Ok(())
     }
 
-    #[test]
+    #[test_log::test]
     fn archive_installer_to_existing_tree() -> Result<()> {
         let td = tempdir()?;
         let mut path_without_subdir = td.path().to_path_buf();

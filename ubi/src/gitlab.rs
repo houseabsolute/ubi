@@ -75,84 +75,74 @@ pub(crate) fn release_info_url(project_name: &str, mut url: Url, tag: Option<&st
 #[cfg(test)]
 mod tests {
     use super::*;
-    use test_case::test_case;
+    use rstest::rstest;
 
     enum ParseTestExpect {
         Success(&'static str),
         Fail(&'static str),
     }
 
-    #[test_case(
+    #[rstest]
+    #[case::basic(
         "https://gitlab.com/owner/repo",
-        ParseTestExpect::Success("owner/repo");
-        "basic"
+        ParseTestExpect::Success("owner/repo")
     )]
-    #[test_case(
+    #[case::nested_project_path(
         "https://gitlab.com/gitlab-com/gl-infra/terra-transformer",
-        ParseTestExpect::Success("gitlab-com/gl-infra/terra-transformer");
-        "nested project path"
+        ParseTestExpect::Success("gitlab-com/gl-infra/terra-transformer")
     )]
-    #[test_case(
+    #[case::deeply_nested_project_path(
         "https://gitlab.com/gitlab-com/gl-infra/terra-transformer/foo/bar",
-        ParseTestExpect::Success("gitlab-com/gl-infra/terra-transformer/foo/bar");
-        "deeply nested project path"
+        ParseTestExpect::Success("gitlab-com/gl-infra/terra-transformer/foo/bar")
     )]
-    #[test_case(
+    #[case::with_trailing_slash(
         "https://gitlab.com/owner/repo/",
-        ParseTestExpect::Success("owner/repo");
-        "with trailing slash"
+        ParseTestExpect::Success("owner/repo")
     )]
-    #[test_case(
+    #[case::nested_project_path_with_trailing_slash(
         "https://gitlab.com/gitlab-com/gl-infra/terra-transformer/",
-        ParseTestExpect::Success("gitlab-com/gl-infra/terra-transformer");
-        "nested project path with trailing slash"
+        ParseTestExpect::Success("gitlab-com/gl-infra/terra-transformer")
     )]
-    #[test_case(
+    #[case::deeply_nested_project_path_with_trailing_slash(
         "https://gitlab.com/gitlab-com/gl-infra/terra-transformer/foo/bar/",
-        ParseTestExpect::Success("gitlab-com/gl-infra/terra-transformer/foo/bar");
-        "deeply nested project path with trailing slash"
+        ParseTestExpect::Success("gitlab-com/gl-infra/terra-transformer/foo/bar")
     )]
-    #[test_case(
+    #[case::with_release_tag_in_path(
         "https://gitlab.com/owner/repo/-/releases/tag/v1.0.0",
-        ParseTestExpect::Success("owner/repo");
-        "with release tag in path"
+        ParseTestExpect::Success("owner/repo")
     )]
-    #[test_case(
+    #[case::nested_with_release_tag_in_path(
         "https://gitlab.com/gitlab-com/gl-infra/terra-transformer/-/releases/tag/v1.0.0",
-        ParseTestExpect::Success("gitlab-com/gl-infra/terra-transformer");
-        "nested with release tag in path"
+        ParseTestExpect::Success("gitlab-com/gl-infra/terra-transformer")
     )]
-    #[test_case(
+    #[case::deeply_nested_with_release_tag_in_path(
         "https://gitlab.com/gitlab-com/gl-infra/terra-transformer/foo/bar/-/releases/tag/v1.0.0",
-        ParseTestExpect::Success("gitlab-com/gl-infra/terra-transformer/foo/bar");
-        "deeply nested with release tag in path"
+        ParseTestExpect::Success("gitlab-com/gl-infra/terra-transformer/foo/bar")
     )]
-    #[test_case(
+    #[case::ends_in_dash(
         "https://gitlab.com/owner/repo/-",
-        ParseTestExpect::Success("owner/repo");
-        "ends in dash"
+        ParseTestExpect::Success("owner/repo")
     )]
-    #[test_case(
+    #[case::nested_ends_in_dash(
         "https://gitlab.com/gitlab-com/gl-infra/terra-transformer/-",
-        ParseTestExpect::Success("gitlab-com/gl-infra/terra-transformer");
-        "nested ends in dash"
+        ParseTestExpect::Success("gitlab-com/gl-infra/terra-transformer")
     )]
-    #[test_case(
+    #[case::deeply_nested_ends_in_dash(
         "https://gitlab.com/gitlab-com/gl-infra/terra-transformer/foo/bar/-",
-        ParseTestExpect::Success("gitlab-com/gl-infra/terra-transformer/foo/bar");
-        "deeply nested ends in dash"
+        ParseTestExpect::Success("gitlab-com/gl-infra/terra-transformer/foo/bar")
     )]
-    #[test_case(
+    #[case::with_org_but_no_project(
         "https://gitlab.com/owner",
-        ParseTestExpect::Fail("could not parse project from test");
-        "with org but no project"
+        ParseTestExpect::Fail("could not parse project from test")
     )]
-    #[test_case(
+    #[case::with_empty_path_segments(
         "https://gitlab.com/owner//repo",
-        ParseTestExpect::Fail("could not parse project from test");
-        "with empty path segments"
+        ParseTestExpect::Fail("could not parse project from test")
     )]
-    fn parse_project_name(url: &'static str, expect: ParseTestExpect) -> Result<()> {
+    fn parse_project_name(
+        #[case] url: &'static str,
+        #[case] expect: ParseTestExpect,
+    ) -> Result<()> {
         let url = Url::parse(url)?;
         let result = super::parse_project_name_from_url(&url, "test");
         match (result, expect) {

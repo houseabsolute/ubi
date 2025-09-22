@@ -400,7 +400,7 @@ fn reqwest_client() -> Result<Client> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use test_case::test_case;
+    use rstest::rstest;
 
     #[test]
     fn parse_project_name() -> Result<()> {
@@ -450,28 +450,18 @@ mod test {
         Ok(())
     }
 
-    #[test_case(
-        None,
-        "houseabsolute/precious",
-        "precious";
-        "no exe or exe_name"
-    )]
-    #[test_case(
-        Some("foo"),
-        "houseabsolute/precious",
-        "foo";
-        "passed exe"
-    )]
-    #[test_case(
+    #[rstest]
+    #[case::precious(None, "houseabsolute/precious", "precious")]
+    #[case::foo(Some("foo"), "houseabsolute/precious", "foo")]
+    #[case::terra_transformer(
         None,
         "https://gitlab.com/gitlab-com/gl-infra/terra-transformer",
-        "terra-transformer";
-        "gitlab"
+        "terra-transformer"
     )]
     fn expect_exe_stem_name(
-        exe: Option<&'static str>,
-        project_name: &'static str,
-        expect: &'static str,
+        #[case] exe: Option<&'static str>,
+        #[case] project_name: &'static str,
+        #[case] expect: &'static str,
     ) {
         assert_eq!(super::expect_exe_stem_name(exe, project_name), expect);
     }

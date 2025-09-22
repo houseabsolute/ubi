@@ -240,36 +240,45 @@ fn extension_is_platform(ext_str: &OsStr) -> bool {
 #[cfg(test)]
 mod test {
     use super::*;
-    use test_case::test_case;
-    use test_log::test;
+    use rstest::rstest;
 
-    #[test_case("foo.AppImage", Ok(Some(Extension::AppImage)))]
-    #[test_case("foo.bz", Ok(Some(Extension::Bz)))]
-    #[test_case("foo.bz2", Ok(Some(Extension::Bz2)))]
-    #[test_case("foo.exe", Ok(Some(Extension::Exe)))]
-    #[test_case("foo.gz", Ok(Some(Extension::Gz)))]
-    #[test_case("foo.jar", Ok(Some(Extension::Jar)))]
-    #[test_case("foo.phar", Ok(Some(Extension::Phar)))]
-    #[test_case("foo.py", Ok(Some(Extension::Py)))]
-    #[test_case("foo.pyz", Ok(Some(Extension::Pyz)))]
-    #[test_case("foo.sh", Ok(Some(Extension::Sh)))]
-    #[test_case("foo.tar", Ok(Some(Extension::Tar)))]
-    #[test_case("foo.7z", Ok(Some(Extension::SevenZip)))]
-    #[test_case("foo.tar.bz", Ok(Some(Extension::TarBz)))]
-    #[test_case("foo.tar.bz2", Ok(Some(Extension::TarBz2)))]
-    #[test_case("foo.tar.gz", Ok(Some(Extension::TarGz)))]
-    #[test_case("foo.tar.xz", Ok(Some(Extension::TarXz)))]
-    #[test_case("foo.tar.zst", Ok(Some(Extension::TarZst)))]
-    #[test_case("foo.xz", Ok(Some(Extension::Xz)))]
-    #[test_case("foo.zip", Ok(Some(Extension::Zip)))]
-    #[test_case("foo", Ok(None))]
-    #[test_case("foo_3.2.1_linux_amd64", Ok(None))]
-    #[test_case("foo_3.9.1.linux.amd64", Ok(None))]
-    #[test_case("i386-linux-ghcup-0.1.30.0", Ok(None))]
-    #[test_case("i386-linux-ghcup-0.1.30.0-linux_amd64", Ok(None))]
-    #[test_case("foo.bar", Err(ExtensionError::UnknownExtension { path: PathBuf::from("foo.bar"), ext: "bar".to_string() }.into()))]
-    fn from_path(path: &str, expect: Result<Option<Extension>>) {
-        crate::test_case::init_logging();
+    #[rstest]
+    #[case::AppImage("foo.AppImage", Ok(Some(Extension::AppImage)))]
+    #[case::Bz("foo.bz", Ok(Some(Extension::Bz)))]
+    #[case::Bz1("foo.bz2", Ok(Some(Extension::Bz2)))]
+    #[case::Exe("foo.exe", Ok(Some(Extension::Exe)))]
+    #[case::Gz("foo.gz", Ok(Some(Extension::Gz)))]
+    #[case::Jar("foo.jar", Ok(Some(Extension::Jar)))]
+    #[case::Phar("foo.phar", Ok(Some(Extension::Phar)))]
+    #[case::Py("foo.py", Ok(Some(Extension::Py)))]
+    #[case::Pyz("foo.pyz", Ok(Some(Extension::Pyz)))]
+    #[case::Sh("foo.sh", Ok(Some(Extension::Sh)))]
+    #[case::Tar("foo.tar", Ok(Some(Extension::Tar)))]
+    #[case::SevenZip("foo.7z", Ok(Some(Extension::SevenZip)))]
+    #[case::TarBz("foo.tar.bz", Ok(Some(Extension::TarBz)))]
+    #[case::TarBz2("foo.tar.bz2", Ok(Some(Extension::TarBz2)))]
+    #[case::TarGz("foo.tar.gz", Ok(Some(Extension::TarGz)))]
+    #[case::TarXz("foo.tar.xz", Ok(Some(Extension::TarXz)))]
+    #[case::TarZst("foo.tar.zst", Ok(Some(Extension::TarZst)))]
+    #[case::Xz("foo.xz", Ok(Some(Extension::Xz)))]
+    #[case::Zip("foo.zip", Ok(Some(Extension::Zip)))]
+    #[case::no_extension("foo", Ok(None))]
+    #[case::version_and_platform_look_like_extension1("foo_3.2.1_linux_amd64", Ok(None))]
+    #[case::version_and_platform_look_like_extension2("foo_3.9.1.linux.amd64", Ok(None))]
+    #[case::version_and_platform_look_like_extension3(
+        "i386-linux-ghcup-0.1.30.0-linux_amd64",
+        Ok(None)
+    )]
+    #[case::version_looks_like_extension1("i386-linux-ghcup-0.1.30.0", Ok(None))]
+    #[case::unknown_extension(
+        "foo.bar",
+        Err(
+            ExtensionError::UnknownExtension { path: PathBuf::from("foo.bar"), ext: "bar".to_string() }.into()
+        ),
+    )]
+    #[allow(non_snake_case)]
+    fn from_path(#[case] path: &str, #[case] expect: Result<Option<Extension>>) {
+        crate::test_log::init_logging();
 
         let ext = Extension::from_path(Path::new(path));
         if expect.is_ok() {
@@ -283,7 +292,7 @@ mod test {
         }
     }
 
-    #[test]
+    #[test_log::test]
     fn matches_platform() -> Result<()> {
         let freebsd = Platform::find("x86_64-unknown-freebsd").unwrap().clone();
         let linux = Platform::find("x86_64-unknown-linux-gnu").unwrap().clone();

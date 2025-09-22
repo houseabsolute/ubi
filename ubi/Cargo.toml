@@ -53,6 +53,6 @@ logging = ["dep:fern"]
 env_logger.workspace = true
 fern.workspace = true
 mockito.workspace = true
-test-case.workspace = true
+rstest.workspace = true
 test-log.workspace = true
 tokio.workspace = true
