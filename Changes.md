@@ -1,3 +1,8 @@
+## 0.8.1
+
+- The change in 0.7.4 to look for "arm" on macOS caused `ubi` to not respect the `--matching`
+  option. Reported (#137) and fixed (#138) by @prashantv.
+
 ## 0.8.0 2025-09-14
 
 - Added support for releases done via

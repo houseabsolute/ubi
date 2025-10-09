@@ -269,19 +269,17 @@ impl<'a> AssetPicker<'a> {
             return Ok(matches.remove(0));
         }
 
-        // This comes first so that we pick assets with just "arm" in the name (not "arm64") on
-        // macOS ARM, over something with "x86-64" in the name.
+        // Apply --matching filter if there's multiple matches.
+        let matches = self.maybe_filter_for_matching_string(matches)?;
+
+        // This comes before 64-bit filtering so that we pick assets with just "arm" in the name
+        // (not "arm64") on macOS ARM over something with "x86-64" in the name.
         let (filtered, asset) = self.maybe_pick_asset_for_macos_arm(matches);
         if let Some(asset) = asset {
             return Ok(asset);
         }
 
-        let filtered = self.maybe_filter_for_64_bit_arch(filtered);
-
-        let (mut filtered, asset) = self.maybe_filter_for_matching_string(filtered)?;
-        if let Some(asset) = asset {
-            return Ok(asset);
-        }
+        let mut filtered = self.maybe_filter_for_64_bit_arch(filtered);
 
         if filtered.len() == 1 {
             debug!("only found one candidate asset after filtering");
@@ -333,25 +331,24 @@ impl<'a> AssetPicker<'a> {
         sixty_four_bit
     }
 
-    fn maybe_filter_for_matching_string(
-        &self,
-        matches: Vec<Asset>,
-    ) -> Result<(Vec<Asset>, Option<Asset>)> {
+    fn maybe_filter_for_matching_string(&self, matches: Vec<Asset>) -> Result<Vec<Asset>> {
         if self.matching.is_none() {
-            return Ok((matches, None));
+            return Ok(matches);
         }
 
         let m = self.matching.unwrap();
-        debug!(r#"looking for an asset matching the string "{m}" passed in --matching"#);
-        if let Some(asset) = matches.into_iter().find(|a| a.name.contains(m)) {
-            debug!("found an asset matching the string");
-            return Ok((vec![], Some(asset)));
+        debug!(r#"looking for assets matching the string "{m}" passed in --matching"#);
+        let filtered: Vec<Asset> = matches.into_iter().filter(|a| a.name.contains(m)).collect();
+
+        if filtered.is_empty() {
+            return Err(anyhow!(
+                r#"could not find any assets containing our --matching string, "{}""#,
+                m,
+            ));
         }
 
-        Err(anyhow!(
-            r#"could not find any assets containing our --matching string, "{}""#,
-            m,
-        ))
+        debug!("found {} asset(s) matching the string", filtered.len());
+        Ok(filtered)
     }
 
     fn maybe_pick_asset_for_macos_arm(
@@ -508,6 +505,13 @@ mod test {
         None,
         1
     )]
+    #[case::x86_64_unknown_linux_gnu_pick_correct_arch_when_multiple_assets_match_string(
+        "x86_64-unknown-linux-gnu",
+        &["project-Linux-i686-musl.tar.gz", "project-Linux-x86_64-musl.tar.gz"],
+        Some("musl"),
+        None,
+        1
+    )]
     #[case::aarch64_apple_darwin_pick_one_asset(
         "aarch64-apple-darwin",
         &["project-Macos-aarch64.tar.gz"],
@@ -540,6 +544,13 @@ mod test {
         "aarch64-apple-darwin",
         &["project-Macos-x86-64.tar.gz", "project-Macos-arm.tar.gz"],
         None,
+        None,
+        1
+    )]
+    #[case::aarch64_apple_darwin_respect_matching_filter_over_arm_preference(
+        "aarch64-apple-darwin",
+        &["project-a-darwin-arm64.tar.gz", "project-b-darwin-arm64.tar.gz"],
+        Some("project-b"),
         None,
         1
     )]
