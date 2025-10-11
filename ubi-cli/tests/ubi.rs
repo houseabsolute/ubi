@@ -901,13 +901,11 @@ fn output_from_command(
         None => {
             let cstr = command_string(cmd, args);
             if output.status.success() {
-                return Err(anyhow!("ran {} successfully but it had no exit code", cstr));
+                return Err(anyhow!("ran {cstr} successfully but it had no exit code"));
             }
             let signal = signal_from_status(output.status);
             Err(anyhow!(
-                "ran {} successfully but was killed by signal {}",
-                cstr,
-                signal,
+                "ran {cstr} successfully but was killed by signal {signal}",
             ))
         }
     }

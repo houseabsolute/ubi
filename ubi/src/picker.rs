@@ -69,8 +69,7 @@ impl<'a> AssetPicker<'a> {
             });
             if assets.is_empty() {
                 return Err(anyhow!(
-                    "could not find a release asset matching the regex {} from {all_names}",
-                    r,
+                    "could not find a release asset matching the regex {r} from {all_names}"
                 ));
             }
         }
@@ -342,8 +341,7 @@ impl<'a> AssetPicker<'a> {
 
         if filtered.is_empty() {
             return Err(anyhow!(
-                r#"could not find any assets containing our --matching string, "{}""#,
-                m,
+                r#"could not find any assets containing our --matching string, "{m}""#,
             ));
         }
 

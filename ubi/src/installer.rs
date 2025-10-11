@@ -308,8 +308,7 @@ impl ExeInstaller {
 
         debug!("could not find any entries matching [{expect_names}]");
         Err(anyhow!(
-            "could not find any files matching [{}] in the downloaded archive file",
-            expect_names,
+            "could not find any files matching [{expect_names}] in the downloaded archive file",
         ))
     }
 
@@ -614,12 +613,11 @@ fn tar_reader_for(downloaded_file: &Path) -> Result<TarArchive<Box<dyn Read>>> {
             Some("xz" | "txz") => Ok(TarArchive::new(Box::new(XzDecoder::new(file)))),
             Some("zst" | "tzst") => Ok(TarArchive::new(Box::new(ZstdDecoder::new(file)?))),
             Some(e) => Err(anyhow!(
-                "don't know how to uncompress a tarball with extension = {}",
-                e,
+                "don't know how to uncompress a tarball with extension = {e}",
             )),
             None => Err(anyhow!(
-                "tarball {:?} has a non-UTF-8 extension",
-                downloaded_file,
+                "tarball {} has a non-UTF-8 extension",
+                downloaded_file.display(),
             )),
         },
         None => Ok(TarArchive::new(Box::new(file))),
