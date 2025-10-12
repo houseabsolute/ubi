@@ -36,12 +36,15 @@ struct AssetHelper {
 }
 
 impl TryFrom<AssetHelper> for Asset {
-    type Error = String;
+    type Error = anyhow::Error;
 
     fn try_from(helper: AssetHelper) -> Result<Self, Self::Error> {
-        let url = helper.browser_download_url.or(helper.url).ok_or(
-            "an asset in the response did not have a `browser_download_url` or `url` field",
-        )?;
+        // prefer `url` (API endpoint) over `browser_download_url` because the API endpoint
+        // works for both public and private repos with proper authentication headers, while
+        // the browser download URL only works for public repos.
+        let url = helper.url.or(helper.browser_download_url).ok_or(anyhow!(
+            "an asset in the response did not have a `url` or `browser_download_url` field"
+        ))?;
 
         Ok(Asset {
             name: helper.name,
@@ -170,5 +173,77 @@ impl<'a> Ubi<'a> {
             _temp_dir: td,
             archive_path,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    struct AssetTextInput {
+        url: Option<&'static str>,
+        browser_download_url: Option<&'static str>,
+    }
+
+    enum AssetTextExpect {
+        Success(&'static str),
+        Fail,
+    }
+
+    #[rstest]
+    #[case::prefers_url_when_both_are_present(
+        AssetTextInput{
+            url: Some("https://api.github.com/repos/owner/repo/releases/assets/123"),
+            browser_download_url: Some("https://github.com/owner/repo/releases/download/v1.0.0/asset.tar.gz"),
+        },
+        AssetTextExpect::Success("https://api.github.com/repos/owner/repo/releases/assets/123"),
+    )]
+    #[case::usess_browser_download_url_when_url_is_absent(
+        AssetTextInput{
+            url: None,
+            browser_download_url: Some("https://github.com/owner/repo/releases/download/v1.0.0/asset.tar.gz"),
+        },
+        AssetTextExpect::Success("https://github.com/owner/repo/releases/download/v1.0.0/asset.tar.gz"),
+    )]
+    #[case::uses_url_when_browser_download_url_is_absent(
+        AssetTextInput{
+            url: Some("https://api.github.com/repos/owner/repo/releases/assets/123"),
+            browser_download_url: None,
+        },
+        AssetTextExpect::Success("https://api.github.com/repos/owner/repo/releases/assets/123"),
+    )]
+    #[case::returns_error_when_both_urls_are_absent(
+        AssetTextInput{
+            url: None,
+            browser_download_url: None,
+        },
+        AssetTextExpect::Fail,
+    )]
+    fn asset_prefers_api_url_over_browser_download_url(
+        #[case] input: AssetTextInput,
+        #[case] expect: AssetTextExpect,
+    ) -> Result<()> {
+        // This test ensures we prefer the API endpoint URL (`url`) over `browser_download_url`
+        // because the API endpoint works for both public AND private repos with authentication,
+        // while browser_download_url only works for public repos.
+
+        // When both URLs are present, prefer the API endpoint URL
+        let helper = AssetHelper {
+            name: "asset.tar.gz".to_string(),
+            url: input.url.map(Url::parse).transpose()?,
+            browser_download_url: input.browser_download_url.map(Url::parse).transpose()?,
+        };
+        let asset = Asset::try_from(helper);
+
+        match expect {
+            AssetTextExpect::Success(url) => {
+                let asset = asset?;
+                assert_eq!(asset.url.as_str(), url);
+            }
+            AssetTextExpect::Fail => assert!(asset.is_err()),
+        }
+
+        Ok(())
     }
 }

@@ -1,5 +1,9 @@
 ## 0.8.2
 
+- Fixed a bug introduced in 0.8.0, which caused `ubi` to prefer the `browser_download_url` over the
+  `url` for a GitHub asset. When both are present, it will now use the `url` field. This is
+  important because when downloading assets from a private repo, the `url` will work with the
+  authentication headers that `ubi` sets. Fixed by @rnaveiras (Raúl Naveiras). GH #139.
 - Added more context to errors and made `ubi` display the full error context when it fails. This
   should help with debugging issues like #136.
 
