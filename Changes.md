@@ -1,4 +1,4 @@
-## 0.8.2
+## 0.8.2 2025-10-19
 
 - Fixed a bug introduced in 0.8.0, which caused `ubi` to prefer the `browser_download_url` over the
   `url` for a GitHub asset. When both are present, it will now use the `url` field. This is
