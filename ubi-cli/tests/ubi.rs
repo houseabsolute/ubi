@@ -950,7 +950,8 @@ fn check_installed_binary(td: &Path, mut expect: PathBuf) -> Result<()> {
         dump_tree(td)?;
     }
     assert!(fs::exists(&expect)?);
-    let meta = fs::metadata(&expect).context(format!("getting fs metadata for {expect_str}"))?;
+    let meta =
+        fs::metadata(&expect).with_context(|| format!("getting fs metadata for {expect_str}"))?;
     assert!(meta.is_file(), "downloaded file into expected location");
     #[cfg(target_family = "unix")]
     assert!(

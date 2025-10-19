@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command};
 use log::{debug, error};
 use std::{env, path::Path, str::FromStr};
@@ -36,12 +36,12 @@ async fn main() {
                 0
             }
             Err(e) => {
-                error!("{e}");
+                error!("{e:?}");
                 1
             }
         },
         Err(e) => {
-            error!("{e}");
+            error!("{e:?}");
             127
         }
     };
@@ -266,7 +266,9 @@ fn make_ubi<'a>(
         builder = builder.extract_all();
     }
     if let Some(ft) = matches.get_one::<String>("forge") {
-        builder = builder.forge(ForgeType::from_str(ft)?);
+        builder = builder.forge(
+            ForgeType::from_str(ft).with_context(|| format!("failed to parse forge type: {ft}"))?,
+        );
     }
     if let Some(url) = matches.get_one::<String>("api-base-url") {
         builder = builder.api_base_url(url);
@@ -292,7 +294,13 @@ fn self_upgrade_ubi(ubi_exe_path: &Path) -> Result<(Ubi<'_>, Option<impl FnOnce(
             ubi_exe_path.display(),
             old_exe.display()
         );
-        std::fs::rename(ubi_exe_path, &old_exe)?;
+        std::fs::rename(ubi_exe_path, &old_exe).with_context(|| {
+            format!(
+                "failed to rename {} to {}",
+                ubi_exe_path.display(),
+                old_exe.display()
+            )
+        })?;
         Some(move || {
             println!(
                 "The self-upgrade operation left an old binary behind that must be deleted manually: {}",

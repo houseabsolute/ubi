@@ -137,26 +137,64 @@ impl ExeInstaller {
         // entries again until we find the one we want.
 
         let mut arch = tar_reader_for(downloaded_file)?;
-        let entries = arch.entries()?;
+        let entries = arch.entries().with_context(|| {
+            format!(
+                "failed to get entries from tarball at {}",
+                downloaded_file.display()
+            )
+        })?;
         if let Some(idx) =
             self.best_match_from_archive(TarEntriesIterator::new(entries), "tarball")?
         {
             let mut arch2 = tar_reader_for(downloaded_file)?;
-            for (i, entry) in arch2.entries()?.enumerate() {
-                let mut entry = entry?;
+            for (i, entry) in arch2
+                .entries()
+                .with_context(|| {
+                    format!(
+                        "failed to get entries from tarball at {}",
+                        downloaded_file.display()
+                    )
+                })?
+                .enumerate()
+            {
+                let mut entry = entry.with_context(|| {
+                    format!(
+                        "failed to read tarball entry at index {i} from {}",
+                        downloaded_file.display()
+                    )
+                })?;
                 if i != idx {
                     continue;
                 }
 
-                let entry_path = entry.path()?;
+                let entry_path = entry
+                    .path()
+                    .with_context(|| {
+                        format!(
+                            "failed to get path from tarball entry at index {i} in {}",
+                            downloaded_file.display()
+                        )
+                    })?
+                    .into_owned();
                 let install_path = self.maybe_munged_install_path(&entry_path)?;
                 debug!(
                     "extracting tarball entry named {} to {}",
                     entry_path.display(),
                     install_path.display(),
                 );
-                self.create_install_dir()?;
-                entry.unpack(&install_path).unwrap();
+                self.create_install_dir().with_context(|| {
+                    format!(
+                        "failed to create installation directory for {}",
+                        install_path.display()
+                    )
+                })?;
+                entry.unpack(&install_path).with_context(|| {
+                    format!(
+                        "failed to extract executable named {} into {}",
+                        entry_path.display(),
+                        install_path.display()
+                    )
+                })?;
 
                 return Ok(install_path);
             }
@@ -172,10 +210,18 @@ impl ExeInstaller {
         );
 
         let best_match = self.best_match_from_archive(
-            SevenZipEntriesIterator::new(sevenz_rust2::ArchiveReader::new(
-                open_file(downloaded_file)?,
-                sevenz_rust2::Password::empty(),
-            )?),
+            SevenZipEntriesIterator::new(
+                sevenz_rust2::ArchiveReader::new(
+                    open_file(downloaded_file)?,
+                    sevenz_rust2::Password::empty(),
+                )
+                .with_context(|| {
+                    format!(
+                        "failed to create 7z archive reader for {}",
+                        downloaded_file.display()
+                    )
+                })?,
+            ),
             "sevenzip",
         )?;
 
@@ -183,20 +229,50 @@ impl ExeInstaller {
             let mut archive = sevenz_rust2::ArchiveReader::new(
                 open_file(downloaded_file)?,
                 sevenz_rust2::Password::empty(),
-            )?;
+            )
+            .with_context(|| {
+                format!(
+                    "failed to create 7z archive reader for {}",
+                    downloaded_file.display()
+                )
+            })?;
 
             let entry = archive.archive().files[idx].clone();
-            let path = entry.path()?;
+            let path = entry.path().with_context(|| {
+                format!(
+                    "failed to get path from 7z entry at index {idx} in {}",
+                    downloaded_file.display()
+                )
+            })?;
             let install_path = self.maybe_munged_install_path(&path)?;
             debug!(
                 "extracting 7z entry named {} to {}",
                 path.display(),
                 install_path.display(),
             );
-            let buffer = archive.read_file(entry.name())?;
-            self.create_install_dir()?;
+            let buffer = archive.read_file(entry.name()).with_context(|| {
+                format!(
+                    "failed to read 7z entry named {} from {}",
+                    entry.name(),
+                    downloaded_file.display()
+                )
+            })?;
+            self.create_install_dir().with_context(|| {
+                format!(
+                    "failed to create installation directory for {}",
+                    install_path.display()
+                )
+            })?;
 
-            File::create(&install_path)?.write_all(&buffer)?;
+            File::create(&install_path)
+                .with_context(|| format!("failed to create file at {}", install_path.display()))?
+                .write_all(&buffer)
+                .with_context(|| {
+                    format!(
+                        "failed to write extracted content to {}",
+                        install_path.display()
+                    )
+                })?;
 
             return Ok(install_path);
         }
@@ -210,9 +286,19 @@ impl ExeInstaller {
             downloaded_file.display()
         );
 
-        let mut zip = ZipArchive::new(open_file(downloaded_file)?)?;
+        let mut zip = ZipArchive::new(open_file(downloaded_file)?).with_context(|| {
+            format!(
+                "failed to create zip archive reader for {}",
+                downloaded_file.display()
+            )
+        })?;
         if let Some(idx) = self.best_match_from_archive(ZipEntriesIterator::new(&mut zip), "zip")? {
-            let mut zf = zip.by_index(idx)?;
+            let mut zf = zip.by_index(idx).with_context(|| {
+                format!(
+                    "failed to get zip entry at index {idx} from {}",
+                    downloaded_file.display()
+                )
+            })?;
             let zf_path = Path::new(zf.name());
             let install_path = self.maybe_munged_install_path(zf_path)?;
             debug!(
@@ -220,11 +306,37 @@ impl ExeInstaller {
                 zf.name(),
                 install_path.display(),
             );
-            let mut buffer: Vec<u8> = Vec::with_capacity(usize::try_from(zf.size())?);
-            zf.read_to_end(&mut buffer)?;
-            self.create_install_dir()?;
+            let mut buffer: Vec<u8> =
+                Vec::with_capacity(usize::try_from(zf.size()).with_context(|| {
+                    format!(
+                        "failed to convert zip file size to usize for entry {} in {}",
+                        zf.name(),
+                        downloaded_file.display()
+                    )
+                })?);
+            zf.read_to_end(&mut buffer).with_context(|| {
+                format!(
+                    "failed to read zip entry {} from {}",
+                    zf.name(),
+                    downloaded_file.display()
+                )
+            })?;
+            self.create_install_dir().with_context(|| {
+                format!(
+                    "failed to create installation directory for {}",
+                    install_path.display()
+                )
+            })?;
 
-            File::create(&install_path)?.write_all(&buffer)?;
+            File::create(&install_path)
+                .with_context(|| format!("failed to create file at {}", install_path.display()))?
+                .write_all(&buffer)
+                .with_context(|| {
+                    format!(
+                        "failed to write extracted content to {}",
+                        install_path.display()
+                    )
+                })?;
 
             return Ok(install_path);
         }
@@ -240,12 +352,15 @@ impl ExeInstaller {
         let mut possible_matches: Vec<usize> = vec![];
 
         for (i, entry) in archive.enumerate() {
-            let entry = entry?;
+            let entry = entry
+                .with_context(|| format!("failed to read {archive_type} entry at index {i}"))?;
             if !entry.is_file() {
                 continue;
             }
 
-            let path = entry.path()?;
+            let path = entry.path().with_context(|| {
+                format!("failed to get path from {archive_type} entry at index {i}")
+            })?;
 
             debug!("found {archive_type} entry with path `{}`", path.display());
             if let Some(file_name) = path.file_name() {
@@ -258,7 +373,16 @@ impl ExeInstaller {
                         // expected name, because Windows doesn't have executable bits. We treat
                         // "None" as true because some archive types don't record whether a file is
                         // executable.
-                        if self.is_windows || matches!(entry.is_executable()?, None | Some(true)) {
+                        if self.is_windows
+                            || matches!(
+                                entry.is_executable().with_context(|| {
+                                    format!(
+                                        "failed to check if {archive_type} entry at index {i} is executable"
+                                    )
+                                })?,
+                                None | Some(true)
+                            )
+                        {
                             debug!(
                                 "found {archive_type} file entry with partial match: `{file_name}`"
                             );
@@ -337,23 +461,37 @@ impl ExeInstaller {
     }
 
     fn write_to_install_path(&self, mut reader: impl Read) -> Result<()> {
-        self.create_install_dir()?;
+        self.create_install_dir().with_context(|| {
+            format!(
+                "failed to create installation directory for {}",
+                self.install_path.display()
+            )
+        })?;
         let mut writer = File::create(&self.install_path)
             .with_context(|| format!("Cannot write to {}", self.install_path.display()))?;
-        std::io::copy(&mut reader, &mut writer)?;
+        std::io::copy(&mut reader, &mut writer).with_context(|| {
+            format!("failed to copy content to {}", self.install_path.display())
+        })?;
         Ok(())
     }
 
     fn copy_executable(&self, exe_file: &Path) -> Result<PathBuf> {
         debug!("copying executable to final location");
-        self.create_install_dir()?;
+        self.create_install_dir().with_context(|| {
+            format!(
+                "failed to create installation directory for {}",
+                self.install_path.display()
+            )
+        })?;
 
         let install_path = self.maybe_munged_install_path(exe_file)?;
-        std::fs::copy(exe_file, &install_path).context(format!(
-            "error copying file from {} to {}",
-            exe_file.display(),
-            install_path.display()
-        ))?;
+        std::fs::copy(exe_file, &install_path).with_context(|| {
+            format!(
+                "error copying file from {} to {}",
+                exe_file.display(),
+                install_path.display()
+            )
+        })?;
 
         Ok(install_path)
     }
@@ -409,7 +547,12 @@ impl Installer for ExeInstaller {
     fn install(&self, download: &Download) -> Result<()> {
         let exe = self.extract_executable(&download.archive_path)?;
         let real_exe = exe.as_deref().unwrap_or(&self.install_path);
-        Self::chmod_executable(real_exe)?;
+        Self::chmod_executable(real_exe).with_context(|| {
+            format!(
+                "failed to set executable permissions on {}",
+                real_exe.display()
+            )
+        })?;
         info!("Installed executable into {}", real_exe.display());
 
         Ok(())
@@ -425,7 +568,12 @@ impl ArchiveInstaller {
     }
 
     fn extract_entire_archive(&self, downloaded_file: &Path) -> Result<()> {
-        let td = tempdir()?;
+        let td = tempdir().with_context(|| {
+            format!(
+                "failed to create temporary directory for extracting {}",
+                downloaded_file.display()
+            )
+        })?;
 
         match Extension::from_path(downloaded_file)? {
             Some(
@@ -439,9 +587,24 @@ impl ArchiveInstaller {
                 | Extension::Tgz
                 | Extension::Txz
                 | Extension::Tzst,
-            ) => Self::extract_entire_tarball(downloaded_file, td.path())?,
-            Some(Extension::SevenZip) => Self::extract_entire_7z(downloaded_file, td.path())?,
-            Some(Extension::Zip) => Self::extract_entire_zip(downloaded_file, td.path())?,
+            ) => Self::extract_entire_tarball(downloaded_file, td.path()).with_context(|| {
+                format!("failed to extract tarball at {}", downloaded_file.display())
+            })?,
+            Some(Extension::SevenZip) => {
+                Self::extract_entire_7z(downloaded_file, td.path()).with_context(|| {
+                    format!(
+                        "failed to extract 7z archive at {}",
+                        downloaded_file.display()
+                    )
+                })?;
+            }
+            Some(Extension::Zip) => Self::extract_entire_zip(downloaded_file, td.path())
+                .with_context(|| {
+                    format!(
+                        "failed to extract zip archive at {}",
+                        downloaded_file.display()
+                    )
+                })?,
             _ => {
                 return Err(anyhow!(
                     concat!(
@@ -466,7 +629,8 @@ impl ArchiveInstaller {
         );
 
         let mut arch = tar_reader_for(downloaded_file)?;
-        arch.unpack(into)?;
+        arch.unpack(into)
+            .with_context(|| format!("failed to unpack tarball to {}", into.display()))?;
 
         Ok(())
     }
@@ -478,7 +642,9 @@ impl ArchiveInstaller {
             into.display()
         );
 
-        Ok(sevenz_rust2::decompress_file(downloaded_file, into)?)
+        sevenz_rust2::decompress_file(downloaded_file, into)
+            .with_context(|| format!("failed to decompress 7z file to {}", into.display()))?;
+        Ok(())
     }
 
     fn extract_entire_zip(downloaded_file: &Path, into: &Path) -> Result<()> {
@@ -488,8 +654,20 @@ impl ArchiveInstaller {
             into.display(),
         );
 
-        let mut zip = ZipArchive::new(open_file(downloaded_file)?)?;
-        Ok(zip.extract(into)?)
+        let mut zip = ZipArchive::new(open_file(downloaded_file)?).with_context(|| {
+            format!(
+                "failed to create zip archive reader for {}",
+                downloaded_file.display()
+            )
+        })?;
+        zip.extract(into).with_context(|| {
+            format!(
+                "failed to extract zip archive from {} to {}",
+                downloaded_file.display(),
+                into.display()
+            )
+        })?;
+        Ok(())
     }
 
     fn copy_extracted_contents(&self, td: &TempDir) -> Result<()> {
@@ -506,18 +684,34 @@ impl ArchiveInstaller {
 
         for entry in WalkDir::new(&copy_from).into_iter().filter_map(Result::ok) {
             let full_path = entry.path();
-            let target_path = self.install_root.join(full_path.strip_prefix(&copy_from)?);
+            let target_path =
+                self.install_root
+                    .join(full_path.strip_prefix(&copy_from).with_context(|| {
+                        format!(
+                            "failed to strip prefix {} from path {}",
+                            copy_from.display(),
+                            full_path.display()
+                        )
+                    })?);
 
             if full_path.is_dir() {
                 debug!("creating directory {}", target_path.display(),);
-                create_dir_all(&target_path)?;
+                create_dir_all(&target_path).with_context(|| {
+                    format!("failed to create directory at {}", target_path.display())
+                })?;
             } else {
                 debug!(
                     "copying file {} to {}",
                     full_path.display(),
                     target_path.display(),
                 );
-                fs::copy(full_path, target_path)?;
+                fs::copy(full_path, &target_path).with_context(|| {
+                    format!(
+                        "failed to copy file from {} to {}",
+                        full_path.display(),
+                        target_path.display()
+                    )
+                })?;
             }
         }
 
@@ -541,7 +735,12 @@ impl ArchiveInstaller {
             )
         })? {
             let full_path = entry
-                .context("could not get path for tarball entry")?
+                .with_context(|| {
+                    format!(
+                        "could not read directory entry in {}",
+                        contents_dir.display()
+                    )
+                })?
                 .path();
 
             debug!("found entry in temp dir: {}", full_path.display());

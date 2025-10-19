@@ -1,5 +1,5 @@
 use crate::{forgejo, github, gitlab, ubi::Asset};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use log::debug;
 use reqwest::{
     header::{HeaderValue, ACCEPT, AUTHORIZATION},
@@ -52,17 +52,22 @@ impl Forge {
         );
         debug!("Getting release info from `{url}`");
 
-        let mut req_builder = client
-            .get(url)
-            .header(ACCEPT, HeaderValue::from_str("application/json")?);
+        let mut req_builder = client.get(url.clone()).header(
+            ACCEPT,
+            HeaderValue::from_str("application/json")
+                .context("failed to create header value for Accept header")?,
+        );
         req_builder = self.maybe_add_token_header(req_builder)?;
-        let resp = client.execute(req_builder.build()?).await?;
+        let req = req_builder
+            .build()
+            .with_context(|| format!("failed to build HTTP request for {url}"))?;
+        let resp = client
+            .execute(req)
+            .await
+            .with_context(|| format!("failed to execute HTTP request to {url}"))?;
 
-        if let Err(e) = resp.error_for_status_ref() {
-            return Err(anyhow::Error::new(e));
-        }
-
-        Ok(resp)
+        resp.error_for_status()
+            .with_context(|| format!("HTTP request to {url} returned an error status"))
     }
 
     pub(crate) fn maybe_add_token_header(
@@ -72,7 +77,8 @@ impl Forge {
         if let Some(token) = self.token.as_deref() {
             debug!("Adding token to {} request.", self.forge_type.forge_name());
             let bearer = format!("Bearer {token}");
-            let mut auth_val = HeaderValue::from_str(&bearer)?;
+            let mut auth_val = HeaderValue::from_str(&bearer)
+                .context("failed to create header value for Authorization header")?;
             auth_val.set_sensitive(true);
             req_builder = req_builder.header(AUTHORIZATION, auth_val);
         } else {
@@ -84,9 +90,13 @@ impl Forge {
 
 impl ForgeType {
     pub(crate) fn from_url(url: &Url) -> ForgeType {
-        if url.domain().unwrap() == forgejo::PROJECT_BASE_URL.domain().unwrap() {
+        let Some(domain) = url.domain() else {
+            return ForgeType::default();
+        };
+
+        if Some(domain) == forgejo::PROJECT_BASE_URL.domain() {
             ForgeType::Forgejo
-        } else if url.domain().unwrap() == gitlab::PROJECT_BASE_URL.domain().unwrap() {
+        } else if Some(domain) == gitlab::PROJECT_BASE_URL.domain() {
             ForgeType::GitLab
         } else {
             ForgeType::default()
@@ -142,7 +152,8 @@ impl ForgeType {
         mut token: Option<String>,
     ) -> Result<Forge> {
         let api_base_url = if let Some(api_base) = api_base {
-            Url::parse(&api_base)?
+            Url::parse(&api_base)
+                .with_context(|| format!("failed to parse API base URL: {api_base}"))?
         } else {
             self.api_base_url()
         };
@@ -180,14 +191,21 @@ impl ForgeType {
 
     async fn response_into_assets(&self, response: Response) -> Result<Vec<Asset>> {
         Ok(match self {
-            ForgeType::Forgejo | ForgeType::GitHub => response
-                .json::<github::Release>()
-                .await
-                .map(|release| release.assets)?,
-            ForgeType::GitLab => response
-                .json::<gitlab::Release>()
-                .await
-                .map(|release| release.assets.links)?,
+            ForgeType::Forgejo | ForgeType::GitHub => {
+                response
+                    .json::<github::Release>()
+                    .await
+                    .context("failed to parse GitHub/Forgejo release JSON response")?
+                    .assets
+            }
+            ForgeType::GitLab => {
+                response
+                    .json::<gitlab::Release>()
+                    .await
+                    .context("failed to parse GitLab release JSON response")?
+                    .assets
+                    .links
+            }
         })
     }
 }

@@ -5,7 +5,7 @@ use crate::{
     picker::AssetPicker,
     ubi::Ubi,
 };
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use log::debug;
 use platforms::{Platform, PlatformReq, OS};
 use reqwest::{
@@ -238,7 +238,12 @@ impl<'a> UbiBuilder<'a> {
 
         self.check_musl_setting(&platform)?;
 
-        let asset_url = self.url.map(Url::parse).transpose()?;
+        let asset_url = match self.url {
+            Some(url) => {
+                Some(Url::parse(url).with_context(|| format!("failed to parse URL: {url}"))?)
+            }
+            None => None,
+        };
         let (project_name, forge_type) =
             parse_project_name(self.project, asset_url.as_ref(), self.forge.clone())?;
         let installer = self.new_installer(&project_name, &platform)?;
@@ -267,7 +272,10 @@ impl<'a> UbiBuilder<'a> {
 
     fn new_installer(&self, project_name: &str, platform: &Platform) -> Result<Box<dyn Installer>> {
         if self.extract_all {
-            let install_path = install_path(self.install_dir.as_deref(), None)?;
+            let install_path =
+                install_path(self.install_dir.as_deref(), None).with_context(|| {
+                    format!("failed to determine install path for project {project_name}")
+                })?;
             Ok(Box::new(ArchiveInstaller::new(
                 project_name.to_string(),
                 install_path,
@@ -277,7 +285,10 @@ impl<'a> UbiBuilder<'a> {
             let install_path = install_path(
                 self.install_dir.as_deref(),
                 self.rename_exe_to.or(Some(expect_exe_stem_name)),
-            )?;
+            )
+            .with_context(|| {
+                format!("failed to determine install path for executable {expect_exe_stem_name}")
+            })?;
             Ok(Box::new(ExeInstaller::new(
                 install_path,
                 self.rename_exe_to.is_some(),
@@ -291,7 +302,8 @@ impl<'a> UbiBuilder<'a> {
         if let Some(p) = self.platform {
             Ok(p.clone())
         } else {
-            let req = PlatformReq::from_str(Self::TARGET)?;
+            let req = PlatformReq::from_str(Self::TARGET)
+                .with_context(|| format!("failed to parse platform target: {}", Self::TARGET))?;
             Platform::ALL
                 .iter()
                 .find(|p| req.matches(p))
@@ -321,10 +333,19 @@ fn parse_project_name(
 ) -> Result<(String, ForgeType)> {
     let (parsed, from) = if let Some(project) = project {
         if project.starts_with("http") {
-            (Url::parse(project)?, format!("--project {project}"))
+            (
+                Url::parse(project)
+                    .with_context(|| format!("failed to parse project URL: {project}"))?,
+                format!("--project {project}"),
+            )
         } else {
             let base = forge.unwrap_or_default().project_base_url();
-            (base.join(project)?, format!("--project {project}"))
+            (
+                base.join(project).with_context(|| {
+                    format!("failed to construct project URL from '{project}' with base URL {base}")
+                })?,
+                format!("--project {project}"),
+            )
         }
     } else if let Some(u) = url {
         (u.clone(), format!("--url {u}"))
@@ -335,7 +356,9 @@ fn parse_project_name(
     };
 
     let forge_type = ForgeType::from_url(&parsed);
-    let project_name = forge_type.parse_project_name_from_url(&parsed, &from)?;
+    let project_name = forge_type
+        .parse_project_name_from_url(&parsed, &from)
+        .with_context(|| format!("failed to parse project name from URL {parsed}"))?;
 
     Ok((project_name, forge_type))
 }
@@ -344,7 +367,7 @@ fn install_path(install_dir: Option<&Path>, exe: Option<&str>) -> Result<PathBuf
     let mut install_dir = if let Some(install_dir) = install_dir {
         install_dir.to_path_buf()
     } else {
-        let mut install_dir = env::current_dir()?;
+        let mut install_dir = env::current_dir().context("failed to get current directory")?;
         install_dir.push("bin");
         install_dir
     };
@@ -392,9 +415,13 @@ fn reqwest_client() -> Result<Client> {
     let mut headers = HeaderMap::new();
     headers.insert(
         USER_AGENT,
-        HeaderValue::from_str(&format!("ubi version {}", super::VERSION))?,
+        HeaderValue::from_str(&format!("ubi version {}", super::VERSION))
+            .context("failed to create User-Agent header value")?,
     );
-    Ok(builder.default_headers(headers).build()?)
+    builder
+        .default_headers(headers)
+        .build()
+        .context("failed to build HTTP client")
 }
 
 #[cfg(test)]

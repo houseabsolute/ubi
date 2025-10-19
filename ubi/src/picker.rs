@@ -13,7 +13,7 @@ use crate::{
     },
     ubi::Asset,
 };
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use itertools::Itertools;
 use lazy_regex::{regex, Lazy};
 use log::debug;
@@ -62,7 +62,8 @@ impl<'a> AssetPicker<'a> {
         }
 
         if let Some(r) = self.matching_regex {
-            let re = Regex::new(r)?;
+            let re =
+                Regex::new(r).with_context(|| format!("failed to compile matching regex: {r}"))?;
             assets.retain(|a| {
                 debug!("matching regex `{r}` against asset name = {}", a.name);
                 re.is_match(&a.name)
@@ -116,11 +117,14 @@ impl<'a> AssetPicker<'a> {
         debug!("filtering out assets that do not have a valid extension");
         assets
             .into_iter()
-            .filter(|a| match Extension::from_path(Path::new(&a.name)) {
-                Err(e) => {
-                    debug!("skipping asset with invalid extension: {e}");
-                    false
-                }
+            .filter(|a| {
+                match Extension::from_path(Path::new(&a.name)).with_context(|| {
+                    format!("failed to parse extension from asset name: {}", a.name)
+                }) {
+                    Err(e) => {
+                        debug!("skipping asset with invalid extension: {e}");
+                        false
+                    }
                 Ok(Some(ext)) => {
                     debug!("found valid extension, `{}`", ext.extension());
                     if self.archive_only {
@@ -145,6 +149,7 @@ impl<'a> AssetPicker<'a> {
                         return false;
                     }
                     true
+                }
                 }
             })
             .collect()

@@ -2,7 +2,7 @@
 //
 // It provides traits that archive file are then implemented for various archive file types. This
 // makes it easier to add support for new archive formats in the future.
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::io::{self, Read};
 use std::path::PathBuf;
 
@@ -36,7 +36,10 @@ impl<'a, R: Read> Iterator for TarEntriesIterator<'a, R> {
 
 impl<R: Read> ArchiveEntry for binstall_tar::Entry<'_, R> {
     fn path(&self) -> Result<PathBuf> {
-        Ok(self.path()?.to_path_buf())
+        Ok(self
+            .path()
+            .context("failed to get path from tar entry")?
+            .to_path_buf())
     }
 
     fn is_file(&self) -> bool {
@@ -44,7 +47,13 @@ impl<R: Read> ArchiveEntry for binstall_tar::Entry<'_, R> {
     }
 
     fn is_executable(&self) -> Result<Option<bool>> {
-        Ok(Some(self.header().mode()? & 0o111 != 0))
+        Ok(Some(
+            self.header()
+                .mode()
+                .context("failed to get mode from tar entry header")?
+                & 0o111
+                != 0,
+        ))
     }
 }
 

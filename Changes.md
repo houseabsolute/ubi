@@ -1,3 +1,8 @@
+## 0.8.2
+
+- Added more context to errors and made `ubi` display the full error context when it fails. This
+  should help with debugging issues like #136.
+
 ## 0.8.1 2025-10-11
 
 - The change in 0.7.4 to look for "arm" on macOS caused `ubi` to not respect the `--matching`

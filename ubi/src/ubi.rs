@@ -1,5 +1,5 @@
 use crate::{forge::Forge, installer::Installer, picker::AssetPicker};
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use log::debug;
 use reqwest::{
     header::{HeaderValue, ACCEPT},
@@ -117,13 +117,22 @@ impl<'a> Ubi<'a> {
     async fn download_asset(&self, client: &Client, asset: Asset) -> Result<Download> {
         debug!("downloading asset from {}", asset.url);
 
-        let mut req_builder = client
-            .get(asset.url.clone())
-            .header(ACCEPT, HeaderValue::from_str("application/octet-stream")?);
+        let mut req_builder = client.get(asset.url.clone()).header(
+            ACCEPT,
+            HeaderValue::from_str("application/octet-stream")
+                .context("failed to create header value for Accept header")?,
+        );
         req_builder = self.forge.maybe_add_token_header(req_builder)?;
-        let req = req_builder.build()?;
+        let req = req_builder
+            .build()
+            .with_context(|| format!("failed to build HTTP request for {}", asset.url))?;
 
-        let mut resp = self.reqwest_client.execute(req).await?;
+        let mut resp = self.reqwest_client.execute(req).await.with_context(|| {
+            format!(
+                "failed to execute HTTP request to download asset from {}",
+                asset.url
+            )
+        })?;
         if resp.status() != StatusCode::OK {
             let mut msg = format!("error requesting {}: {}", asset.url, resp.status());
             if let Ok(t) = resp.text().await {
@@ -133,15 +142,27 @@ impl<'a> Ubi<'a> {
             return Err(anyhow!(msg));
         }
 
-        let td = tempdir()?;
+        let td = tempdir().context("failed to create temporary directory for download")?;
         let mut archive_path = td.path().to_path_buf();
         archive_path.push(&asset.name);
         debug!("archive path is {}", archive_path.to_string_lossy());
 
         {
-            let mut downloaded_file = File::create(&archive_path)?;
-            while let Some(c) = resp.chunk().await? {
-                downloaded_file.write_all(c.as_ref())?;
+            let mut downloaded_file = File::create(&archive_path).with_context(|| {
+                format!(
+                    "failed to create file at {} for downloaded asset",
+                    archive_path.display()
+                )
+            })?;
+            while let Some(c) = resp.chunk().await.with_context(|| {
+                format!(
+                    "failed to read chunk while downloading asset from {}",
+                    asset.url
+                )
+            })? {
+                downloaded_file.write_all(c.as_ref()).with_context(|| {
+                    format!("failed to write chunk to {}", archive_path.display())
+                })?;
             }
         }
 
