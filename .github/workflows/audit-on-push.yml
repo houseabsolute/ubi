@@ -2,6 +2,10 @@ name: Security audit - on push
 
 on:
   push:
+    branches:
+      - "**"
+    tags-ignore:
+      - "ubi-*"
     paths:
       - "**/Cargo.toml"
       - "**/Cargo.lock"

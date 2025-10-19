@@ -1,6 +1,12 @@
 name: Linting
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - "**"
+    tags-ignore:
+      - "ubi-*"
+  pull_request:
 
 permissions: read-all
 
