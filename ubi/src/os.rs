@@ -4,7 +4,7 @@ use regex::Regex;
 use std::sync::LazyLock;
 
 pub(crate) fn android_re() -> &'static Lazy<Regex> {
-    regex!(r"(?i:android)")
+    regex!(r"(?i:(?:\b|_)android(?:\b|_))")
 }
 
 pub(crate) fn freebsd_re() -> &'static Lazy<Regex> {

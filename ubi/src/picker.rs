@@ -391,6 +391,7 @@ impl<'a> AssetPicker<'a> {
             // commented out here.
             //
             //OS::Dragonfly => regex!(r"(?i:(?:\b|_)dragonfly(?:\b|_))"),
+            OS::Android => android_re(),
             OS::FreeBSD => freebsd_re(),
             OS::Fuchsia => fuchsia(),
             //OS::Haiku => regex!(r"(?i:(?:\b|_)haiku(?:\b|_))"),
@@ -609,6 +610,20 @@ mod test {
     #[case::project_aarch64_unknown_linux_pick_the_non_Android_asset_when_not_on_Android(
         "aarch64-unknown-linux-gnu",
         &["project-aarch64-linux-android.tar.gz", "project-aarch64-unknown-linux.tar.gz"],
+        None,
+        None,
+        1
+    )]
+    #[case::project_picks_android_on_android(
+        "aarch64-linux-android",
+        &["project-aarch64-linux-android.tar.gz", "project-aarch64-unknown-linux.tar.gz"],
+        None,
+        None,
+        0
+    )]
+    #[case::project_picks_android_not_mandroid(
+        "aarch64-linux-android",
+        &["project-aarch64-linux-mandroid.tar.gz", "project-aarch64-linux-z-android.tar.gz"],
         None,
         None,
         1
