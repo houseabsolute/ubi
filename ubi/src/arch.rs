@@ -375,6 +375,53 @@ pub(crate) fn x86_64_re() -> &'static Lazy<Regex> {
     )
 }
 
+// This is a regex to match all the different 64-bit CPU architecture strings we might
+// encounter. This is used when filtering multiple matching assets for 64-bit architectures.
+pub(crate) fn cpu_64_bit_re() -> &'static Lazy<Regex> {
+    regex!(
+        r"(?ix)
+        (?:
+            \b
+            |
+            _
+        )
+        (?:
+            x86[_-]?64
+            |
+            x64
+            |
+            amd64
+            |
+            linux64
+            |
+            win64
+            |
+            aarch[_-]?64
+            |
+            arm[_-]?64
+            |
+            mips[_-]?64
+            |
+            powerpc(?:le)?[_-]?64
+            |
+            ppc(?:le)?[_-]?64
+            |
+            riscv[_-]?64
+            |
+            s390x?[_-]?64
+            |
+            sparc[_-]?64
+
+        )
+        (?:
+            \b
+            |
+            _
+        )
+        "
+    )
+}
+
 pub(crate) static ALL_ARCHES_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         &[

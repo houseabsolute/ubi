@@ -2,9 +2,9 @@ use std::path::Path;
 
 use crate::{
     arch::{
-        aarch64_re, arm_re, macos_aarch64_and_x86_64_re, macos_aarch64_only_re, mips64_re,
-        mips64le_re, mips_re, mipsle_re, ppc32_re, ppc64_re, ppc64le_re, riscv64_re, s390x_re,
-        sparc64_re, x86_32_re, x86_64_re, ALL_ARCHES_RE,
+        aarch64_re, arm_re, cpu_64_bit_re, macos_aarch64_and_x86_64_re, macos_aarch64_only_re,
+        mips64_re, mips64le_re, mips_re, mipsle_re, ppc32_re, ppc64_re, ppc64le_re, riscv64_re,
+        s390x_re, sparc64_re, x86_32_re, x86_64_re, ALL_ARCHES_RE,
     },
     extension::Extension,
     os::{
@@ -319,7 +319,7 @@ impl<'a> AssetPicker<'a> {
         let asset_names = matches.iter().map(|a| a.name.as_str()).collect::<Vec<_>>();
         debug!("found multiple candidate assets, filtering for 64-bit binaries in {asset_names:?}",);
 
-        if !matches.iter().any(|a| a.name.contains("64")) {
+        if !matches.iter().any(|a| cpu_64_bit_re().is_match(&a.name)) {
             debug!("no 64-bit assets found, falling back to all assets");
             return matches;
         }
@@ -465,6 +465,13 @@ mod test {
         None,
         None,
         1
+    )]
+    #[case::x86_64_unknown_linux_gnu_do_not_pick_asset_with_64_in_version(
+        "x86_64-unknown-linux-gnu",
+        &["project-a-Linux.tar.gz", "project-b-Linux-1.64.0.tar.gz"],
+        None,
+        None,
+        0
     )]
     #[case::x86_64_unknown_linux_gnu_pick_first_asset_from_two_matching_32_bit_assets(
         "x86_64-unknown-linux-gnu",

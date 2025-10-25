@@ -1,3 +1,10 @@
+## NEXT
+
+- Fixed a bug where `ubi` would pick an asset with `64` in the name when trying to pick the best
+  match on a 64-bit platform. This could include things like `project-Linux-1.64.0.tgz`, where the
+  `64` is part of the version. Now it uses a pickier regex that looks for actual CPU architecture
+  names, like `x86-64` or `arm64`.
+
 ## 0.8.2 2025-10-19
 
 - Fixed a bug introduced in 0.8.0, which caused `ubi` to prefer the `browser_download_url` over the
