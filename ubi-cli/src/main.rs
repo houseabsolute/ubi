@@ -11,7 +11,7 @@ async fn main() {
     let matches = cmd.get_matches();
     let res = init_logger_from_matches(&matches);
     if let Err(e) = res {
-        eprintln!("Error creating logger: {e}");
+        eprintln!("Error creating logger: {e:?}");
         std::process::exit(126);
     }
 
@@ -23,7 +23,7 @@ async fn main() {
         Ok(p) => p,
         Err(e) => {
             let e = anyhow!("could not find path for current executable: {e}");
-            error!("{e}");
+            error!("{e:?}");
             std::process::exit(127);
         }
     };
