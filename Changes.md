@@ -1,5 +1,10 @@
 ## 0.8.3 2025-11-01
 
+- This is the same as 0.8.3, but I had to publish this with a new tag because of a failed experiment
+  with using GitHub's new immutable releases feature.
+
+## 0.8.3 2025-11-01
+
 - Fixed a bug where `ubi` would pick an asset with `64` in the name when trying to pick the best
   match on a 64-bit platform. This could include things like `project-Linux-1.64.0.tgz`, where the
   `64` is part of the version. Now it uses a pickier regex that looks for actual CPU architecture
