@@ -242,10 +242,10 @@ impl<'a> AssetPicker<'a> {
         let mut libc_matches: Vec<Asset> = vec![];
         for asset in &matches {
             debug!("checking for glibc in asset name = {}", asset.name);
-            if asset.name.contains("-gnu") || asset.name.contains("-glibc") {
+            if Self::glibc_regex().is_match(&asset.name) {
                 debug!("indicates glibc and is not compatible with a musl platform");
                 continue;
-            } else if asset.name.contains("-musl") {
+            } else if Self::musl_regex().is_match(&asset.name) {
                 debug!("indicates musl");
             } else {
                 debug!("name does not indicate the libc it was compiled against");
@@ -255,6 +255,14 @@ impl<'a> AssetPicker<'a> {
         }
 
         libc_matches
+    }
+
+    fn glibc_regex() -> &'static Lazy<Regex> {
+        regex!(r"(?i:(?:\b|_)(?:gnu|glibc)(?:\b|_))")
+    }
+
+    fn musl_regex() -> &'static Lazy<Regex> {
+        regex!(r"(?i:(?:\b|_)(?:alpine|musl)(?:\b|_))")
     }
 
     fn libc_name(&mut self) -> &'static str {
@@ -589,6 +597,22 @@ mod test {
     #[case::x86_64_unknown_linux_musl_pick_the_musl_asset_over_gnu_on_a_musl_platform(
         "x86_64-unknown-linux-musl",
         &["project-Linux-x86_64-gnu.tar.gz", "project-Linux-x86_64-musl.tar.gz"],
+        None,
+        None,
+        1
+    )]
+    #[case::x86_64_unknown_linux_musl_pick_the_musl_asset_with_dashes_in_name(
+        "x86_64-unknown-linux-musl",
+        &["project-Linux-x86_64_gnu.tar.gz", "project-Linux-x86_64_musl.tar.gz"],
+        None,
+        None,
+        1
+    )]
+    #[case::x86_64_unknown_linux_musl_pick_the_musl_asset_with_alpine_in_name(
+        "x86_64-unknown-linux-musl",
+        // The "a" and "z" bit are so that when we pick from multiple by sorting, we pick the
+        // non-musl asset. This makes sure we test the check for "alpine" in the name.
+        &["a-project-Linux-x86_64.tar.gz", "z-project-Linux-x86_64-alpine.tar.gz"],
         None,
         None,
         1
