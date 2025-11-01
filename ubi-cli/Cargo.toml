@@ -12,7 +12,7 @@ edition.workspace = true
 anyhow.workspace = true
 # The default features include things like color output, detailed errors, etc. We want to include
 # all of them.
-clap = { version = "4.5.48", features = ["default", "wrap_help"] }
+clap = { version = "4.5.51", features = ["default", "wrap_help"] }
 log.workspace = true
 strum.workspace = true
 tempfile.workspace = true
