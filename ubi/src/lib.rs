@@ -86,7 +86,7 @@
 //!
 //! It tries to be careful about what constitutes an extension. It's common for release filenames to
 //! include a dot (`.`) in the filename before something that's _not_ intended as an extension, for
-//! example `some-tool.linux.amd64`.
+//! example `some-tool.linux.amd64` or `some-tools-linux-x86-64-1.3.5.tar.gz`.
 //!
 //! If, after filtering for extensions, there's only one asset, it will try to install this one, on
 //! the assumption that this project releases assets which are not platform-specific (like a shell
