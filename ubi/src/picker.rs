@@ -125,31 +125,31 @@ impl<'a> AssetPicker<'a> {
                         debug!("skipping asset with invalid extension: {e}");
                         false
                     }
-                Ok(Some(ext)) => {
-                    debug!("found valid extension, `{}`", ext.extension());
-                    if self.archive_only {
-                        if ext.is_archive() {
-                            debug!("including this asset because it is an archive file");
-                            return true;
+                    Ok(Some(ext)) => {
+                        debug!("found valid extension, `{}`", ext.extension());
+                        if self.archive_only {
+                            if ext.is_archive() {
+                                debug!("including this asset because it is an archive file");
+                                return true;
+                            }
+                            debug!("not including this asset because it is not an archive file");
+                            false
+                        } else if ext.matches_platform(&self.platform) {
+                            debug!("including this asset because this extension is valid for this platform");
+                            true
+                        } else {
+                            debug!("skipping asset because this extension is not valid for this platform");
+                            false
                         }
-                        debug!("not including this asset because it is not an archive file");
-                        false
-                    } else if ext.matches_platform(&self.platform) {
-                        debug!("including this asset because this extension is valid for this platform");
+                    }
+                    Ok(None) => {
+                        debug!("found asset with no extension, `{}`", a.name);
+                        if self.archive_only {
+                            debug!("not including this asset because it is not an archive file");
+                            return false;
+                        }
                         true
-                    } else {
-                        debug!("skipping asset because this extension is not valid for this platform");
-                        false
                     }
-                }
-                Ok(None) => {
-                    debug!("found asset with no extension, `{}`", a.name);
-                    if self.archive_only {
-                        debug!("not including this asset because it is not an archive file");
-                        return false;
-                    }
-                    true
-                }
                 }
             })
             .collect()
