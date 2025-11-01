@@ -12,6 +12,10 @@
   `-musl`. This meant that an asset name with dashes, like `foo_linux_musl.tar.gz`, would not be
   matched. Now this uses regexes to better match the libc name. Reported by @egnor (Daniel Egnor).
   GH #142.
+- When on a platform with musl as its libc, `ubi` will now prefer an asset with an explicit
+  indication that it was compiled with musl over an asset with no libc indication in the name. In
+  other words, it will prefer `project-linux-x86-64-musl.tar.gz` over `project-linux-x86-64.tar.gz`.
+  Suggested by @egnor (Daniel Egnor). GH #142.
 
 ## 0.8.2 2025-10-19
 

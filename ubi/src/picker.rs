@@ -254,6 +254,22 @@ impl<'a> AssetPicker<'a> {
             libc_matches.push(asset.clone());
         }
 
+        if self.is_musl && libc_matches.len() > 1 {
+            debug!("multiple candidate assets remain, filtering for musl-specific assets over assets without a libc in the name");
+            let musl_only = libc_matches
+                .iter()
+                .filter(|a| Self::musl_regex().is_match(&a.name))
+                .collect::<Vec<_>>();
+            if musl_only.is_empty() {
+                debug!("there are no musl-specific assets, keeping all candidates");
+            } else {
+                debug!(
+                    "found musl-specific assets, filtering out assets without a libc in the name"
+                );
+                libc_matches = musl_only.into_iter().cloned().collect();
+            }
+        }
+
         libc_matches
     }
 

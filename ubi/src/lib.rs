@@ -108,7 +108,8 @@
 //!   is no libc indicator, the asset will still be included. You can use the
 //!   [`UbiBuilder::is_musl`] method to explicitly say that the platform is using musl. If this
 //!   isn't set, then it will try to detect if you are using musl by looking at the output of `ldd
-//!   /bin/ls`.
+//!   /bin/ls`. However, if there is no libc indicator, the asset will still be included, but musl
+//!   assets will be preferred over assets with no indication of which libc they use.
 //!
 //! At this point, any remaining assets should work on your platform, so if there's more than one
 //! match, it attempts to pick the best one.

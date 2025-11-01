@@ -526,6 +526,7 @@ async fn matching_unusual_names() -> Result<()> {
                 .project("protocolbuffers/protobuf")
                 .platform(platform)
                 .api_base_url(&url)
+                .is_musl(p.contains("musl"))
                 .build()?;
             let asset = ubi.asset().await?;
             assert_eq!(

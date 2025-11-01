@@ -193,7 +193,8 @@ this in several stages:
   _not_ compiled against musl. This filter looks to see if the file name contains an indication of
   which libc it was compiled against. Typically, this is something like "-gnu" or "-musl". If it
   does contain this indicator, names that are _not_ musl are filtered out. However, if there is no
-  libc indicator, the asset will still be included.
+  libc indicator, the asset will still be included, but musl assets will be preferred over assets
+  with no indication of which libc they use.
 
 At this point, any remaining assets should work on your platform, so if there's more than one match,
 it attempts to pick the best one.
