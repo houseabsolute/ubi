@@ -1,4 +1,4 @@
-## NEXT
+## 0.8.3 2025-11-01
 
 - Fixed a bug where `ubi` would pick an asset with `64` in the name when trying to pick the best
   match on a 64-bit platform. This could include things like `project-Linux-1.64.0.tgz`, where the
