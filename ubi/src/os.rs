@@ -20,7 +20,8 @@ pub(crate) fn illumos_re() -> &'static Lazy<Regex> {
 }
 
 pub(crate) fn linux_re() -> &'static Lazy<Regex> {
-    regex!(r"(?i:(?:\b|_)linux(?:\b|_|32|64))")
+    // The "static" thing is used by [`yao`](https://github.com/yao-pkg/pkg).
+    regex!(r"(?i:(?:\b|_)linux(?:static)?(?:\b|_|32|64))")
 }
 
 pub(crate) fn macos_re() -> &'static Lazy<Regex> {

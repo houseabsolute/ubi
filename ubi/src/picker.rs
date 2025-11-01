@@ -628,6 +628,13 @@ mod test {
         None,
         1
     )]
+    #[case::linuxstatic_in_asset_name(
+        "x86_64-unknown-linux-gnu",
+        &["project-x86-64-linuxstatic.tar.gz", "project-x86-64-windows.tar.gz"],
+        None,
+        None,
+        0
+    )]
     #[allow(non_snake_case)]
     fn pick_asset(
         #[case] platform_name: &str,

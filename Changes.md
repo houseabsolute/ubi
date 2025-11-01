@@ -5,6 +5,9 @@
   `64` is part of the version. Now it uses a pickier regex that looks for actual CPU architecture
   names, like `x86-64` or `arm64`.
 - Made it possible to use `ubi` on Android.
+- Added `linuxstatic` as a string to look for when checking for Linux asset names. Apparently,
+  [the `yao` tool](https://github.com/yao-pkg/pkg) produces assets with this string in the name (why
+  the hate for dashes, I ask?). Reported by @egnor (Daniel Egnor). GH #142.
 
 ## 0.8.2 2025-10-19
 
