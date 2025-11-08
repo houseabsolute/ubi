@@ -263,10 +263,12 @@ mod tests {
         } else {
             "/repos/some/project/releases/latest".to_string()
         };
-        let authorization_header_matcher = if token.is_some() {
-            mockito::Matcher::Exact(format!("Bearer {}", token.unwrap()))
-        } else {
-            mockito::Matcher::Missing
+        let authorization_header_matcher = {
+            if let Some(token) = token {
+                mockito::Matcher::Exact(format!("Bearer {token}"))
+            } else {
+                mockito::Matcher::Missing
+            }
         };
         let mut server = Server::new_async().await;
 
@@ -348,10 +350,12 @@ mod tests {
         } else {
             "/repos/houseabsolute/ubi/releases/latest".to_string()
         };
-        let authorization_header_matcher = if token.is_some() {
-            mockito::Matcher::Exact(format!("Bearer {}", token.unwrap()))
-        } else {
-            mockito::Matcher::Missing
+        let authorization_header_matcher = {
+            if let Some(token) = token {
+                mockito::Matcher::Exact(format!("Bearer {token}"))
+            } else {
+                mockito::Matcher::Missing
+            }
         };
         let mut server = Server::new_async().await;
         let m = server
@@ -433,10 +437,12 @@ mod tests {
         } else {
             "/projects/houseabsolute%2Fubi/releases/permalink/latest".to_string()
         };
-        let authorization_header_matcher = if token.is_some() {
-            mockito::Matcher::Exact(format!("Bearer {}", token.unwrap()))
-        } else {
-            mockito::Matcher::Missing
+        let authorization_header_matcher = {
+            if let Some(token) = token {
+                mockito::Matcher::Exact(format!("Bearer {token}"))
+            } else {
+                mockito::Matcher::Missing
+            }
         };
         let mut server = Server::new_async().await;
         let m = server
