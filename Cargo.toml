@@ -54,3 +54,9 @@ zip = { version = ">= 3.0.0, < 4.0.0", default-features = false, features = [
     "zstd",
 ] }
 zstd = { version = "0.13.3", default-features = false }
+
+[workspace.lints.rust]
+fallible_impl_from = "deny"
+wildcard_enum_match_arm = "deny"
+unneeded_field_pattern = "deny"
+fn_params_excessive_bools = "deny"

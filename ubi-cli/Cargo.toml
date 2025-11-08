@@ -31,3 +31,6 @@ path = "src/main.rs"
 
 [package.metadata.release]
 tag-name = "v{{version}}"
+
+[lints]
+workspace = true
