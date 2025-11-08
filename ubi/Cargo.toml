@@ -56,3 +56,9 @@ mockito.workspace = true
 rstest.workspace = true
 test-log.workspace = true
 tokio.workspace = true
+
+[lints.clippy]
+fallible_impl_from = "deny"
+wildcard_enum_match_arm = "deny"
+unneeded_field_pattern = "deny"
+fn_params_excessive_bools = "deny"

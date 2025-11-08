@@ -148,7 +148,28 @@ impl Extension {
         match self {
             Extension::AppImage => platform.target_os == OS::Linux,
             Extension::Bat | Extension::Exe => platform.target_os == OS::Windows,
-            _ => true,
+            Extension::Bz
+            | Extension::Bz2
+            | Extension::Gz
+            | Extension::Jar
+            | Extension::Phar
+            | Extension::Py
+            | Extension::Pyz
+            | Extension::SevenZip
+            | Extension::Sh
+            | Extension::Tar
+            | Extension::TarBz
+            | Extension::TarBz2
+            | Extension::TarGz
+            | Extension::TarXz
+            | Extension::TarZst
+            | Extension::Tbz
+            | Extension::Tgz
+            | Extension::Txz
+            | Extension::Tzst
+            | Extension::Xz
+            | Extension::Zip
+            | Extension::Zst => true,
         }
     }
 

@@ -405,6 +405,9 @@ impl<'a> AssetPicker<'a> {
     fn os_matcher(&self) -> &'static Lazy<Regex> {
         debug!("current OS = {}", self.platform.target_os);
 
+        // If new platforms are added, we _do_ want this `unreachable` to panic, since we need to
+        // explicitly add support for new platforms.
+        #[allow(clippy::wildcard_enum_match_arm)]
         match self.platform.target_os {
             // The strings the regexes match are those supported by Rust
             // (based on the platforms crate) and Go (based on
