@@ -1,9 +1,12 @@
-use crate::ubi::Asset;
 use anyhow::{anyhow, Result};
 use log::debug;
-use serde::{Deserialize, Serialize};
 use std::sync::LazyLock;
 use url::Url;
+
+#[cfg(test)]
+use crate::ubi::Asset;
+#[cfg(test)]
+use serde::{Deserialize, Serialize};
 
 pub(crate) static PROJECT_BASE_URL: LazyLock<Url> =
     LazyLock::new(|| Url::parse("https://gitlab.com").unwrap());
@@ -11,11 +14,15 @@ pub(crate) static PROJECT_BASE_URL: LazyLock<Url> =
 pub(crate) static DEFAULT_API_BASE_URL: LazyLock<Url> =
     LazyLock::new(|| Url::parse("https://gitlab.com/api/v4").unwrap());
 
+// Only used for test data serialization in forge.rs tests
+#[cfg(test)]
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct Release {
     pub(crate) assets: Assets,
+    pub(crate) released_at: chrono::DateTime<chrono::Utc>,
 }
 
+#[cfg(test)]
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct Assets {
     pub(crate) links: Vec<Asset>,

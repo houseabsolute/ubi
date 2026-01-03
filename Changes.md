@@ -1,3 +1,9 @@
+## 0.9.0
+
+- Added a new `--min-age-days` flag that tells `ubi` to only consider releases at least that old.
+  This is useful for mitigating supply chain attacks, especially for projects that use GitHub's
+  immutable releases feature. GH #145.
+
 ## 0.8.4 2025-11-01
 
 - This is the same as 0.8.3, but I had to publish this with a new tag because of a failed experiment

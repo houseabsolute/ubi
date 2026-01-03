@@ -331,7 +331,8 @@ const UBI_LATEST_RESPONSE: &str = r#"
       "browser_download_url": "https://api.github.com/repos/houseabsolute/ubi/releases/assets/96252617",
       "name": "ubi-Windows-x86_64.zip"
     }
-  ]
+  ],
+  "published_at": "2024-01-01T00:00:00Z"
 }
 "#;
 
@@ -450,7 +451,8 @@ const OMEGASORT_LATEST_RESPONSE: &str = r#"
       "browser_download_url": "https://api.github.com/repos/houseabsolute/omegasort/releases/assets/84376693",
       "name": "omegasort_0.0.7_Windows_x86_64.tar.gz"
     }
-  ]
+  ],
+  "published_at": "2024-01-01T00:00:00Z"
 }
 "#;
 
@@ -593,7 +595,8 @@ const PROTOBUF_LATEST_RESPONSE: &str = r#"
       "browser_download_url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/98875816",
       "name": "protoc-22.2-win64.zip"
     }
-  ]
+  ],
+  "published_at": "2024-01-01T00:00:00Z"
 }
 "#;
 
@@ -697,7 +700,8 @@ const MKCERT_LATEST_RESPONSE: &str = r#"
       "browser_download_url": "https://api.github.com/repos/FiloSottile/mkcert/releases/assets/63709963",
       "name": "mkcert-v1.4.4-windows-arm64.exe"
     }
-  ]
+  ],
+  "published_at": "2024-01-01T00:00:00Z"
 }"#;
 
 // Reported in https://github.com/houseabsolute/ubi/issues/34
@@ -788,7 +792,8 @@ const JQ_LATEST_RESPONSE: &str = r#"
       "browser_download_url": "https://api.github.com/repos/stedolan/jq/releases/assets/9521008",
       "name": "jq-win64.exe"
     }
-  ]
+  ],
+  "published_at": "2024-01-01T00:00:00Z"
 }"#;
 
 #[test(tokio::test)]
@@ -836,7 +841,8 @@ const MULTIPLE_MATCHES_RESPONSE: &str = r#"
       "browser_download_url": "https://api.github.com/repos/test/multiple-matches/releases/assets/9521008",
       "name": "mm-i686-pc-windows-msvc.zip"
     }
-  ]
+  ],
+  "published_at": "2024-01-01T00:00:00Z"
 }"#;
 
 #[test(tokio::test)]
@@ -907,7 +913,8 @@ const MACOS_RESPONSE1: &str = r#"
       "browser_download_url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891186",
       "name": "bat-v0.23.0-x86_64-apple-darwin.tar.gz"
     }
-  ]
+  ],
+  "published_at": "2024-01-01T00:00:00Z"
 }"#;
 
 const MACOS_RESPONSE2: &str = r#"
@@ -925,7 +932,8 @@ const MACOS_RESPONSE2: &str = r#"
       "browser_download_url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891186",
       "name": "bat-v0.23.0-aarch64-apple-darwin.tar.gz"
     }
-  ]
+  ],
+  "published_at": "2024-01-01T00:00:00Z"
 }"#;
 
 #[test(tokio::test)]
@@ -1006,7 +1014,8 @@ const OS_WITHOUT_ARCH_RESPONSE1: &str = r#"
       "browser_download_url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891187",
       "name": "gvproxy-linux-arm64"
     }
-  ]
+  ],
+  "published_at": "2024-01-01T00:00:00Z"
 }"#;
 
 const OS_WITHOUT_ARCH_RESPONSE2: &str = r#"
@@ -1024,5 +1033,260 @@ const OS_WITHOUT_ARCH_RESPONSE2: &str = r#"
       "browser_download_url": "https://api.github.com/repos/sharkdp/bat/releases/assets/100891187",
       "name": "gvproxy-linux-arm64"
     }
-  ]
+  ],
+  "published_at": "2024-01-01T00:00:00Z"
 }"#;
+
+#[test]
+fn min_age_days_validation() {
+    // Test that setting min_age_days to 0 returns an error
+    let result = UbiBuilder::new()
+        .project("houseabsolute/ubi")
+        .min_age_days(0)
+        .build();
+
+    assert!(result.is_err(), "min_age_days = 0 should return an error");
+    let err = result.unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("min_age_days must be a positive number"),
+        "error message should mention that min_age_days must be positive, got: {err}"
+    );
+
+    // Test that setting min_age_days to a positive number works
+    let result = UbiBuilder::new()
+        .project("houseabsolute/ubi")
+        .min_age_days(7)
+        .build();
+
+    assert!(
+        result.is_ok(),
+        "min_age_days > 0 should succeed, got error: {:?}",
+        result.unwrap_err()
+    );
+}
+
+#[test(tokio::test)]
+async fn min_age_days_picks_old_release() -> Result<()> {
+    // Test that min_age_days filters releases correctly and picks an older release
+    let mut server = Server::new_async().await;
+    let url = server.url();
+
+    // Create a mock response for /repos/test/project/releases (list endpoint)
+    // with 3 releases at different ages
+    let now = chrono::Utc::now();
+    let two_days_ago = now - chrono::Duration::days(2);
+    let ten_days_ago = now - chrono::Duration::days(10);
+    let thirty_days_ago = now - chrono::Duration::days(30);
+
+    let releases_response = format!(
+        r#"[
+  {{
+    "assets": [
+      {{
+        "browser_download_url": "https://api.github.com/repos/test/project/releases/assets/1",
+        "name": "project-Linux-x86_64-v1.0.0.tar.gz"
+      }}
+    ],
+    "published_at": "{}"
+  }},
+  {{
+    "assets": [
+      {{
+        "browser_download_url": "https://api.github.com/repos/test/project/releases/assets/2",
+        "name": "project-Linux-x86_64-v0.9.0.tar.gz"
+      }}
+    ],
+    "published_at": "{}"
+  }},
+  {{
+    "assets": [
+      {{
+        "browser_download_url": "https://api.github.com/repos/test/project/releases/assets/3",
+        "name": "project-Linux-x86_64-v0.8.0.tar.gz"
+      }}
+    ],
+    "published_at": "{}"
+  }}
+]"#,
+        two_days_ago.to_rfc3339(),
+        ten_days_ago.to_rfc3339(),
+        thirty_days_ago.to_rfc3339()
+    );
+
+    let m = server
+        .mock("GET", "/repos/test/project/releases")
+        .match_header(ACCEPT.as_str(), "application/json")
+        .with_status(reqwest::StatusCode::OK.as_u16() as usize)
+        .with_body(releases_response)
+        .expect(1)
+        .create_async()
+        .await;
+
+    let p = "x86_64-unknown-linux-musl";
+    let req = PlatformReq::from_str(p)
+        .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
+    let platform = req.matching_platforms().next().unwrap();
+
+    // Request with min_age_days = 7 should pick the 10-day-old release
+    let mut ubi = UbiBuilder::new()
+        .project("test/project")
+        .platform(platform)
+        .api_base_url(&url)
+        .min_age_days(7)
+        .build()?;
+
+    let asset = ubi.asset().await?;
+    assert_eq!(
+        asset.name, "project-Linux-x86_64-v0.9.0.tar.gz",
+        "should pick the 10-day-old release (first one older than 7 days)"
+    );
+
+    m.assert_async().await;
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn min_age_days_no_old_enough_release() -> Result<()> {
+    // Test that min_age_days returns an error when no releases are old enough
+    let mut server = Server::new_async().await;
+    let url = server.url();
+
+    let now = chrono::Utc::now();
+    let two_days_ago = now - chrono::Duration::days(2);
+    let five_days_ago = now - chrono::Duration::days(5);
+
+    let releases_response = format!(
+        r#"[
+  {{
+    "assets": [
+      {{
+        "browser_download_url": "https://api.github.com/repos/test/project/releases/assets/1",
+        "name": "project-Linux-x86_64-v1.0.0.tar.gz"
+      }}
+    ],
+    "published_at": "{}"
+  }},
+  {{
+    "assets": [
+      {{
+        "browser_download_url": "https://api.github.com/repos/test/project/releases/assets/2",
+        "name": "project-Linux-x86_64-v0.9.0.tar.gz"
+      }}
+    ],
+    "published_at": "{}"
+  }}
+]"#,
+        two_days_ago.to_rfc3339(),
+        five_days_ago.to_rfc3339()
+    );
+
+    let m = server
+        .mock("GET", "/repos/test/project/releases")
+        .match_header(ACCEPT.as_str(), "application/json")
+        .with_status(reqwest::StatusCode::OK.as_u16() as usize)
+        .with_body(releases_response)
+        .expect(1)
+        .create_async()
+        .await;
+
+    let p = "x86_64-unknown-linux-musl";
+    let req = PlatformReq::from_str(p)
+        .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
+    let platform = req.matching_platforms().next().unwrap();
+
+    // Request with min_age_days = 10 should fail since no release is that old
+    let mut ubi = UbiBuilder::new()
+        .project("test/project")
+        .platform(platform)
+        .api_base_url(&url)
+        .min_age_days(10)
+        .build()?;
+
+    let result = ubi.asset().await;
+    assert!(
+        result.is_err(),
+        "should return an error when no releases are old enough"
+    );
+
+    let err = result.unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("No releases found older than 10 days"),
+        "error message should mention no releases found, got: {err}"
+    );
+
+    m.assert_async().await;
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn min_age_days_picks_exact_threshold() -> Result<()> {
+    // Test that min_age_days works correctly at the exact threshold
+    let mut server = Server::new_async().await;
+    let url = server.url();
+
+    let now = chrono::Utc::now();
+    let exactly_seven_days_ago = now - chrono::Duration::days(7);
+    let six_days_ago = now - chrono::Duration::days(6);
+
+    let releases_response = format!(
+        r#"[
+  {{
+    "assets": [
+      {{
+        "browser_download_url": "https://api.github.com/repos/test/project/releases/assets/1",
+        "name": "project-Linux-x86_64-v1.0.0.tar.gz"
+      }}
+    ],
+    "published_at": "{}"
+  }},
+  {{
+    "assets": [
+      {{
+        "browser_download_url": "https://api.github.com/repos/test/project/releases/assets/2",
+        "name": "project-Linux-x86_64-v0.9.0.tar.gz"
+      }}
+    ],
+    "published_at": "{}"
+  }}
+]"#,
+        six_days_ago.to_rfc3339(),
+        exactly_seven_days_ago.to_rfc3339()
+    );
+
+    let m = server
+        .mock("GET", "/repos/test/project/releases")
+        .match_header(ACCEPT.as_str(), "application/json")
+        .with_status(reqwest::StatusCode::OK.as_u16() as usize)
+        .with_body(releases_response)
+        .expect(1)
+        .create_async()
+        .await;
+
+    let p = "x86_64-unknown-linux-musl";
+    let req = PlatformReq::from_str(p)
+        .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
+    let platform = req.matching_platforms().next().unwrap();
+
+    // Request with min_age_days = 7 should pick the 7-day-old release
+    // (the comparison is <=, so exactly 7 days old should qualify)
+    let mut ubi = UbiBuilder::new()
+        .project("test/project")
+        .platform(platform)
+        .api_base_url(&url)
+        .min_age_days(7)
+        .build()?;
+
+    let asset = ubi.asset().await?;
+    assert_eq!(
+        asset.name, "project-Linux-x86_64-v0.9.0.tar.gz",
+        "should pick the release that is exactly 7 days old"
+    );
+
+    m.assert_async().await;
+
+    Ok(())
+}

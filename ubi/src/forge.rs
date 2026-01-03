@@ -1,10 +1,11 @@
 use crate::{forgejo, github, gitlab, ubi::Asset};
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use log::debug;
 use reqwest::{
     header::{HeaderValue, ACCEPT, AUTHORIZATION},
     Client, RequestBuilder, Response,
 };
+use serde::Deserialize;
 use std::env;
 use url::Url;
 
@@ -37,11 +38,83 @@ pub(crate) struct Forge {
 unsafe impl Send for Forge {}
 unsafe impl Sync for Forge {}
 
+// Unified release structure that works for both GitHub and GitLab
+// using serde attributes to handle the differences
+#[derive(Debug, Deserialize)]
+struct Release {
+    // Accept both "published_at" (GitHub) and "released_at" (GitLab)
+    #[serde(alias = "published_at", alias = "released_at")]
+    date: chrono::DateTime<chrono::Utc>,
+
+    // Handle both direct array (GitHub) and nested object (GitLab)
+    #[serde(deserialize_with = "deserialize_assets")]
+    assets: Vec<Asset>,
+}
+
+// Custom deserializer to handle both GitHub's direct array and GitLab's nested structure
+fn deserialize_assets<'de, D>(deserializer: D) -> Result<Vec<Asset>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum AssetsFormat {
+        Direct(Vec<Asset>),
+        Nested { links: Vec<Asset> },
+    }
+
+    match AssetsFormat::deserialize(deserializer)? {
+        AssetsFormat::Direct(assets) => Ok(assets),
+        AssetsFormat::Nested { links } => Ok(links),
+    }
+}
+
 impl Forge {
     pub(crate) async fn fetch_assets(&self, client: &Client) -> Result<Vec<Asset>> {
         debug!("Fetching assets for project `{}`", self.project_name);
         let response = self.make_release_info_request(client).await?;
-        self.forge_type.response_into_assets(response).await
+        Ok(response
+            .json::<Release>()
+            .await
+            .context("failed to parse release JSON response")?
+            .assets)
+    }
+
+    pub(crate) async fn fetch_assets_with_min_age(
+        &self,
+        client: &Client,
+        min_age_days: u32,
+    ) -> Result<Vec<Asset>> {
+        debug!(
+            "Fetching assets for project `{}` with minimum age of {min_age_days} days",
+            self.project_name
+        );
+
+        let min_date = chrono::Utc::now() - chrono::Duration::days(i64::from(min_age_days));
+        for release in self.fetch_releases_list(client).await? {
+            if release.date <= min_date {
+                debug!(
+                    "Found release from {} (older than {min_age_days} days)",
+                    release.date
+                );
+                return Ok(release.assets);
+            }
+        }
+
+        Err(anyhow!("No releases found older than {min_age_days} days"))
+    }
+
+    async fn fetch_releases_list(&self, client: &Client) -> Result<Vec<Release>> {
+        let url = self
+            .forge_type
+            .releases_list_url(&self.project_name, self.api_base_url.clone());
+        let resp = self
+            .make_api_request(client, url, "Getting releases list")
+            .await?;
+
+        resp.json::<Vec<Release>>()
+            .await
+            .context("failed to parse releases list JSON response")
     }
 
     async fn make_release_info_request(&self, client: &Client) -> Result<Response> {
@@ -50,7 +123,17 @@ impl Forge {
             self.api_base_url.clone(),
             self.tag.as_deref(),
         );
-        debug!("Getting release info from `{url}`");
+        self.make_api_request(client, url, "Getting release info")
+            .await
+    }
+
+    async fn make_api_request(
+        &self,
+        client: &Client,
+        url: Url,
+        log_message: &str,
+    ) -> Result<Response> {
+        debug!("{log_message} from `{url}`");
 
         let mut req_builder = client.get(url.clone()).header(
             ACCEPT,
@@ -189,24 +272,31 @@ impl ForgeType {
         }
     }
 
-    async fn response_into_assets(&self, response: Response) -> Result<Vec<Asset>> {
-        Ok(match self {
+    fn releases_list_url(&self, project_name: &str, mut url: Url) -> Url {
+        match self {
             ForgeType::Forgejo | ForgeType::GitHub => {
-                response
-                    .json::<github::Release>()
-                    .await
-                    .context("failed to parse GitHub/Forgejo release JSON response")?
-                    .assets
+                // /repos/{owner}/{repo}/releases
+                let mut parts = project_name.split('/');
+                let owner = parts.next().unwrap();
+                let repo = parts.next().unwrap();
+                url.path_segments_mut()
+                    .expect("could not get path segments for url")
+                    .push("repos")
+                    .push(owner)
+                    .push(repo)
+                    .push("releases");
+                url
             }
             ForgeType::GitLab => {
-                response
-                    .json::<gitlab::Release>()
-                    .await
-                    .context("failed to parse GitLab release JSON response")?
-                    .assets
-                    .links
+                // /projects/{project}/releases
+                url.path_segments_mut()
+                    .expect("could not get path segments for url")
+                    .push("projects")
+                    .push(project_name)
+                    .push("releases");
+                url
             }
-        })
+        }
     }
 }
 
@@ -240,6 +330,7 @@ mod tests {
     #[derive(Debug, serde::Deserialize, serde::Serialize)]
     struct ForgejoRelease {
         assets: Vec<ForgejoAsset>,
+        published_at: chrono::DateTime<chrono::Utc>,
     }
     #[derive(Debug, serde::Deserialize, serde::Serialize)]
     struct ForgejoAsset {
@@ -276,7 +367,10 @@ mod tests {
             .mock("GET", expect_path.as_str())
             .match_header("Authorization", authorization_header_matcher)
             .with_status(200)
-            .with_body(serde_json::to_string(&ForgejoRelease { assets })?)
+            .with_body(serde_json::to_string(&ForgejoRelease {
+                assets,
+                published_at: chrono::Utc::now(),
+            })?)
             .create_async()
             .await;
 
@@ -364,6 +458,7 @@ mod tests {
             .with_status(200)
             .with_body(serde_json::to_string(&github::Release {
                 assets: assets.clone(),
+                published_at: chrono::Utc::now(),
             })?)
             .create_async()
             .await;
@@ -453,6 +548,7 @@ mod tests {
                 assets: gitlab::Assets {
                     links: assets.clone(),
                 },
+                released_at: chrono::Utc::now(),
             })?)
             .create_async()
             .await;

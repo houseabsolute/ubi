@@ -72,7 +72,8 @@ fn cmd() -> Command {
                 .requires("project")
                 .help(concat!(
                     "The tag to download. Defaults to the latest release.",
-                    " This can only be passed with `--project`."
+                    " This can only be passed with `--project`. You cannot pass this when",
+                    " `--url` or `--min-age-days` are passed.",
                 )),
         )
         .arg(
@@ -84,7 +85,8 @@ fn cmd() -> Command {
                     "The url of the file to download. This can be provided instead of a project or",
                     " tag. This will not use the forge site's API, so you will never hit its API",
                     " limits. With this parameter, you do not need to set a token env var except for",
-                    " private repos. You cannot pass this when `--project` or `--tag` are passed."
+                    " private repos. You cannot pass this when `--project`, `--tag`, or `--min-age-days`",
+                    " are passed."
                 )),
         )
         .arg(
@@ -133,6 +135,19 @@ fn cmd() -> Command {
                 )),
         )
         .arg(
+            Arg::new("min-age-days")
+                .long("min-age-days")
+                .value_parser(clap::value_parser!(u32))
+                .requires("project")
+                .conflicts_with_all(["tag", "url"])
+                .help(concat!(
+                    "Minimum age in days for releases. Only releases at least this many days old",
+                    " will be installed. This is useful for mitigating supply chain attacks. It's",
+                    " especially useful for projects that use GitHub's immutable releases",
+                    " feature. You cannot pass this with --tag or --url.",
+                )),
+        )
+        .arg(
             Arg::new("matching")
                 .long("matching")
                 .short('m')
@@ -146,13 +161,13 @@ fn cmd() -> Command {
         )
         .arg(
             Arg::new("matching-regex")
-            .long("matching-regex")
-            .short('r')
-            .help(concat!(
-                "A regular expression string that will be matched against release filenames before",
-                " matching against your OS/arch. If the pattern yields a single match, that release",
-                " will be selected. If no matches are found, this will result in an error.",
-            )),
+                .long("matching-regex")
+                .short('r')
+                .help(concat!(
+                    "A regular expression string that will be matched against release filenames before",
+                    " matching against your OS/arch. If the pattern yields a single match, that release",
+                    " will be selected. If no matches are found, this will result in an error.",
+                )),
         )
         .arg(
             Arg::new("forge")
@@ -272,6 +287,9 @@ fn make_ubi<'a>(
     }
     if let Some(url) = matches.get_one::<String>("api-base-url") {
         builder = builder.api_base_url(url);
+    }
+    if let Some(days) = matches.get_one::<u32>("min-age-days") {
+        builder = builder.min_age_days(*days);
     }
 
     Ok((builder.build()?, None))
