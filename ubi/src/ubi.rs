@@ -19,6 +19,7 @@ pub struct Ubi<'a> {
     asset_picker: AssetPicker<'a>,
     installer: Box<dyn Installer>,
     reqwest_client: Client,
+    min_age_days: Option<u32>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
@@ -69,6 +70,7 @@ impl<'a> Ubi<'a> {
         asset_picker: AssetPicker<'a>,
         installer: Box<dyn Installer>,
         reqwest_client: Client,
+        min_age_days: Option<u32>,
     ) -> Ubi<'a> {
         Ubi {
             forge,
@@ -76,6 +78,7 @@ impl<'a> Ubi<'a> {
             asset_picker,
             installer,
             reqwest_client,
+            min_age_days,
         }
     }
 
@@ -105,13 +108,23 @@ impl<'a> Ubi<'a> {
 
     pub(crate) async fn asset(&mut self) -> Result<Asset> {
         if let Some(url) = &self.asset_url {
+            // URL mode: skip age check
             return Ok(Asset {
                 name: url.path().split('/').next_back().unwrap().to_string(),
                 url: url.clone(),
             });
         }
 
-        let assets = self.forge.fetch_assets(&self.reqwest_client).await?;
+        let assets = if let Some(min_age) = self.min_age_days {
+            // Minimum age mode: fetch with age filtering
+            self.forge
+                .fetch_assets_with_min_age(&self.reqwest_client, min_age)
+                .await?
+        } else {
+            // Normal mode: fetch latest
+            self.forge.fetch_assets(&self.reqwest_client).await?
+        };
+
         let asset = self.asset_picker.pick_asset(assets)?;
         debug!("picked asset named {}", asset.name);
         Ok(asset)

@@ -38,6 +38,7 @@ pub struct UbiBuilder<'a> {
     is_musl: Option<bool>,
     api_base_url: Option<&'a str>,
     forge: Option<ForgeType>,
+    min_age_days: Option<u32>,
 }
 
 impl<'a> UbiBuilder<'a> {
@@ -60,8 +61,9 @@ impl<'a> UbiBuilder<'a> {
         self
     }
 
-    /// Set the tag to download. By default the most recent release is downloaded. You cannot set
-    /// this with the `url` option.
+    /// Set the tag to download. By default the most recent release is downloaded.
+    ///
+    /// You cannot set this with the `url` or `min_age_days` options.
     #[must_use]
     pub fn tag(mut self, tag: &'a str) -> Self {
         self.tag = Some(tag);
@@ -73,7 +75,8 @@ impl<'a> UbiBuilder<'a> {
     /// to set a token env var except when downloading a release from a private repo when the URL is
     /// set.
     ///
-    /// You must set this or set `project`, but not both.
+    /// You must set this or set `project`, but not both. You cannot set this with the `tag` or
+    /// `min_age_days` options.
     #[must_use]
     pub fn url(mut self, url: &'a str) -> Self {
         self.url = Some(url);
@@ -139,6 +142,17 @@ impl<'a> UbiBuilder<'a> {
     #[must_use]
     pub fn extract_all(mut self) -> Self {
         self.extract_all = true;
+        self
+    }
+
+    /// Set the minimum age in days for releases. Only releases at least this many days old will be
+    /// installed. This is useful for mitigating supply chain attacks. It's especially useful for
+    /// projects that use GitHub's immutable releases feature.
+    ///
+    /// You cannot set this with the `tag` or `url` options.
+    #[must_use]
+    pub fn min_age_days(mut self, days: u32) -> Self {
+        self.min_age_days = Some(days);
         self
     }
 
@@ -233,6 +247,19 @@ impl<'a> UbiBuilder<'a> {
                 "You cannot set rename_exe_to and enable extract_all"
             ));
         }
+        if let Some(days) = self.min_age_days {
+            if self.url.is_some() {
+                return Err(anyhow!("You cannot set min_age_days with url"));
+            }
+            if self.tag.is_some() {
+                return Err(anyhow!("You cannot set min_age_days with tag"));
+            }
+            if days == 0 {
+                return Err(anyhow!(
+                    "min_age_days must be a positive number (greater than 0)"
+                ));
+            }
+        }
 
         let platform = self.determine_platform()?;
 
@@ -267,6 +294,7 @@ impl<'a> UbiBuilder<'a> {
             ),
             installer,
             reqwest_client()?,
+            self.min_age_days,
         ))
     }
 
@@ -491,5 +519,19 @@ mod test {
         #[case] expect: &'static str,
     ) {
         assert_eq!(super::expect_exe_stem_name(exe, project_name), expect);
+    }
+
+    #[test]
+    fn min_age_days_zero_validation() {
+        let result = UbiBuilder::new()
+            .project("houseabsolute/ubi")
+            .min_age_days(0)
+            .build();
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("min_age_days must be a positive number"));
     }
 }
