@@ -39,7 +39,7 @@ zip.workspace = true
 zstd.workspace = true
 
 [features]
-default = []
+default = ["reqwest/default-tls"]
 ## enables the `native-tls` feature for the `reqwest` crate.
 native-tls = ["reqwest/native-tls"]
 ## enables the `native-tls-no-alpn` feature for the `reqwest` crate.
