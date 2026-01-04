@@ -3,6 +3,10 @@
 - Added a new `--min-age-days` flag that tells `ubi` to only consider releases at least that old.
   This is useful for mitigating supply chain attacks, especially for projects that use GitHub's
   immutable releases feature. GH #145.
+- Upgraded to reqwest 0.13.1, which now defaults to `rustls`. This means that some of `ubi`'s
+  feature flags have changed to reflect the feature flags of `reqwest`. This removes the
+  `rustls-tls` and `rustls-tls-native-roots` flag and adds new `native-tls-no-alpn` and
+  `native-tls-vendored-no-alpn` flags for the `reqwest` flags of the same name.
 
 ## 0.8.4 2025-11-01
 

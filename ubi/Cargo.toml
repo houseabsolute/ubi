@@ -39,15 +39,15 @@ zip.workspace = true
 zstd.workspace = true
 
 [features]
-default = ["rustls-tls"]
-## enables the `rustls-tls` feature for the `reqwest` crate.
-rustls-tls = ["reqwest/rustls-tls"]
-## enables the `rustls-tls-native-roots` feature for the `reqwest` crate.
-rustls-tls-native-roots = ["reqwest/rustls-tls-native-roots"]
+default = []
 ## enables the `native-tls` feature for the `reqwest` crate.
 native-tls = ["reqwest/native-tls"]
+## enables the `native-tls-no-alpn` feature for the `reqwest` crate.
+native-tls-no-alpn = ["reqwest/native-tls-no-alpn"]
 ## enables the `native-tls-vendored` feature for the `reqwest` crate.
 native-tls-vendored = ["reqwest/native-tls-vendored"]
+## enables the `native-tls-vendored` feature for the `reqwest` crate.
+native-tls-vendored-no-alpn = ["reqwest/native-tls-vendored-no-alpn"]
 logging = ["dep:fern"]
 
 [dev-dependencies]
