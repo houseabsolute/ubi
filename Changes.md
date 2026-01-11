@@ -1,4 +1,4 @@
-## 0.9.0
+## 0.9.0 2026-01-11
 
 - Added a new `--min-age-days` flag that tells `ubi` to only consider releases at least that old.
   This is useful for mitigating supply chain attacks, especially for projects that use GitHub's
