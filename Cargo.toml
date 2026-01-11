@@ -22,23 +22,26 @@ env_logger = { version = "0.11.8", default-features = false }
 fern = { version = "0.7.1", default-features = false, features = ["colored"] }
 flate2 = { version = "1.1.5", default-features = false }
 itertools = { version = "0.14.0" }
-lazy-regex = { version = "3.4.2" }
-log = { version = "0.4.28", default-features = false }
-mockito = { version = "1.7.0", default-features = false }
+lazy-regex = { version = "3.5.1" }
+log = { version = "0.4.29", default-features = false }
+mockito = { version = "1.7.1", default-features = false }
 platforms = { version = "3.7.0" }
 regex = { version = "1.12.2", default-features = false }
-reqwest = { version = "0.12.24", default-features = false, features = ["gzip", "json"] }
+# The 0.13.x series now depends on rustls as the default backend. In turn, the newer rustls depends
+# on aws-lc-rs instead of ring, and aws-lc-rs fails to build on NetBSD and PowerPC64 in
+# CI. Hopefully, that will be resolved, at which point we can upgrade this dep.
+reqwest = { version = "0.12.28", default-features = false, features = ["gzip", "json"] }
 rstest = { version = "0.26.1", default-features = false }
 serde = { version = "1.0.228", default-features = false, features = ["derive"] }
-serde_json = { version = "1.0.145", default-features = false }
-serial_test = { version = "3.2.0", default-features = false }
-sevenz-rust2 = { version = "0.19.2", default-features = false, features = ["util"] }
+serde_json = { version = "1.0.149", default-features = false }
+serial_test = { version = "3.3.1", default-features = false }
+sevenz-rust2 = { version = "0.20.1", default-features = false, features = ["util"] }
 strum = { version = "0.27.2", features = ["derive"] }
-tempfile = { version = "3.23.0", default-features = false }
-test-log = { version = "0.2.18", default-features = false }
+tempfile = { version = "3.24.0", default-features = false }
+test-log = { version = "0.2.19", default-features = false }
 thiserror = { version = "2.0.17" }
-tokio = { version = "1.48.0", default-features = false, features = ["macros", "rt"] }
-url = { version = "2.5.7", default-features = false, features = ["serde"] }
+tokio = { version = "1.49.0", default-features = false, features = ["macros", "rt"] }
+url = { version = "2.5.8", default-features = false, features = ["serde"] }
 walkdir = { version = "2.5.0", default-features = false }
 which = { version = "8.0.0" }
 xz2 = { version = "0.1.7", default-features = false }
