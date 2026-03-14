@@ -25,10 +25,6 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@stable
-      - name: Configure Git
-        run: |
-          git config --global user.email "jdoe@example.com"
-          git config --global user.name "J. Doe"
       - uses: jdx/mise-action@v3
       - name: Run precious
         run: |
