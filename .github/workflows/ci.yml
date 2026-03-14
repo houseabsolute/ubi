@@ -112,7 +112,7 @@ jobs:
               bin: ubi
             toolchain: nightly
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Set "--features" flag value
         id: set-features-flag-value
         shell: bash
@@ -163,7 +163,7 @@ jobs:
         - "${{ github.workspace }}:/workspace"
       options: "--workdir /workspace"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install packages on Alpine
         shell: sh
         run: |
@@ -178,7 +178,7 @@ jobs:
     name: Verify MSRV
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-msrv
         run: |
