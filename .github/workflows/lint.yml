@@ -29,14 +29,7 @@ jobs:
         run: |
           git config --global user.email "jdoe@example.com"
           git config --global user.name "J. Doe"
-      - name: Install mise
-        run: |
-          set -e
-          set -x
-          curl https://mise.run | sh
-          mise install
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: jdx/mise-action@v3
       - name: Run precious
         run: |
           mise exec -- precious lint -a
