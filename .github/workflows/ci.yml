@@ -75,10 +75,12 @@ jobs:
             runs-on: ubuntu-24.04
             target: s390x-unknown-linux-gnu
             skip-tests: true
-          - os-name: NetBSD-x86_64
-            runs-on: ubuntu-24.04
-            target: x86_64-unknown-netbsd
-            skip-tests: true
+          # Disabled until a new cross release which fixes the -lexecinfo issue
+          #
+          # - os-name: NetBSD-x86_64
+          #   runs-on: ubuntu-24.04
+          #   target: x86_64-unknown-netbsd
+          #   skip-tests: true
           - os-name: Windows-aarch64
             runs-on: windows-latest
             target: aarch64-pc-windows-msvc
