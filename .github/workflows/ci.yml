@@ -75,12 +75,13 @@ jobs:
             runs-on: ubuntu-24.04
             target: s390x-unknown-linux-gnu
             skip-tests: true
-          # Disabled until a new cross release which fixes the -lexecinfo issue
-          #
-          # - os-name: NetBSD-x86_64
-          #   runs-on: ubuntu-24.04
-          #   target: x86_64-unknown-netbsd
-          #   skip-tests: true
+          - os-name: NetBSD-x86_64
+            runs-on: ubuntu-24.04
+            target: x86_64-unknown-netbsd
+            skip-tests: true
+            # Use a cross git commit that includes the fix for -lexecinfo on NetBSD
+            # (not yet in a released version of cross).
+            cross-version: 588b3c99db52b5a9c5906fab96cfadcf1bde7863
           - os-name: Windows-aarch64
             runs-on: windows-latest
             target: aarch64-pc-windows-msvc
@@ -137,6 +138,7 @@ jobs:
           args:
             "--locked --release --features ${{ steps.set-features-flag-value.outputs.features }}"
           strip: true
+          cross-version: ${{ matrix.platform.cross-version }}
       - name: Run tests
         uses: houseabsolute/actions-rust-cross@v1
         with:
