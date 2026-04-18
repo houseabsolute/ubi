@@ -4,3 +4,5 @@
 /package-lock.json
 /package.json
 /target
+/.claude/plans
+/.claude/specs
