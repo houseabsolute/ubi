@@ -7,7 +7,7 @@ test *args:
     {{ _dce }} cargo test {{ args }}
 
 lint *args:
-    {{ _dce }} mise exec -- precious lint --all {{ args }}
+    {{ _dce }} mise exec -- precious lint {{ args }}
 
 tidy *args:
-    {{ _dce }} mise exec -- precious tidy --all {{ args }}
+    {{ _dce }} mise exec -- precious tidy {{ args }}
