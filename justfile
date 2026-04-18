@@ -6,8 +6,8 @@ shell:
 test *args:
     {{ _dce }} cargo test {{ args }}
 
-lint:
-    {{ _dce }} precious lint --all
+lint *args:
+    {{ _dce }} mise exec -- precious lint --all {{ args }}
 
-tidy:
-    {{ _dce }} precious tidy --all
+tidy *args:
+    {{ _dce }} mise exec -- precious tidy --all {{ args }}
