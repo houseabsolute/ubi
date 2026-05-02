@@ -341,7 +341,7 @@ impl<'a> AssetPicker<'a> {
         }
 
         let asset_names = matches.iter().map(|a| a.name.as_str()).collect::<Vec<_>>();
-        debug!("found multiple candidate assets, filtering for 64-bit binaries in {asset_names:?}",);
+        debug!("found multiple candidate assets, filtering for 64-bit binaries in {asset_names:?}");
 
         if !matches.iter().any(|a| cpu_64_bit_re().is_match(&a.name)) {
             debug!("no 64-bit assets found, falling back to all assets");

@@ -695,7 +695,7 @@ impl ArchiveInstaller {
                     })?);
 
             if full_path.is_dir() {
-                debug!("creating directory {}", target_path.display(),);
+                debug!("creating directory {}", target_path.display());
                 create_dir_all(&target_path).with_context(|| {
                     format!("failed to create directory at {}", target_path.display())
                 })?;
