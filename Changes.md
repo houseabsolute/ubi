@@ -4,6 +4,10 @@
   to start on any machine that did not have that Homebrew package installed. `liblzma` is now
   compiled from source and linked statically on all platforms. Reported by @examosa (Jules Amonith).
   GH #151.
+- Fixed the `bootstrap-ubi.sh` script's handling of the `TAG` env var. A tag with a multi-digit
+  patch version, like `v0.0.15`, caused the script's version comparison to fail. Under busybox `sh`
+  this printed a `bad number` error, and on all shells it made the script download the wrong
+  filename and fail with a 404. Reported by @BatmanAoD (Kyle J Strand). GH #152.
 
 ## 0.9.0 2026-01-11
 

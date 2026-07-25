@@ -72,11 +72,23 @@ fi
 
 OLD_FILE_NAMING=""
 if [ -n "$TAG" ]; then
-    IFS="." read -r MAJOR MINOR <<EOF
-$TAG
-EOF
-    if [ "$MAJOR" = "v0" ] && [ "$MINOR" -lt 2 ]; then
-        OLD_FILE_NAMING="true"
+    # Note that we cannot use `read` to split the tag on dots here. With a tag like `v0.0.15`,
+    # `read -r MAJOR MINOR` assigns the entire rest of the tag, `0.15`, to `$MINOR`, which is not a
+    # number. Comparing that with `-lt` is a fatal error under some shells, notably busybox `sh`.
+    MAJOR="${TAG%%.*}"
+    MINOR_AND_REST="${TAG#*.}"
+    MINOR="${MINOR_AND_REST%%.*}"
+    if [ "$MAJOR" = "v0" ]; then
+        case "$MINOR" in
+        # If the minor version isn't a number we cannot compare it, so we assume the tag uses the
+        # current file naming scheme.
+        '' | *[!0-9]*) ;;
+        *)
+            if [ "$MINOR" -lt 2 ]; then
+                OLD_FILE_NAMING="true"
+            fi
+            ;;
+        esac
     fi
 fi
 

@@ -52,8 +52,14 @@ jobs:
           #   script: bootstrap-ubi.sh
         tag:
           - ""
+          # This tag has a two-digit patch version, which used to break the version parsing in the
+          # bootstrap script. See https://github.com/houseabsolute/ubi/issues/152.
+          - v0.0.15
           - v0.1.1
         exclude:
+          - platform:
+              os: windows-latest
+            tag: v0.0.15
           - platform:
               os: windows-latest
             tag: v0.1.1
