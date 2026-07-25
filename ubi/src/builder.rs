@@ -7,7 +7,7 @@ use crate::{
 };
 use anyhow::{anyhow, Context, Result};
 use log::debug;
-use platforms::{Platform, PlatformReq, OS};
+use platforms::{Os, Platform, PlatformReq};
 use reqwest::{
     header::{HeaderMap, HeaderValue, USER_AGENT},
     Client,
@@ -321,7 +321,7 @@ impl<'a> UbiBuilder<'a> {
                 install_path,
                 self.rename_exe_to.is_some(),
                 expect_exe_stem_name.to_string(),
-                platform.target_os == OS::Windows,
+                platform.target_os == Os::Windows,
             )))
         }
     }
@@ -344,7 +344,7 @@ impl<'a> UbiBuilder<'a> {
     }
 
     fn check_musl_setting(&self, platform: &Platform) -> Result<()> {
-        if self.is_musl.unwrap_or_default() && platform.target_os != OS::Linux {
+        if self.is_musl.unwrap_or_default() && platform.target_os != Os::Linux {
             return Err(anyhow!(
                 "You cannot set is_musl to true on a non-Linux platform - the current platform is {}",
                 platform.target_os,
@@ -420,7 +420,7 @@ fn expect_exe_stem_name<'a>(exe: Option<&'a str>, project_name: &'a str) -> &'a 
 }
 
 fn platform_is_musl(platform: &Platform) -> bool {
-    if platform.target_os != OS::Linux {
+    if platform.target_os != Os::Linux {
         return false;
     }
 

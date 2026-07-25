@@ -17,7 +17,7 @@ use anyhow::{anyhow, Context, Result};
 use itertools::Itertools;
 use lazy_regex::{regex, Lazy};
 use log::debug;
-use platforms::{Arch, Endian, Platform, OS};
+use platforms::{Arch, Endian, Os, Platform};
 use regex::Regex;
 
 #[derive(Debug)]
@@ -167,7 +167,7 @@ impl<'a> AssetPicker<'a> {
             debug!("matching OS against asset name = {}", asset.name);
 
             if os_matcher.is_match(&asset.name) {
-                if self.platform.target_os != OS::Android && android_re().is_match(&asset.name) {
+                if self.platform.target_os != Os::Android && android_re().is_match(&asset.name) {
                     debug!("does not match our OS");
                     continue;
                 }
@@ -284,7 +284,7 @@ impl<'a> AssetPicker<'a> {
     fn libc_name(&mut self) -> &'static str {
         if self.is_musl {
             "musl"
-        } else if self.platform.target_os == OS::Linux {
+        } else if self.platform.target_os == Os::Linux {
             "glibc"
         } else {
             "native"
@@ -417,19 +417,19 @@ impl<'a> AssetPicker<'a> {
             // correspond to any target supported by rustup. Those are
             // commented out here.
             //
-            //OS::Dragonfly => regex!(r"(?i:(?:\b|_)dragonfly(?:\b|_))"),
-            OS::Android => android_re(),
-            OS::FreeBSD => freebsd_re(),
-            OS::Fuchsia => fuchsia(),
-            //OS::Haiku => regex!(r"(?i:(?:\b|_)haiku(?:\b|_))"),
-            OS::IllumOS => illumos_re(),
-            OS::Linux => linux_re(),
-            OS::MacOS => macos_re(),
-            OS::NetBSD => netbsd_re(),
-            //OS::OpenBSD => regex!(r"(?i:(?:\b|_)openbsd(?:\b|_))"),
-            OS::Solaris => solaris_re(),
-            //OS::VxWorks => regex!(r"(?i:(?:\b|_)vxworks(?:\b|_))"),
-            OS::Windows => windows_re(),
+            //Os::Dragonfly => regex!(r"(?i:(?:\b|_)dragonfly(?:\b|_))"),
+            Os::Android => android_re(),
+            Os::FreeBSD => freebsd_re(),
+            Os::Fuchsia => fuchsia(),
+            //Os::Haiku => regex!(r"(?i:(?:\b|_)haiku(?:\b|_))"),
+            Os::IllumOS => illumos_re(),
+            Os::Linux => linux_re(),
+            Os::MacOS => macos_re(),
+            Os::NetBSD => netbsd_re(),
+            //Os::OpenBSD => regex!(r"(?i:(?:\b|_)openbsd(?:\b|_))"),
+            Os::Solaris => solaris_re(),
+            //Os::VxWorks => regex!(r"(?i:(?:\b|_)vxworks(?:\b|_))"),
+            Os::Windows => windows_re(),
             _ => unreachable!(
                 "Cannot determine what type of compiled binary to use for this platform"
             ),
@@ -469,7 +469,7 @@ impl<'a> AssetPicker<'a> {
     }
 
     fn running_on_macos_arm(&self) -> bool {
-        self.platform.target_os == OS::MacOS && self.platform.target_arch == Arch::AArch64
+        self.platform.target_os == Os::MacOS && self.platform.target_arch == Arch::AArch64
     }
 }
 

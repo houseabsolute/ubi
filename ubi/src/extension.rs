@@ -4,7 +4,7 @@ use anyhow::Result;
 use itertools::Itertools;
 use lazy_regex::regex;
 use log::debug;
-use platforms::{Platform, OS};
+use platforms::{Os, Platform};
 use regex::Regex;
 use std::{
     ffi::OsStr,
@@ -146,8 +146,8 @@ impl Extension {
 
     pub(crate) fn matches_platform(&self, platform: &Platform) -> bool {
         match self {
-            Extension::AppImage => platform.target_os == OS::Linux,
-            Extension::Bat | Extension::Exe => platform.target_os == OS::Windows,
+            Extension::AppImage => platform.target_os == Os::Linux,
+            Extension::Bat | Extension::Exe => platform.target_os == Os::Windows,
             Extension::Bz
             | Extension::Bz2
             | Extension::Gz

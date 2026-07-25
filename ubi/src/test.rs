@@ -8,6 +8,10 @@ use test_log::test;
 use url::Url;
 
 #[test(tokio::test)]
+// The `struct Test` in these tests is the first thing in the function body, but the
+// `test(tokio::test)` attribute expands to statements before it, so clippy sees it as an item
+// after a statement.
+#[allow(clippy::items_after_statements)]
 #[allow(clippy::too_many_lines)]
 async fn asset_picking() -> Result<()> {
     struct Test {
@@ -459,6 +463,10 @@ const OMEGASORT_LATEST_RESPONSE: &str = r#"
 #[test(tokio::test)]
 // The protobuf repo has some odd release naming. This tests that the
 // matcher handles it.
+// The `struct Test` in these tests is the first thing in the function body, but the
+// `test(tokio::test)` attribute expands to statements before it, so clippy sees it as an item
+// after a statement.
+#[allow(clippy::items_after_statements)]
 async fn matching_unusual_names() -> Result<()> {
     struct Test {
         platforms: &'static [&'static str],
@@ -602,6 +610,10 @@ const PROTOBUF_LATEST_RESPONSE: &str = r#"
 
 // Reported in https://github.com/houseabsolute/ubi/issues/34
 #[test(tokio::test)]
+// The `struct Test` in these tests is the first thing in the function body, but the
+// `test(tokio::test)` attribute expands to statements before it, so clippy sees it as an item
+// after a statement.
+#[allow(clippy::items_after_statements)]
 async fn mkcert_matching() -> Result<()> {
     struct Test {
         platforms: &'static [&'static str],
@@ -706,6 +718,10 @@ const MKCERT_LATEST_RESPONSE: &str = r#"
 
 // Reported in https://github.com/houseabsolute/ubi/issues/34
 #[test(tokio::test)]
+// The `struct Test` in these tests is the first thing in the function body, but the
+// `test(tokio::test)` attribute expands to statements before it, so clippy sees it as an item
+// after a statement.
+#[allow(clippy::items_after_statements)]
 async fn jq_matching() -> Result<()> {
     struct Test {
         platforms: &'static [&'static str],
