@@ -1,3 +1,10 @@
+## 0.9.1
+
+- The prebuilt macOS binaries were dynamically linked against Homebrew's `liblzma`, so they failed
+  to start on any machine that did not have that Homebrew package installed. `liblzma` is now
+  compiled from source and linked statically on all platforms. Reported by @examosa (Jules Amonith).
+  GH #151.
+
 ## 0.9.0 2026-01-11
 
 - Added a new `--min-age-days` flag that tells `ubi` to only consider releases at least that old.

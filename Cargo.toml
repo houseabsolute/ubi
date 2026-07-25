@@ -44,7 +44,12 @@ tokio = { version = "1.49.0", default-features = false, features = ["macros", "r
 url = { version = "2.5.8", default-features = false, features = ["serde"] }
 walkdir = { version = "2.5.0", default-features = false }
 which = { version = "8.0.0" }
-xz2 = { version = "0.1.7", default-features = false }
+# The `static` feature makes `lzma-sys` compile liblzma from source and link it statically. Without
+# it, `lzma-sys` uses pkg-config to find a system liblzma and links against it dynamically. On the
+# macOS release builders that finds Homebrew's `xz`, producing binaries that only run on machines
+# with that same Homebrew package installed. See
+# https://github.com/houseabsolute/ubi/issues/151.
+xz2 = { version = "0.1.7", default-features = false, features = ["static"] }
 # The 4.0.0 version is not compatible with xz2, as they have conflicting requirements on lzma-sys.
 #
 # This set of features disables all the features that require C compilation, which greatly
