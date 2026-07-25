@@ -56,16 +56,17 @@ which = { version = "8.0.5" }
 # with that same Homebrew package installed. See
 # https://github.com/houseabsolute/ubi/issues/151.
 xz2 = { version = "0.1.7", default-features = false, features = ["static"] }
-# The 4.0.0 version is not compatible with xz2, as they have conflicting requirements on lzma-sys.
-#
-# This set of features disables all the features that require C compilation, which greatly
-# simplifies cross-platform builds.
-zip = { version = ">= 3.0.0, < 4.0.0", default-features = false, features = [
+# Both the `bzip2` and `lzma`/`xz` features here are pure Rust - `bzip2` maps to `bzip2/default`,
+# which uses `libbz2-rs-sys`, and the lzma features use `lzma-rust2`. Do not switch `bzip2` to
+# `bzip2-rs`, despite the name: that selects the C `bzip2-sys`, which pkg-config-probes for a system
+# libbz2 and can end up dynamically linked, the same way liblzma did in #151.
+zip = { version = "8.6.0", default-features = false, features = [
     "aes-crypto",
     "bzip2",
     "deflate",
     "deflate64",
     "lzma",
+    "xz",
     "zstd",
 ] }
 zstd = { version = "0.13.3", default-features = false }

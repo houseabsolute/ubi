@@ -9,6 +9,16 @@
   removed. As of `reqwest` 0.13 there is no corresponding feature to enable. Root certificates are
   now always sourced from the platform's trust store via `rustls-platform-verifier`, which is what
   this feature used to select, so enabling it is no longer meaningful.
+- Upgraded `zip` from 3.x to 8.x. The old `< 4.0.0` pin existed because `zip` 4 conflicted with
+  `xz2` over `lzma-sys`, but modern `zip` does not depend on `lzma-sys` at all. This also removes
+  the last C implementation of bzip2 from the dependency tree: `zip` 3 pinned `bzip2` 0.5, which
+  uses the C `bzip2-sys`, while `zip` 8 uses `bzip2` 0.6, which uses the pure-Rust `libbz2-rs-sys`
+  that `ubi` was already using directly. Previously bzip2 was compiled twice, once as C and once as
+  Rust. As a side benefit, `ubi` can now read xz-compressed entries in zip files, at no cost in
+  dependencies, since the pure-Rust `lzma-rust2` crate that implements this was already in the tree
+  by way of `sevenz-rust2`.
+- **The minimum supported Rust version (MSRV) for the `ubi` crate is now 1.88**, up from 1.85. This
+  is required by `zip` 8.
 - The prebuilt macOS binaries were dynamically linked against Homebrew's `liblzma`, so they failed
   to start on any machine that did not have that Homebrew package installed. `liblzma` is now
   compiled from source and linked statically on all platforms. Reported by @examosa (Jules Amonith).
