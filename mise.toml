@@ -1,5 +1,7 @@
 [tools]
+just = "1.57.0"
 node = "24.14.0"
+"npm:@devcontainers/cli" = "0.88.0"
 "npm:prettier" = "3.8.1"
 shellcheck = "0.11.0"
 shfmt = "3.13.0"

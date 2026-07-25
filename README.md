@@ -358,6 +358,31 @@ Isn't literally anything else better than this?
 In all seriousness, `ubi` does not download arbitrary code from a random website and execute it
 locally when you install anything. That seems like a good thing.
 
+## Developing with `just`
+
+This repo contains a `Justfile` with recipes for common development tasks. These recipes all run in
+a [dev container](https://containers.dev/), so you need a working Docker (or Podman) installation.
+Both `just` and the [Dev Container CLI](https://github.com/devcontainers/cli) are provided by `mise`
+(see below), so once you've run `mise install` you can run recipes with `mise exec -- just ...`:
+
+```
+# Runs `cargo test` in the dev container
+mise exec -- just test
+# Passes RUST_LOG=debug and extra args on to `cargo test`
+mise exec -- just test debug -- --nocapture
+# Lints and tidies all code in the dev container
+mise exec -- just lint -a
+mise exec -- just tidy -a
+# Opens an interactive shell in the dev container
+mise exec -- just shell
+# Recreates the dev container from scratch
+mise exec -- just rebuild
+```
+
+The `test` recipe passes your `github.token`, `gitlab.token`, and `codeberg.token` git config values
+into the container as `GITHUB_TOKEN`, `GITLAB_TOKEN`, and `CODEBERG_TOKEN`, so that the tests which
+hit those forges' APIs aren't rate limited.
+
 ## Linting and Tidying this Code
 
 The code in this repo is linted and tidied with
