@@ -726,7 +726,7 @@ impl ArchiveInstaller {
         debug!(
             "checking whether extracted contents at {} share a single-top level dir with the project name `{}`",
             contents_dir.display(),
-            &self.project_name,
+            self.project_name,
         );
         for entry in fs::read_dir(contents_dir).with_context(|| {
             format!(
