@@ -24,6 +24,7 @@ log.workspace = true
 platforms.workspace = true
 regex.workspace = true
 reqwest.workspace = true
+rustls = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
 serial_test.workspace = true
@@ -40,10 +41,13 @@ zstd.workspace = true
 
 [features]
 default = ["rustls-tls"]
-## enables the `rustls-tls` feature for the `reqwest` crate.
-rustls-tls = ["reqwest/rustls-tls"]
-## enables the `rustls-tls-native-roots` feature for the `reqwest` crate.
-rustls-tls-native-roots = ["reqwest/rustls-tls-native-roots"]
+## enables TLS via the `rustls` crate, using `ring` as the crypto provider.
+##
+## Note that this enables `reqwest`'s `rustls-no-provider` feature, not its `rustls` feature. The
+## latter would pull in the `aws-lc-rs` crypto provider, which requires a C/C++ toolchain and does
+## not cross-compile to all of the platforms `ubi` supports. Enabling this feature makes `ubi`
+## install the `ring` provider as the process-wide default when it builds its HTTP client.
+rustls-tls = ["reqwest/rustls-no-provider", "dep:rustls"]
 ## enables the `native-tls` feature for the `reqwest` crate.
 native-tls = ["reqwest/native-tls"]
 ## enables the `native-tls-vendored` feature for the `reqwest` crate.

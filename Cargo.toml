@@ -27,11 +27,17 @@ log = { version = "0.4.33", default-features = false }
 mockito = { version = "1.7.2", default-features = false }
 platforms = { version = "4.1.0" }
 regex = { version = "1.13.1", default-features = false }
-# The 0.13.x series now depends on rustls as the default backend. In turn, the newer rustls depends
-# on aws-lc-rs instead of ring, and aws-lc-rs fails to build on NetBSD and PowerPC64 in
-# CI. Hopefully, that will be resolved, at which point we can upgrade this dep.
-reqwest = { version = "0.13.4", default-features = false, features = ["gzip", "json"] }
+# reqwest 0.13's `rustls` feature pulls in the aws-lc-rs crypto provider, which needs a C/C++
+# toolchain and fails to build under `cross` for targets like NetBSD and PowerPC64. We use
+# `rustls-no-provider` instead and install the `ring` provider ourselves. See
+# `ubi::builder::install_crypto_provider`.
+reqwest = { version = "0.13.4", default-features = false, features = [
+    "gzip",
+    "json",
+    "rustls-no-provider",
+] }
 rstest = { version = "0.26.1", default-features = false }
+rustls = { version = "0.23.35", default-features = false, features = ["ring", "std", "tls12"] }
 serde = { version = "1.0.229", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.151", default-features = false }
 serial_test = { version = "3.5.0", default-features = false }

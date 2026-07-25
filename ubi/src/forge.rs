@@ -381,6 +381,7 @@ mod tests {
             token.map(String::from),
         )?;
 
+        crate::builder::install_crypto_provider();
         let client = Client::new();
         let got_assets = forge.fetch_assets(&client).await?;
         let expect_assets = vec![Asset {
@@ -470,6 +471,7 @@ mod tests {
             token.map(String::from),
         )?;
 
+        crate::builder::install_crypto_provider();
         let client = Client::new();
         let got_assets = forge.fetch_assets(&client).await?;
         assert_eq!(got_assets, assets);
@@ -560,6 +562,7 @@ mod tests {
             token.map(String::from),
         )?;
 
+        crate::builder::install_crypto_provider();
         let client = Client::new();
         let got_assets = forge.fetch_assets(&client).await?;
         assert_eq!(got_assets, assets);

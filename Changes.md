@@ -1,5 +1,14 @@
-## 0.9.1
+## 0.10.0
 
+- Upgraded `reqwest` to 0.13. Its `rustls` feature now pulls in the `aws-lc-rs` crypto provider,
+  which requires a C/C++ toolchain and does not build under `cross` for several platforms that `ubi`
+  supports, notably NetBSD and PowerPC64. The `rustls-tls` feature now enables `reqwest`'s
+  `rustls-no-provider` feature instead, and `ubi` installs the `ring` provider itself. There should
+  be no user-visible change from this.
+- **Breaking change for library users:** the `rustls-tls-native-roots` cargo feature has been
+  removed. As of `reqwest` 0.13 there is no corresponding feature to enable. Root certificates are
+  now always sourced from the platform's trust store via `rustls-platform-verifier`, which is what
+  this feature used to select, so enabling it is no longer meaningful.
 - The prebuilt macOS binaries were dynamically linked against Homebrew's `liblzma`, so they failed
   to start on any machine that did not have that Homebrew package installed. `liblzma` is now
   compiled from source and linked statically on all platforms. Reported by @examosa (Jules Amonith).

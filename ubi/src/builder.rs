@@ -437,7 +437,27 @@ fn platform_is_musl(platform: &Platform) -> bool {
     output.status.success() && String::from_utf8_lossy(&output.stdout).contains("musl")
 }
 
+// We enable `reqwest`'s `rustls-no-provider` feature rather than its `rustls` feature, because the
+// latter pulls in `aws-lc-rs`, which needs a C/C++ toolchain and does not build under `cross` for
+// all of the platforms we support. That means no crypto provider is compiled in by default, and
+// `reqwest` will panic when it builds a client unless one has been installed, so we install `ring`
+// here.
+//
+// Installing the default provider is a process-wide operation that can only succeed once. If it
+// fails, that's because something else - most likely the embedding application - already installed
+// one, which is fine, so we ignore the error.
+#[cfg(feature = "rustls-tls")]
+pub(crate) fn install_crypto_provider() {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+}
+
+#[cfg(not(feature = "rustls-tls"))]
+#[allow(clippy::missing_const_for_fn)]
+pub(crate) fn install_crypto_provider() {}
+
 fn reqwest_client() -> Result<Client> {
+    install_crypto_provider();
+
     let builder = Client::builder().gzip(true);
 
     let mut headers = HeaderMap::new();
