@@ -27,6 +27,11 @@
   patch version, like `v0.0.15`, caused the script's version comparison to fail. Under busybox `sh`
   this printed a `bad number` error, and on all shells it made the script download the wrong
   filename and fail with a 404. Reported by @BatmanAoD (Kyle J Strand). GH #152.
+- Most CLI flags can now be set with a corresponding `UBI_*` environment variable, for example
+  `UBI_TAG` for `--tag` or `UBI_PROJECT` for `--project`. A variable set to the empty string is
+  treated as unset, so scripts can pass a possibly-empty value without building up a command line by
+  hand. Flags passed on the command line take precedence over environment variables. Requested by
+  @BatmanAoD (Kyle J Strand). GH #153.
 
 ## 0.9.0 2026-01-11
 
