@@ -1,4 +1,4 @@
-## 0.10.0
+## 0.10.0 - 2026-07-26
 
 - **Breaking change for library users:** the `rustls-tls-native-roots` cargo feature has been
   removed. As of `reqwest` 0.13 there is no corresponding feature to enable. Root certificates are
