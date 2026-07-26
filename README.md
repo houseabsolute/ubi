@@ -11,6 +11,13 @@ And finally, when I say "UBI", I don't mean
 "[universal basic income](https://en.wikipedia.org/wiki/Universal_basic_income)", but that'd be nice
 too.
 
+## Should You Use This Tool?
+
+If you want to manage _per-project_ tooling, I strongly recommend using
+[`mise`](https://mise.jdx.dev/) instead of `ubi`. But if you just want a simple tool for globally
+installing tools like [`ripgrep`](https://github.com/burntsushi/ripgrep) or
+[`go-grip`](https://github.com/chrishrb/go-grip), then `ubi` is a good choice.
+
 ## Using UBI as a Library
 
 ```
