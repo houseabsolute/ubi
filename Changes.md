@@ -33,18 +33,18 @@
   `rustls-no-provider` feature instead, and `ubi` installs the `ring` provider itself. There should
   be no user-visible change from this.
 
-## 0.9.0 2026-01-11
+## 0.9.0 - 2026-01-11
 
 - Added a new `--min-age-days` flag that tells `ubi` to only consider releases at least that old.
   This is useful for mitigating supply chain attacks, especially for projects that use GitHub's
   immutable releases feature. GH #145.
 
-## 0.8.4 2025-11-01
+## 0.8.4 - 2025-11-01
 
 - This is the same as 0.8.3, but I had to publish this with a new tag because of a failed experiment
   with using GitHub's new immutable releases feature.
 
-## 0.8.3 2025-11-01
+## 0.8.3 - 2025-11-01
 
 - Fixed a bug where `ubi` would pick an asset with `64` in the name when trying to pick the best
   match on a 64-bit platform. This could include things like `project-Linux-1.64.0.tgz`, where the
@@ -63,7 +63,7 @@
   other words, it will prefer `project-linux-x86-64-musl.tar.gz` over `project-linux-x86-64.tar.gz`.
   Suggested by @egnor (Daniel Egnor). GH #142.
 
-## 0.8.2 2025-10-19
+## 0.8.2 - 2025-10-19
 
 - Fixed a bug introduced in 0.8.0, which caused `ubi` to prefer the `browser_download_url` over the
   `url` for a GitHub asset. When both are present, it will now use the `url` field. This is
@@ -72,18 +72,18 @@
 - Added more context to errors and made `ubi` display the full error context when it fails. This
   should help with debugging issues like #136.
 
-## 0.8.1 2025-10-11
+## 0.8.1 - 2025-10-11
 
 - The change in 0.7.4 to look for "arm" on macOS caused `ubi` to not respect the `--matching`
   option. Reported (#137) and fixed (#138) by @prashantv.
 
-## 0.8.0 2025-09-14
+## 0.8.0 - 2025-09-14
 
 - Added support for releases done via
   [Codeberg](https://codeberg.org/)/[Forgejo](https://forgejo.org/). Based on PR #107 from @pepicrft
   (Pedro Piñera Buendía).
 
-## 0.7.4 2025-08-24
+## 0.7.4 - 2025-08-24
 
 - Changed macOS on ARM artifact name matching to look for "arm", not just "arm64", _before_ looking
   for 64-bit names. This means that `ubi` will pick something like "foo-macos-arm.tgz" over
@@ -97,7 +97,7 @@
 - Fixed regressions introduced in 0.7.0 by eliminating default features for `clap`, which made the
   CLI experience generally worse.
 
-## 0.7.3 2025-07-27
+## 0.7.3 - 2025-07-27
 
 - Added support for 7-Zip archives (`.7z`). Based on PR #115130 from @yjoer (Yeoh Joer).
 - Added support for projects on GitLab with more than one slash in the path name, like
@@ -106,16 +106,16 @@
 - Added support for release artifacts with `.sh` and `.py` extension. Based on PR #127 from
   @Finkregh (Oluf Lorenzen ).
 
-## 0.7.2 2025-06-19
+## 0.7.2 - 2025-06-19
 
 - Added support for release artifacts with a `.phar` extension. Based on PR #126 from @dpassen
   (Derek Passen).
 
-## 0.7.1 2025-06-13
+## 0.7.1 - 2025-06-13
 
 - Set the minimum support Rust version (MSRV) of the `ubi` crate to 1.85.
 
-## 0.7.0 2025-06-08
+## 0.7.0 - 2025-06-08
 
 - Added a new `--matching-regex` CLI flag and `UbiBuilder::matching_regex` method. This regex is
   matched against potential release filenames _before_ attempting to find a release with a matching
@@ -132,12 +132,12 @@
 - Changed dependency declarations to mostly eliminate default features, which removed quite a few
   transitive dependencies.
 
-## 0.6.1 2025-03-18
+## 0.6.1 - 2025-03-18
 
 - Upgraded the dependency on `zip` to 2.4.1. Previously, `ubi` pinned `zip` 2.2.3, which was yanked,
   because the 2.3.0 release broke `ubi`'s tests.
 
-## 0.6.0 2025-03-16
+## 0.6.0 - 2025-03-16
 
 - The `UbiBuilder::github_token` and `UbiBuilder::gitlab_token` methods are deprecated in favor of a
   new `UbiBuilder::token` method. These deprecated methods will be removed in a future release.
