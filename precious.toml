@@ -108,9 +108,10 @@ ok_exit_codes = 0
 lint_failure_exit_codes = 1
 
 [commands.typos]
-type = "lint"
+type = "both"
 include = "**/*"
 cmd = "typos"
+tidy_flags = "--write-changes"
 invoke = "once"
 ok-exit-codes = 0
 lint-failure-exit-codes = 2
