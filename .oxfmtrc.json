@@ -1,0 +1,12 @@
+{
+  "printWidth": 100,
+  "proseWrap": "always",
+  "overrides": [
+    {
+      "files": ["**/*.toml"],
+      "options": {
+        "tabWidth": 4
+      }
+    }
+  ]
+}
