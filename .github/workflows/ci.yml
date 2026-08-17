@@ -117,7 +117,7 @@ jobs:
               bin: ubi
             toolchain: nightly
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Set "--features" flag value
@@ -136,7 +136,7 @@ jobs:
         run: sudo apt-get update --yes && sudo apt-get install --yes pkg-config openssl libssl-dev
         if: matrix.platform.features == 'native-tls'
       - name: Build binary
-        uses: houseabsolute/actions-rust-cross@v1
+        uses: houseabsolute/actions-rust-cross@21b0f18dc621b25bfae556ff2791fca4173121e8 # v1.0.8
         with:
           command: "build"
           target: ${{ matrix.platform.target }}
@@ -146,7 +146,7 @@ jobs:
           strip: true
           cross-version: ${{ matrix.platform.cross-version }}
       - name: Run tests
-        uses: houseabsolute/actions-rust-cross@v1
+        uses: houseabsolute/actions-rust-cross@21b0f18dc621b25bfae556ff2791fca4173121e8 # v1.0.8
         with:
           command: "test"
           target: ${{ matrix.platform.target }}
@@ -155,7 +155,7 @@ jobs:
             "--locked --release  --features ${{ steps.set-features-flag-value.outputs.features }}"
         if: ${{ !matrix.platform.skip-tests }}
       - name: Publish artifacts and release
-        uses: houseabsolute/actions-rust-release@v0
+        uses: houseabsolute/actions-rust-release@e47c661840f938dcc4587f52ef780bf05b1e1381 # v0.0.9
         with:
           executable-name: ubi
           target: ${{ matrix.platform.target }}
@@ -173,7 +173,7 @@ jobs:
         - "${{ github.workspace }}:/workspace"
       options: "--workdir /workspace"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Install packages on Alpine
@@ -190,7 +190,7 @@ jobs:
     name: Verify MSRV
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Install toolchain
