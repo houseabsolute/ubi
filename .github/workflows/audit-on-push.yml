@@ -10,7 +10,8 @@ on:
       - "**/Cargo.toml"
       - "**/Cargo.lock"
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   security_audit:

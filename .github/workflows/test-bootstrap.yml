@@ -10,7 +10,8 @@ on:
   release:
     types: [published]
 
-permissions: read-all
+permissions:
+  contents: read
 
 env:
   GITHUB_TOKEN: ${{ github.token }}
