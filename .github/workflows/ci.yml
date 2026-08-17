@@ -193,7 +193,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Install toolchain
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
       - name: Install cargo-msrv
         run: |
           cargo run -p ubi-cli -- --project foresterre/cargo-msrv --in ..

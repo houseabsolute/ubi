@@ -27,7 +27,9 @@ jobs:
       - name: Cache cargo & target directories
         uses: Swatinem/rust-cache@v2
       - name: Install toolchain
-        uses: dtolnay/rust-toolchain@stable
+        run: |
+          rustup toolchain install stable --profile minimal --component clippy,rustfmt --no-self-update
+          rustup default stable
       - uses: jdx/mise-action@v3
       - name: Run precious
         run: |
