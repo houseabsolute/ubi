@@ -68,12 +68,6 @@ jobs:
           - platform:
               os: windows-latest
             tag: v0.1.1
-          # ubi 0.0.15 looks for "Darwin" and "aarch64" in release filenames,
-          # but precious only ships precious-macOS-arm64, so it cannot resolve
-          # a release on an arm64 macOS runner. There is nothing to test here.
-          - platform:
-              os: macOS-latest
-            tag: v0.0.15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
