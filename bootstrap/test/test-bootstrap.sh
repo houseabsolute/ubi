@@ -4,8 +4,9 @@ set -e
 set -x
 
 SCRIPT="$1"
-# shellcheck disable=SC2034 # This is used by the bootstrap scripts.
-TAG="$2"
+# The bootstrap scripts read this from the environment, so it has to be
+# exported, not just set.
+export TAG="$2"
 
 mkdir -p "$HOME/bin"
 
