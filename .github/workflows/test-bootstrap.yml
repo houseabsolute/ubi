@@ -66,6 +66,8 @@ jobs:
             tag: v0.1.1
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - name: Install curl and sudo on Alpine
         shell: sh
         run: |

@@ -118,6 +118,8 @@ jobs:
             toolchain: nightly
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - name: Set "--features" flag value
         id: set-features-flag-value
         shell: bash
@@ -170,6 +172,8 @@ jobs:
       options: "--workdir /workspace"
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - name: Install packages on Alpine
         shell: sh
         run: |
@@ -185,6 +189,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-msrv
         run: |
