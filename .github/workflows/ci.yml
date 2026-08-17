@@ -123,10 +123,12 @@ jobs:
       - name: Set "--features" flag value
         id: set-features-flag-value
         shell: bash
+        env:
+          FEATURES: ${{ matrix.platform.features }}
         run: |
-          if [ -n "${{ matrix.platform.features }}" ]; then
-              echo "features=${{ matrix.platform.features }}" >> "$GITHUB_OUTPUT"
-          else 
+          if [ -n "$FEATURES" ]; then
+              echo "features=$FEATURES" >> "$GITHUB_OUTPUT"
+          else
               echo "features=default" >> "$GITHUB_OUTPUT"
           fi
           cat "$GITHUB_OUTPUT"
