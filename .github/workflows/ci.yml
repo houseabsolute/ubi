@@ -8,6 +8,9 @@ on:
       - "ubi-*"
   pull_request:
 
+permissions:
+  contents: read
+
 env:
   CRATE_NAME: ubi
   GITHUB_TOKEN: ${{ github.token }}
@@ -17,6 +20,9 @@ jobs:
   test-matrix:
     name: ${{ matrix.platform.os-name }} with rust ${{ matrix.toolchain }}
     runs-on: ${{ matrix.platform.runs-on }}
+    permissions:
+      # Needed by the "Publish artifacts and release" step below.
+      contents: write
     strategy:
       fail-fast: false
       matrix:
