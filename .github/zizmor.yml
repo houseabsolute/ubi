@@ -1,0 +1,12 @@
+rules:
+  # The lint workflow builds nothing that is ever published - it only runs
+  # precious - so a poisoned cache cannot reach a release artifact.
+  cache-poisoning:
+    ignore:
+      - lint.yml
+  # The point of the Alpine job is to catch breakage against a current
+  # rust:alpine. Pinning the image to a digest would freeze it and defeat the
+  # test.
+  unpinned-images:
+    ignore:
+      - ci.yml
