@@ -24,8 +24,6 @@ jobs:
   test-matrix:
     name: ${{ matrix.platform.os-name }} with rust ${{ matrix.toolchain }}
     runs-on: ${{ matrix.platform.runs-on }}
-    permissions:
-      contents: write # needed by the "Publish artifacts and release" step below
     strategy:
       fail-fast: false
       matrix:
@@ -157,12 +155,17 @@ jobs:
           args:
             "--locked --release  --features ${{ steps.set-features-flag-value.outputs.features }}"
         if: ${{ !matrix.platform.skip-tests }}
-      - name: Publish artifacts and release
+      - name: Package artifacts
         uses: houseabsolute/actions-rust-release@e47c661840f938dcc4587f52ef780bf05b1e1381 # v0.0.9
         with:
           executable-name: ubi
           target: ${{ matrix.platform.target }}
-          action-gh-release-parameters: '{ "make_latest": false }'
+          # This action builds the archive, uploads it as a workflow artifact, and then creates a
+          # GitHub release - but that last step only runs when the ref is a tag starting with this
+          # prefix. Setting a prefix that no tag of ours can match keeps the packaging and the
+          # artifact upload while suppressing the release, which is now done by the "release" job
+          # below. That is what lets this job run with a read-only token.
+          release-tag-prefix: "no-release-from-this-job-"
         if: matrix.toolchain == 'stable' && matrix.platform.features == ''
 
   test-alpine:
@@ -207,3 +210,30 @@ jobs:
         run: |
           cd ubi
           PATH=../../:"$PATH" cargo msrv verify
+
+  release:
+    name: Publish GitHub release
+    runs-on: ubuntu-24.04
+    needs: test-matrix
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
+    permissions:
+      contents: write # needed to create the GitHub release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Every "Package artifacts" step in the test-matrix job uploads one archive plus its .sha256
+      # file under its own artifact name, so this collects the whole set.
+      - name: Download packaged artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          draft: true
+          make_latest: false
+          files: artifacts/*
+          body_path: Changes.md
+          fail_on_unmatched_files: true

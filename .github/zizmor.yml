@@ -10,3 +10,9 @@ rules:
   unpinned-images:
     ignore:
       - ci.yml
+  # zizmor suggests `gh release` instead of softprops/action-gh-release. Using the action keeps the
+  # release job doing exactly what houseabsolute/actions-rust-release was doing before the release
+  # moved out of the test matrix, including the draft handling and the upsert behavior on re-runs.
+  superfluous-actions:
+    ignore:
+      - ci.yml
