@@ -127,7 +127,9 @@ working-dir = "root"
 # pre-commit hook runs.
 cmd = ["zizmor", "--persona", "pedantic", "--config", ".github/zizmor.yml", "."]
 ok-exit-codes = 0
-# zizmor exits with 10-14 depending on the severity of the worst finding. Exit
-# code 1 means zizmor itself failed, which is not a lint failure.
-lint-failure-exit-codes = [10, 11, 12, 13, 14]
+# zizmor exits with 11-14 depending on the severity of the worst finding. Every
+# other non-zero code means zizmor itself failed - 1 for an audit error, 2 for
+# bad arguments, 3 for collecting no inputs at all - and none of those are lint
+# failures, so precious should treat them as hard errors.
+lint-failure-exit-codes = [11, 12, 13, 14]
 expect-stderr = true
