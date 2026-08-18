@@ -115,3 +115,19 @@ tidy_flags = "--write-changes"
 invoke = "once"
 ok-exit-codes = 0
 lint-failure-exit-codes = 2
+
+[commands.zizmor]
+type = "lint"
+include = ".github/**/*.yml"
+invoke = "once"
+path-args = "none"
+working-dir = "root"
+# The config is passed explicitly because zizmor's auto-discovery of
+# .github/zizmor.yml does not work in a git worktree, and that is how the
+# pre-commit hook runs.
+cmd = ["zizmor", "--persona", "pedantic", "--config", ".github/zizmor.yml", "."]
+ok-exit-codes = 0
+# zizmor exits with 10-14 depending on the severity of the worst finding. Exit
+# code 1 means zizmor itself failed, which is not a lint failure.
+lint-failure-exit-codes = [10, 11, 12, 13, 14]
+expect-stderr = true
