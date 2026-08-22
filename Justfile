@@ -6,9 +6,9 @@ _dce := "devcontainer exec --workspace-folder ."
 # created before this mount existed needs a `just rebuild` once.
 _git_common_dir := `test -f .git && realpath "$(git rev-parse --git-common-dir)" || true`
 _git_mount := if _git_common_dir != "" { "--mount 'type=bind,source=" + _git_common_dir + ",target=" + _git_common_dir + "'" } else { "" }
-_github_token := `git config github.token 2>/dev/null || true`
-_gitlab_token := `git config gitlab.token 2>/dev/null || true`
-_codeberg_token := `git config codeberg.token 2>/dev/null || true`
+_github_token := `git config github.ubiTestingToken 2>/dev/null || true`
+_gitlab_token := `git config gitlab.ubiTestingToken 2>/dev/null || true`
+_codeberg_token := `git config codeberg.ubiTestingToken 2>/dev/null || true`
 
 _up:
     devcontainer up --workspace-folder . {{ _git_mount }}
