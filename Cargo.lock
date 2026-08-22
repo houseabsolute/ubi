@@ -1315,9 +1315,9 @@ checksum = "19f132c84eca552bf34cab8ec81f1c1dcc229b811638f9d283dceabe58c5569e"
 
 [[package]]
 name = "platforms"
-version = "4.1.0"
+version = "4.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acff5dfd42135d89cd7ad74a8c52813bbec91bf62c018ddd89390127767caab5"
+checksum = "d61aca2e3ac4cf98e4548308d55863a8f4c8b850d0c48440108d63571df91ea4"
 
 [[package]]
 name = "potential_utf"
