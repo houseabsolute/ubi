@@ -41,7 +41,7 @@ rustls = { version = "0.23.43", default-features = false, features = ["ring", "s
 serde = { version = "1.0.229", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.151", default-features = false }
 serial_test = { version = "3.5.0", default-features = false }
-sevenz-rust2 = { version = "0.20.2", default-features = false, features = ["util"] }
+sevenz-rust2 = { version = "0.21.4", default-features = false, features = ["util"] }
 strum = { version = "0.28.0", features = ["derive"] }
 tempfile = { version = "3.27.0", default-features = false }
 test-log = { version = "0.2.21", default-features = false }
