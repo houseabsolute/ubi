@@ -160,7 +160,7 @@ impl<'a> UbiBuilder<'a> {
     /// the appropriate env var:
     ///
     /// * GitHub - `GITHUB_TOKEN`
-    /// * GitLab - `CI_TOKEN`, then `GITLAB_TOKEN`.
+    /// * GitLab - `CI_JOB_TOKEN`, then `GITLAB_TOKEN`.
     /// * Codeberg/Forgejo - `CODEBERG_TOKEN`, then `FORGEJO_TOKEN`.
     #[must_use]
     pub fn token(mut self, token: &'a str) -> Self {

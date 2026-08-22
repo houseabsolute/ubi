@@ -1,3 +1,8 @@
+## 0.10.1
+
+- Fixed a bug where `ubi` checked the env var `CI_TOKEN` for a GitLab token. This is now
+  `CI_JOB_TOKEN`, which is what GitLab actually sets in CI.
+
 ## 0.10.0 - 2026-07-26
 
 - **Breaking change for library users:** the `rustls-tls-native-roots` cargo feature has been

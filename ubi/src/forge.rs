@@ -215,7 +215,7 @@ impl ForgeType {
         match self {
             ForgeType::Forgejo => &["CODEBERG_TOKEN", "FORGEJO_TOKEN"],
             ForgeType::GitHub => &["GITHUB_TOKEN"],
-            ForgeType::GitLab => &["CI_TOKEN", "GITLAB_TOKEN"],
+            ForgeType::GitLab => &["CI_JOB_TOKEN", "GITLAB_TOKEN"],
         }
     }
 
