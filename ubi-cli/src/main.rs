@@ -141,7 +141,7 @@ fn cmd() -> Command {
                     " during unpacking. In other words, if an archive contains",
                     " `./project/some-file` and `./project/docs.md`, it will extract them as",
                     " `some-file` and `docs.md`. You cannot pass this when `--exe` or",
-                    "  `--rename-exe-to` are passed.",
+                    " `--rename-exe` are passed.",
                 )),
             "UBI_EXTRACT_ALL",
         ))
