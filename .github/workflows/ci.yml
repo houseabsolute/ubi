@@ -192,6 +192,37 @@ jobs:
         shell: sh
         run: cargo test --locked
 
+  library-features:
+    name: Build the library with each feature combination
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install toolchain
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+      # Every other job builds the whole workspace, which means `ubi-cli` always turns on the
+      # library's `logging` feature for them. That hides breakage in the feature combinations that
+      # library users actually get, since `logging` is not on by default. Building the library on
+      # its own catches it.
+      - name: Build the library with each feature combination
+        run: |
+          set -e
+          for features in \
+              "" \
+              "--no-default-features" \
+              "--features logging" \
+              "--no-default-features --features logging" \
+              "--no-default-features --features rustls-tls" \
+              "--all-features"; do
+              echo "==> cargo build -p ubi --locked $features"
+              # This is intentionally unquoted so that each flag is a separate argument.
+              # shellcheck disable=SC2086
+              cargo build -p ubi --locked $features
+          done
+
   msrv:
     name: Verify MSRV
     runs-on: ubuntu-24.04
