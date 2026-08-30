@@ -178,6 +178,59 @@ use fern::{
     colors::{Color, ColoredLevelConfig},
     Dispatch,
 };
+#[cfg(feature = "logging")]
+use std::io::IsTerminal;
+
+/// This determines whether `ubi` colorizes its logging output.
+// It'd be nice to use clap::ValueEnum here, but then we'd need to add clap as a dependency for the
+// library code, which would be annoying for downstream users who just want to use the library.
+#[cfg(feature = "logging")]
+#[derive(
+    strum::AsRefStr,
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    strum::EnumString,
+    PartialEq,
+    Eq,
+    strum::VariantNames,
+)]
+pub enum ColorChoice {
+    /// Colorize output when stderr is a terminal and the `NO_COLOR` environment variable is not
+    /// set to a value that asks us to disable color. See [`no_color_is_set`] for what counts.
+    #[strum(serialize = "auto")]
+    #[default]
+    Auto,
+    /// Always colorize output, even when stderr is not a terminal.
+    #[strum(serialize = "always")]
+    Always,
+    /// Never colorize output.
+    #[strum(serialize = "never")]
+    Never,
+}
+
+/// Returns true if the `NO_COLOR` env var is set to a value that asks us to disable color.
+///
+/// <https://no-color.org/> says that any non-empty value disables color, regardless of what that
+/// value is. We deviate from that in one place, by also treating `0` as unset. Someone who writes
+/// `NO_COLOR=0` quite clearly means "do not disable color", and honoring the spec to the letter
+/// here would do the opposite of what they asked for.
+#[cfg(feature = "logging")]
+fn no_color_is_set() -> bool {
+    std::env::var_os("NO_COLOR").is_some_and(|v| !v.is_empty() && v.to_str() != Some("0"))
+}
+
+#[cfg(feature = "logging")]
+impl ColorChoice {
+    fn use_color(self) -> bool {
+        match self {
+            ColorChoice::Always => true,
+            ColorChoice::Never => false,
+            ColorChoice::Auto => !no_color_is_set() && std::io::stderr().is_terminal(),
+        }
+    }
+}
 
 /// This function initializes logging for the application. It's public for the sake of the `ubi`
 /// binary, but it lives in the library crate so that test code can also enable logging.
@@ -186,17 +239,17 @@ use fern::{
 ///
 /// This can return a `log::SetLoggerError` error.
 #[cfg(feature = "logging")]
-pub fn init_logger(level: log::LevelFilter) -> Result<(), log::SetLoggerError> {
-    let line_colors = ColoredLevelConfig::new()
-        .error(Color::Red)
-        .warn(Color::Yellow)
-        .info(Color::BrightBlack)
-        .debug(Color::BrightBlack)
-        .trace(Color::BrightBlack);
-    let level_colors = line_colors.info(Color::Green).debug(Color::Black);
+pub fn init_logger(level: log::LevelFilter, color: ColorChoice) -> Result<(), log::SetLoggerError> {
+    let dispatch = if color.use_color() {
+        let line_colors = ColoredLevelConfig::new()
+            .error(Color::Red)
+            .warn(Color::Yellow)
+            .info(Color::BrightBlack)
+            .debug(Color::BrightBlack)
+            .trace(Color::BrightBlack);
+        let level_colors = line_colors.info(Color::Green).debug(Color::Black);
 
-    Dispatch::new()
-        .format(move |out, message, record| {
+        Dispatch::new().format(move |out, message, record| {
             out.finish(format_args!(
                 "{color_line}[{target}][{level}{color_line}] {message}\x1B[0m",
                 color_line = format_args!(
@@ -208,9 +261,95 @@ pub fn init_logger(level: log::LevelFilter) -> Result<(), log::SetLoggerError> {
                 message = message,
             ));
         })
+    } else {
+        Dispatch::new().format(|out, message, record| {
+            out.finish(format_args!(
+                "[{target}][{level}] {message}",
+                target = record.target(),
+                level = record.level(),
+                message = message,
+            ));
+        })
+    };
+
+    dispatch
         .level(level)
         // This is very noisy.
         .level_for("hyper", log::LevelFilter::Error)
         .chain(std::io::stderr())
         .apply()
+}
+
+#[cfg(all(test, feature = "logging"))]
+mod color_choice_tests {
+    use super::ColorChoice;
+    use serial_test::serial;
+    use std::env;
+
+    /// Sets `NO_COLOR` to the given value and restores the original value when dropped.
+    struct NoColorGuard(Option<std::ffi::OsString>);
+
+    impl NoColorGuard {
+        fn new(value: Option<&str>) -> Self {
+            let saved = env::var_os("NO_COLOR");
+            match value {
+                Some(v) => env::set_var("NO_COLOR", v),
+                None => env::remove_var("NO_COLOR"),
+            }
+            NoColorGuard(saved)
+        }
+    }
+
+    impl Drop for NoColorGuard {
+        fn drop(&mut self) {
+            match self.0.take() {
+                Some(v) => env::set_var("NO_COLOR", v),
+                None => env::remove_var("NO_COLOR"),
+            }
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn always_and_never_ignore_no_color() {
+        for no_color in [None, Some(""), Some("0"), Some("1")] {
+            let _guard = NoColorGuard::new(no_color);
+            assert!(
+                ColorChoice::Always.use_color(),
+                "Always with NO_COLOR={no_color:?}"
+            );
+            assert!(
+                !ColorChoice::Never.use_color(),
+                "Never with NO_COLOR={no_color:?}"
+            );
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn auto_respects_no_color() {
+        // Tests do not run with a terminal attached to stderr, so `Auto` is never colorized here.
+        // What we can check is that a meaningfully-set `NO_COLOR` disables color no matter what,
+        // which is the half of the logic that doesn't depend on the environment the test runs in.
+        for no_color in ["1", "true", "yes", "anything at all"] {
+            let _guard = NoColorGuard::new(Some(no_color));
+            assert!(!ColorChoice::Auto.use_color(), "NO_COLOR={no_color}");
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn auto_matches_stderr_is_a_terminal_when_no_color_is_not_meaningfully_set() {
+        use std::io::IsTerminal;
+        let is_terminal = std::io::stderr().is_terminal();
+        // An unset, empty, or `0` value all mean "the user did not ask us to disable color".
+        for no_color in [None, Some(""), Some("0")] {
+            let _guard = NoColorGuard::new(no_color);
+            assert_eq!(
+                ColorChoice::Auto.use_color(),
+                is_terminal,
+                "Auto with NO_COLOR={no_color:?}"
+            );
+        }
+    }
 }

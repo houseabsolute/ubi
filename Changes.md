@@ -1,7 +1,15 @@
-## 0.10.1
+## 0.11.0
 
 - Fixed a bug where `ubi` checked the env var `CI_TOKEN` for a GitLab token. This is now
   `CI_JOB_TOKEN`, which is what GitLab actually sets in CI.
+- Added a `--color` flag, settable with `UBI_COLOR`, which accepts `auto`, `always`, or `never`.
+  Previously, `ubi` always emitted ANSI color escapes, even when its output was redirected to a file
+  or a pipe, which made saved logs hard to read. The new default, `auto`, colorizes output only when
+  stderr is a terminal and the `NO_COLOR` env var is not set. Setting `NO_COLOR` to the empty string
+  or to `0` is treated as not setting it at all.
+- **Breaking change for library users:** `ubi::init_logger` now takes a second argument, a
+  `ubi::ColorChoice`. Pass `ColorChoice::default()` to keep the previous behavior of colorizing
+  output, except that it is now suppressed when stderr is not a terminal or `NO_COLOR` is set.
 
 ## 0.10.0 - 2026-07-26
 

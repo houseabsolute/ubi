@@ -3,7 +3,7 @@ use clap::{builder::BoolishValueParser, Arg, ArgAction, ArgGroup, ArgMatches, Co
 use log::{debug, error};
 use std::{env, path::Path, str::FromStr};
 use strum::VariantNames;
-use ubi::{ForgeType, Ubi, UbiBuilder};
+use ubi::{ColorChoice, ForgeType, Ubi, UbiBuilder};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -206,6 +206,20 @@ fn cmd() -> Command {
                 )),
             "UBI_API_BASE_URL",
         ))
+        .arg(env_arg(
+            Arg::new("color")
+                .long("color")
+                .value_parser(clap::builder::PossibleValuesParser::new(
+                    ColorChoice::VARIANTS,
+                ))
+                .default_value("auto")
+                .help(concat!(
+                    "When to colorize output. The default, `auto`, colorizes output when stderr is",
+                    " a terminal and the `NO_COLOR` environment variable is not set. Setting",
+                    " `NO_COLOR` to the empty string or to `0` is treated as not setting it at all.",
+                )),
+            "UBI_COLOR",
+        ))
         .arg(
             Arg::new("self-upgrade")
                 .long("self-upgrade")
@@ -281,7 +295,7 @@ fn bool_env_arg(arg: Arg, name: &'static str) -> Arg {
     }
 }
 
-pub(crate) fn init_logger_from_matches(matches: &ArgMatches) -> Result<(), log::SetLoggerError> {
+pub(crate) fn init_logger_from_matches(matches: &ArgMatches) -> Result<()> {
     let level = if matches.get_flag("debug") {
         log::LevelFilter::Debug
     } else if matches.get_flag("verbose") {
@@ -292,7 +306,13 @@ pub(crate) fn init_logger_from_matches(matches: &ArgMatches) -> Result<(), log::
         log::LevelFilter::Warn
     };
 
-    ubi::init_logger(level)
+    let color = match matches.get_one::<String>("color") {
+        Some(c) => ColorChoice::from_str(c)
+            .with_context(|| format!("failed to parse color choice: {c}"))?,
+        None => ColorChoice::default(),
+    };
+
+    ubi::init_logger(level, color).context("failed to initialize the logger")
 }
 
 fn make_ubi<'a>(
@@ -393,6 +413,7 @@ mod tests {
     /// that a variable set in the developer's own shell cannot influence the results.
     const ALL_ENV_VARS: &[&str] = &[
         "UBI_API_BASE_URL",
+        "UBI_COLOR",
         "UBI_EXE",
         "UBI_EXTRACT_ALL",
         "UBI_FORGE",
@@ -693,5 +714,66 @@ mod tests {
             .collect::<Vec<_>>();
         got.sort();
         assert_eq!(got, ALL_ENV_VARS);
+    }
+
+    #[test]
+    #[serial]
+    fn color_defaults_to_auto() {
+        let _guard = EnvGuard::new(&[]);
+        let matches = cmd()
+            .try_get_matches_from(["ubi", "--project", "houseabsolute/precious"])
+            .unwrap();
+        assert_eq!(
+            matches.get_one::<String>("color").map(String::as_str),
+            Some("auto"),
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn color_from_env_and_flag() {
+        for value in ColorChoice::VARIANTS {
+            let _guard = EnvGuard::new(&[("UBI_COLOR", *value)]);
+            let matches = cmd()
+                .try_get_matches_from(["ubi", "--project", "houseabsolute/precious"])
+                .unwrap();
+            assert_eq!(
+                matches.get_one::<String>("color").map(String::as_str),
+                Some(*value),
+                "UBI_COLOR={value}",
+            );
+        }
+
+        // The flag wins over the environment variable.
+        let _guard = EnvGuard::new(&[("UBI_COLOR", "never")]);
+        let matches = cmd()
+            .try_get_matches_from([
+                "ubi",
+                "--project",
+                "houseabsolute/precious",
+                "--color",
+                "always",
+            ])
+            .unwrap();
+        assert_eq!(
+            matches.get_one::<String>("color").map(String::as_str),
+            Some("always"),
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn invalid_color_is_an_error() {
+        let _guard = EnvGuard::new(&[]);
+        let err = cmd()
+            .try_get_matches_from([
+                "ubi",
+                "--project",
+                "houseabsolute/precious",
+                "--color",
+                "sometimes",
+            ])
+            .unwrap_err();
+        assert_eq!(err.kind(), clap::error::ErrorKind::InvalidValue);
     }
 }
