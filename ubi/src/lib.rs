@@ -241,13 +241,20 @@ impl ColorChoice {
 #[cfg(feature = "logging")]
 pub fn init_logger(level: log::LevelFilter, color: ColorChoice) -> Result<(), log::SetLoggerError> {
     let dispatch = if color.use_color() {
+        // Error, warning, and info messages are all meant for the user to read, so the whole line
+        // gets a color. Debug and trace messages are diagnostics, so they're dimmed to keep them
+        // out of the way of the messages that matter. Note that we cannot use plain black or
+        // white anywhere here, since either one is unreadable against a terminal background of
+        // the same color. Bright black is fine, since it renders as gray.
         let line_colors = ColoredLevelConfig::new()
             .error(Color::Red)
             .warn(Color::Yellow)
-            .info(Color::BrightBlack)
+            .info(Color::Green)
             .debug(Color::BrightBlack)
             .trace(Color::BrightBlack);
-        let level_colors = line_colors.info(Color::Green).debug(Color::Black);
+        // Debug and trace share a line color, so debug's level name is highlighted against it to
+        // tell the two apart.
+        let level_colors = line_colors.debug(Color::Cyan);
 
         Dispatch::new().format(move |out, message, record| {
             out.finish(format_args!(

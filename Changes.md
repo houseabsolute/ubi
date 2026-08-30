@@ -10,6 +10,9 @@
 - **Breaking change for library users:** `ubi::init_logger` now takes a second argument, a
   `ubi::ColorChoice`. Pass `ColorChoice::default()` to keep the previous behavior of colorizing
   output, except that it is now suppressed when stderr is not a terminal or `NO_COLOR` is set.
+- Fixed up the colors for logging. The `DEBUG` label was black, which made it unreadable in
+  terminals with a dark background. It is now cyan. `INFO` level messages are now green. Previously,
+  they looked identical to `DEBUG` level messages.
 
 ## 0.10.0 - 2026-07-26
 
