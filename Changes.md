@@ -13,6 +13,11 @@
 - Fixed up the colors for logging. The `DEBUG` label was black, which made it unreadable in
   terminals with a dark background. It is now cyan. `INFO` level messages are now green. Previously,
   they looked identical to `DEBUG` level messages.
+- When `ubi` was asked to install an executable to a path where a directory already existed, it
+  failed with a bare `Is a directory (os error 21)`. It now gives a more helpful message with
+  guidance on how to fix the problem. In addition, it checks some various cases that would prevent
+  the install from working before it downloads anything. However, not all cases can be checked
+  before download. Inspired by a report from @oalders (Olaf Alders). GH #136.
 
 ## 0.10.0 - 2026-07-26
 

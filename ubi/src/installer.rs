@@ -29,6 +29,10 @@ use std::fs::{set_permissions, Permissions};
 use std::os::unix::fs::PermissionsExt;
 
 pub(crate) trait Installer: Debug {
+    /// Checks whatever we can know about the install path before downloading anything, so that we
+    /// fail before spending time on a download that we already know we cannot install.
+    fn check_install_path(&self) -> Result<()>;
+
     fn install(&self, download: &Download) -> Result<()>;
 }
 
@@ -36,6 +40,7 @@ pub(crate) trait Installer: Debug {
 pub(crate) struct ExeInstaller {
     install_path: PathBuf,
     install_path_is_from_rename_exe_to: bool,
+    exe_file_stem_is_from_exe_flag: bool,
     exe_file_stem: String,
     is_windows: bool,
     extensions: Vec<&'static str>,
@@ -47,10 +52,38 @@ pub(crate) struct ArchiveInstaller {
     install_root: PathBuf,
 }
 
+/// The install directory is one we create files under. If there's already a file at that path,
+/// creating it fails with a bare OS error - `File exists` when we create the directory, `Not a
+/// directory` when we write under it - and neither says which path is the problem or what to do
+/// about it. The directory always comes from `--in`, even when `--rename-exe` named the last
+/// component of the install path, so that's the only flag worth naming.
+fn check_install_dir_is_not_a_file(install_dir: &Path) -> Result<()> {
+    if install_dir.is_dir() {
+        return Ok(());
+    }
+
+    // Both `is_dir` and `exists` follow symlinks, so a symlink to a directory is not in the way.
+    // A symlink to nothing looks like an empty path to them, but it is still in the way, and it
+    // produces the same bare `File exists` as a regular file does.
+    let what = if install_dir.exists() {
+        "a file"
+    } else if install_dir.symlink_metadata().is_ok() {
+        "a symlink that doesn't point to anything"
+    } else {
+        return Ok(());
+    };
+
+    Err(anyhow!(
+        "the install directory at {} is {what}, not a directory - remove it or pass a different `--in` value",
+        install_dir.display(),
+    ))
+}
+
 impl ExeInstaller {
     pub(crate) fn new(
         install_path: PathBuf,
         install_path_is_from_rename_exe_to: bool,
+        exe_file_stem_is_from_exe_flag: bool,
         exe: String,
         is_windows: bool,
     ) -> Self {
@@ -66,6 +99,7 @@ impl ExeInstaller {
         ExeInstaller {
             install_path,
             install_path_is_from_rename_exe_to,
+            exe_file_stem_is_from_exe_flag,
             exe_file_stem: exe,
             is_windows,
             extensions,
@@ -188,6 +222,7 @@ impl ExeInstaller {
                         install_path.display()
                     )
                 })?;
+                self.check_install_path_is_not_a_dir(&install_path)?;
                 entry.unpack(&install_path).with_context(|| {
                     format!(
                         "failed to extract executable named {} into {}",
@@ -264,6 +299,7 @@ impl ExeInstaller {
                 )
             })?;
 
+            self.check_install_path_is_not_a_dir(&install_path)?;
             File::create(&install_path)
                 .with_context(|| format!("failed to create file at {}", install_path.display()))?
                 .write_all(&buffer)
@@ -328,6 +364,7 @@ impl ExeInstaller {
                 )
             })?;
 
+            self.check_install_path_is_not_a_dir(&install_path)?;
             File::create(&install_path)
                 .with_context(|| format!("failed to create file at {}", install_path.display()))?
                 .write_all(&buffer)
@@ -467,6 +504,7 @@ impl ExeInstaller {
                 self.install_path.display()
             )
         })?;
+        self.check_install_path_is_not_a_dir(&self.install_path)?;
         let mut writer = File::create(&self.install_path)
             .with_context(|| format!("Cannot write to {}", self.install_path.display()))?;
         std::io::copy(&mut reader, &mut writer).with_context(|| {
@@ -485,6 +523,7 @@ impl ExeInstaller {
         })?;
 
         let install_path = self.maybe_munged_install_path(exe_file)?;
+        self.check_install_path_is_not_a_dir(&install_path)?;
         std::fs::copy(exe_file, &install_path).with_context(|| {
             format!(
                 "error copying file from {} to {}",
@@ -504,9 +543,38 @@ impl ExeInstaller {
             ));
         };
 
+        check_install_dir_is_not_a_file(path)?;
+
         debug!("creating directory at {}", path.display());
         create_dir_all(path)
             .with_context(|| format!("could not create a directory at {}", path.display()))
+    }
+
+    /// Installing to a path that already exists as a directory fails deep inside the standard
+    /// library, where the only thing we can report is a bare `Is a directory (os error 21)`.
+    /// Checking for this case lets us tell the user what actually went wrong and what to do about
+    /// it. We name only the flag that produced the path, so we don't suggest changing one that has
+    /// nothing to do with the conflict.
+    fn check_install_path_is_not_a_dir(&self, install_path: &Path) -> Result<()> {
+        if !install_path.is_dir() {
+            return Ok(());
+        }
+
+        // The install path is the `--in` directory plus a last component, so `--in` is always
+        // worth changing. The last component comes from `--rename-exe` if that was passed, and
+        // otherwise from `--exe` if that was passed. When it comes from neither, it's the project
+        // name, and there's no flag to change.
+        let flags = if self.install_path_is_from_rename_exe_to {
+            "`--in` or `--rename-exe`"
+        } else if self.exe_file_stem_is_from_exe_flag {
+            "`--in` or `--exe`"
+        } else {
+            "`--in`"
+        };
+        Err(anyhow!(
+            "cannot install to {} because there is already a directory at that path - remove it or pass a different {flags} value",
+            install_path.display(),
+        ))
     }
 
     fn maybe_munged_install_path<P: AsRef<Path>>(&self, path: P) -> Result<PathBuf> {
@@ -544,6 +612,26 @@ impl ExeInstaller {
 }
 
 impl Installer for ExeInstaller {
+    fn check_install_path(&self) -> Result<()> {
+        // The install directory is fixed no matter what the downloaded file turns out to be, so a
+        // file in the way there can always be reported before we download anything.
+        if let Some(parent) = self.install_path.parent() {
+            check_install_dir_is_not_a_file(parent)?;
+        }
+
+        // We only know the final install path up front when the user named it exactly. Otherwise
+        // the downloaded file may have an extension that we preserve, which we cannot know until
+        // we have seen the file, and the install path grows that extension. Checking the path
+        // without the extension here would reject an install that was going to write to the path
+        // with the extension and succeed. Those cases are caught by the check at each install site
+        // instead, just not as early.
+        if !self.install_path_is_from_rename_exe_to {
+            return Ok(());
+        }
+
+        self.check_install_path_is_not_a_dir(&self.install_path)
+    }
+
     fn install(&self, download: &Download) -> Result<()> {
         let exe = self.extract_executable(&download.archive_path)?;
         let real_exe = exe.as_deref().unwrap_or(&self.install_path);
@@ -787,6 +875,13 @@ impl ArchiveInstaller {
 }
 
 impl Installer for ArchiveInstaller {
+    /// The install root is a directory we create files under, so a file sitting there is in the
+    /// way. Note that this only checks the root itself. A file in the way further down the tree
+    /// still fails the old way.
+    fn check_install_path(&self) -> Result<()> {
+        check_install_dir_is_not_a_file(&self.install_root)
+    }
+
     fn install(&self, download: &Download) -> Result<()> {
         self.extract_entire_archive(&download.archive_path)?;
         info!(
@@ -832,8 +927,213 @@ mod tests {
     use super::*;
     use rstest::rstest;
     #[cfg(target_family = "unix")]
-    use std::os::unix::fs::PermissionsExt;
+    use std::os::unix::fs::{symlink, PermissionsExt};
     use tempfile::tempdir;
+
+    #[test]
+    fn exe_installer_rejects_a_dir_at_the_install_path() -> Result<()> {
+        let td = tempdir()?;
+
+        let installer = |path: &Path, from_rename_exe_to, from_exe| {
+            ExeInstaller::new(
+                path.to_path_buf(),
+                from_rename_exe_to,
+                from_exe,
+                "some-exe".to_string(),
+                false,
+            )
+        };
+
+        let file = td.path().join("some-exe");
+        File::create(&file)?;
+        assert!(installer(&file, false, false)
+            .check_install_path_is_not_a_dir(&file)
+            .is_ok());
+
+        let missing = td.path().join("does-not-exist");
+        assert!(installer(&missing, false, false)
+            .check_install_path_is_not_a_dir(&missing)
+            .is_ok());
+
+        // The error names every flag that produced the path, and only those.
+        let dir = td.path().join("in-the-way");
+        create_dir_all(&dir)?;
+        for (from_rename_exe_to, from_exe, expect, not_expect) in [
+            (false, false, vec!["--in"], vec!["--rename-exe", "--exe"]),
+            (false, true, vec!["--in", "--exe"], vec!["--rename-exe"]),
+            (true, false, vec!["--in", "--rename-exe"], vec!["--exe"]),
+            // `--exe` can be passed alongside `--rename-exe`, but then it only says what to look
+            // for in the archive. The installed name comes from `--rename-exe`.
+            (true, true, vec!["--in", "--rename-exe"], vec!["--exe"]),
+        ] {
+            let err = installer(&dir, from_rename_exe_to, from_exe)
+                .check_install_path_is_not_a_dir(&dir)
+                .unwrap_err()
+                .to_string();
+            assert!(
+                err.contains("there is already a directory at that path"),
+                "got error: {err}",
+            );
+            for flag in expect {
+                assert!(err.contains(&format!("`{flag}`")), "got error: {err}");
+            }
+            for flag in not_expect {
+                assert!(!err.contains(&format!("`{flag}`")), "got error: {err}");
+            }
+        }
+
+        Ok(())
+    }
+
+    // The install path grows an extension for assets like `.AppImage`, so a directory sitting at
+    // the path without that extension is not actually in the way. We can only know that after
+    // seeing the downloaded file, so the check before the download has to stay quiet here.
+    #[test]
+    fn exe_installer_does_not_reject_a_dir_that_the_install_extension_avoids() -> Result<()> {
+        let td = tempdir()?;
+
+        let dir = td.path().join("some-exe");
+        create_dir_all(&dir)?;
+
+        let installer = ExeInstaller::new(dir.clone(), false, false, "some-exe".to_string(), false);
+        assert_ne!(
+            installer.maybe_munged_install_path("some-exe.AppImage")?,
+            dir,
+            "the install path grows the AppImage extension",
+        );
+        assert!(installer.check_install_path().is_ok());
+
+        // When the user named the install path exactly, we never munge it, so the directory really
+        // is in the way and we can say so before downloading anything.
+        let installer = ExeInstaller::new(dir.clone(), true, false, "some-exe".to_string(), false);
+        assert_eq!(
+            installer.maybe_munged_install_path("some-exe.AppImage")?,
+            dir
+        );
+        assert!(installer.check_install_path().is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn exe_installer_rejects_a_file_at_the_install_dir() -> Result<()> {
+        let td = tempdir()?;
+
+        let installer = |dir: &Path, from_rename_exe_to| {
+            ExeInstaller::new(
+                dir.join("some-exe"),
+                from_rename_exe_to,
+                false,
+                "some-exe".to_string(),
+                false,
+            )
+        };
+
+        let dir = td.path().join("some-dir");
+        create_dir_all(&dir)?;
+        assert!(installer(&dir, false).check_install_path().is_ok());
+
+        // The install directory is created later if it doesn't exist yet.
+        let missing = td.path().join("does-not-exist");
+        assert!(installer(&missing, false).check_install_path().is_ok());
+
+        // This is checked before we download anything, whether or not the last component of the
+        // install path was munged, because the directory itself is never munged.
+        let file = td.path().join("in-the-way");
+        File::create(&file)?;
+        for from_rename_exe_to in [false, true] {
+            let err = installer(&file, from_rename_exe_to)
+                .check_install_path()
+                .unwrap_err()
+                .to_string();
+            assert!(
+                err.contains("is a file, not a directory"),
+                "got error: {err}",
+            );
+            assert!(err.contains("`--in`"), "got error: {err}");
+            assert!(!err.contains("`--rename-exe`"), "got error: {err}");
+        }
+
+        // The check also guards the point where we create the directory, which is what library
+        // users reach when they don't go through `Ubi::install_binary`.
+        let err = installer(&file, false)
+            .create_install_dir()
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("is a file, not a directory"),
+            "got error: {err}",
+        );
+
+        Ok(())
+    }
+
+    // `is_dir` and `exists` both follow symlinks, so the check has to look past them in both
+    // directions: a symlink to a directory is a perfectly good install directory, and a symlink to
+    // nothing looks like an empty path to those two while still being in the way.
+    #[test]
+    #[cfg(target_family = "unix")]
+    fn exe_installer_looks_through_a_symlink_at_the_install_dir() -> Result<()> {
+        let td = tempdir()?;
+
+        let installer = |dir: &Path| {
+            ExeInstaller::new(
+                dir.join("some-exe"),
+                false,
+                false,
+                "some-exe".to_string(),
+                false,
+            )
+        };
+
+        let dir = td.path().join("real-dir");
+        create_dir_all(&dir)?;
+        let to_dir = td.path().join("to-dir");
+        symlink(&dir, &to_dir)?;
+        assert!(installer(&to_dir).check_install_path().is_ok());
+
+        let dangling = td.path().join("dangling");
+        symlink(td.path().join("does-not-exist"), &dangling)?;
+        let err = installer(&dangling)
+            .check_install_path()
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("is a symlink that doesn't point to anything"),
+            "got error: {err}",
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn archive_installer_rejects_a_file_at_the_install_root() -> Result<()> {
+        let td = tempdir()?;
+
+        let installer =
+            |path: &Path| ArchiveInstaller::new("some-project".to_string(), path.to_path_buf());
+
+        let dir = td.path().join("some-dir");
+        create_dir_all(&dir)?;
+        assert!(installer(&dir).check_install_path().is_ok());
+
+        // The install root is created later if it doesn't exist yet.
+        let missing = td.path().join("does-not-exist");
+        assert!(installer(&missing).check_install_path().is_ok());
+
+        let file = td.path().join("in-the-way");
+        File::create(&file)?;
+        let err = installer(&file)
+            .check_install_path()
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("is a file, not a directory"),
+            "got error: {err}",
+        );
+
+        Ok(())
+    }
 
     #[rstest]
     #[case("test-data/project.7z", None)]
@@ -947,6 +1247,7 @@ mod tests {
         let installer = ExeInstaller::new(
             install_path.to_path_buf(),
             install_path_is_from_rename_exe_to,
+            false,
             exe_file_stem.to_string(),
             is_windows,
         );

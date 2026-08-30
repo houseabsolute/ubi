@@ -320,6 +320,7 @@ impl<'a> UbiBuilder<'a> {
             Ok(Box::new(ExeInstaller::new(
                 install_path,
                 self.rename_exe_to.is_some(),
+                self.exe.is_some(),
                 expect_exe_stem_name.to_string(),
                 platform.target_os == Os::Windows,
             )))

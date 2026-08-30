@@ -101,6 +101,10 @@ impl<'a> Ubi<'a> {
     /// * Unable to write the executable to the specified directory.
     /// * Unable to set executable permissions on the installed binary.
     pub async fn install_binary(&mut self) -> Result<()> {
+        // Do this before downloading so that an install path we already know we can't write to
+        // fails right away, rather than after waiting for a download.
+        self.installer.check_install_path()?;
+
         let asset = self.asset().await?;
         let download = self.download_asset(&self.reqwest_client, asset).await?;
         self.installer.install(&download)
