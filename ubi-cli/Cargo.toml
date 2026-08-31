@@ -30,7 +30,28 @@ name = "ubi"
 path = "src/main.rs"
 
 [package.metadata.release]
+# Tagging is turned off for every package in release.toml so that a release makes a single "v1.2.3"
+# tag instead of one tag per package. This turns it back on for ubi-cli.
+tag = true
 tag-name = "v{{version}}"
+
+# These replacements live here rather than in release.toml because anything in release.toml is
+# applied once per package in the workspace, and Changes.md would only match for the first one.
+#
+# The order matters. The existing "NEXT" section is stamped with the version and date first, and
+# only then is a fresh "NEXT" section inserted for the next round of changes. Doing it the other
+# way around would leave two "NEXT" headings for the first search to match.
+[[package.metadata.release.pre-release-replacements]]
+file = "../Changes.md"
+search = "## NEXT - TBD"
+replace = "## {{version}} - {{date}}"
+exactly = 1
+
+[[package.metadata.release.pre-release-replacements]]
+file = "../Changes.md"
+search = "<!-- next-header -->"
+replace = "<!-- next-header -->\n\n## NEXT - TBD"
+exactly = 1
 
 [lints]
 workspace = true

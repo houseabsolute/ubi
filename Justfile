@@ -32,3 +32,13 @@ lint *args: _up
 
 tidy *args: _up
     {{ _dce }} mise exec -- precious tidy {{ args }}
+
+# Cut a release. The level is anything cargo-release accepts, so "patch", "minor", "major", or an
+# explicit version like "0.11.0". This bumps the version everywhere, stamps the "NEXT" section in
+# Changes.md with the version and date, commits, tags, and pushes. Pushing the tag is what makes
+# CI build the binaries, publish the crates to crates.io, and draft the GitHub release.
+#
+# Unlike the other recipes, cargo-release runs on the host rather than in the dev container,
+# because the commit and tag are signed and the signing key lives outside the container.
+release level: (test "" "--workspace --locked") (lint "-a")
+    mise exec -- cargo-release release {{ level }} --workspace --execute

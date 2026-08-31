@@ -1,4 +1,6 @@
-## 0.11.0
+<!-- next-header -->
+
+## NEXT - TBD
 
 - Fixed a bug where `ubi` checked the env var `CI_TOKEN` for a GitLab token. This is now
   `CI_JOB_TOKEN`, which is what GitLab actually sets in CI.

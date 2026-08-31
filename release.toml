@@ -2,3 +2,15 @@ allow-branch = ["master"]
 shared-version = true
 sign-commit = true
 sign-tag = true
+
+# The crates are published to crates.io by the "Publish to crates.io" job in
+# .github/workflows/ci.yml, which is triggered by the tag that cargo-release pushes. Doing it there
+# means a release never depends on a crates.io token being present on a developer's machine.
+publish = false
+
+# By default, cargo-release makes one tag per package, like "ubi-cli-v1.2.3". We only want a single
+# "v1.2.3" tag for the whole workspace, so tagging is turned off here and turned back on for the
+# ubi-cli package in ubi-cli/Cargo.toml, which is also where the tag name is set.
+tag = false
+
+pre-release-commit-message = "Bump version and add release date for {{version}}"
