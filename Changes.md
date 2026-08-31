@@ -2,6 +2,8 @@
 
 ## NEXT - TBD
 
+## 0.12.0 - 2026-08-31
+
 - Fixed a bug where `ubi` checked the env var `CI_TOKEN` for a GitLab token. This is now
   `CI_JOB_TOKEN`, which is what GitLab actually sets in CI.
 - Added a `--color` flag, settable with `UBI_COLOR`, which accepts `auto`, `always`, or `never`.
