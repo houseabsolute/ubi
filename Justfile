@@ -11,10 +11,10 @@ _gitlab_token := `git config gitlab.ubiTestingToken 2>/dev/null || true`
 _codeberg_token := `git config codeberg.ubiTestingToken 2>/dev/null || true`
 
 _up:
-    devcontainer up --workspace-folder . {{ _git_mount }}
+    .devcontainer/up.sh --workspace-folder . {{ _git_mount }}
 
 rebuild:
-    devcontainer up --workspace-folder . {{ _git_mount }} --remove-existing-container
+    .devcontainer/up.sh --workspace-folder . {{ _git_mount }} --remove-existing-container
 
 shell: _up
     {{ _dce }} bash -i
