@@ -23,7 +23,7 @@ fern = { version = "0.7.1", default-features = false, features = ["colored"] }
 flate2 = { version = "1.1.9", default-features = false }
 itertools = { version = "0.15.0" }
 lazy-regex = { version = "3.6.1" }
-log = { version = "0.4.33", default-features = false }
+log = { version = "0.4.34", default-features = false }
 mockito = { version = "1.7.2", default-features = false }
 platforms = { version = "4.1.1" }
 regex = { version = "1.13.1", default-features = false }
@@ -49,7 +49,7 @@ thiserror = { version = "2.0.20" }
 tokio = { version = "1.53.1", default-features = false, features = ["macros", "rt"] }
 url = { version = "2.5.8", default-features = false, features = ["serde"] }
 walkdir = { version = "2.5.0", default-features = false }
-which = { version = "8.0.5" }
+which = { version = "8.0.6" }
 # The `static` feature makes `lzma-sys` compile liblzma from source and link it statically. Without
 # it, `lzma-sys` uses pkg-config to find a system liblzma and links against it dynamically. On the
 # macOS release builders that finds Homebrew's `xz`, producing binaries that only run on machines
