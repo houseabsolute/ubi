@@ -10,5 +10,10 @@
   "containerEnv": {
     "UBI_DEVCONTAINER": "1"
   },
+  "remoteEnv": {
+    "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}",
+    "GITLAB_TOKEN": "${localEnv:GITLAB_TOKEN}",
+    "CODEBERG_TOKEN": "${localEnv:CODEBERG_TOKEN}"
+  },
   "postCreateCommand": ".devcontainer/post-create.sh"
 }

@@ -1,7 +1,8 @@
 # Set by devcontainer.json, so recipes can tell whether they are already running inside the dev
 # container. Outside it, everything is wrapped in `devcontainer exec`. Inside, there is nothing to
-# wrap - the tools are right there, and wrapping would try to start a nested container. Like the
-# git mount below, a container created before this variable existed needs a `just rebuild` once.
+# wrap - the tools are right there, and wrapping would try to start a nested container. Unlike the
+# git mount below, this lives in devcontainer.json, so `devcontainer up` recreates a stale
+# container on its own and no rebuild is needed.
 _in_container := env("UBI_DEVCONTAINER", "")
 # The devcontainer CLI is pinned in mise.toml, so go through mise rather than assuming the caller
 # has mise activated in their shell. Git hooks in particular run with a bare PATH.
@@ -15,9 +16,10 @@ _env := if _in_container != "" { "env" } else { "--remote-env" }
 # created before this mount existed needs a `just rebuild` once.
 _git_common_dir := `test -f .git && realpath "$(git rev-parse --git-common-dir)" || true`
 _git_mount := if _git_common_dir != "" { "--mount 'type=bind,source=" + _git_common_dir + ",target=" + _git_common_dir + "'" } else { "" }
-_github_token := `git config github.ubiTestingToken 2>/dev/null || true`
-_gitlab_token := `git config gitlab.ubiTestingToken 2>/dev/null || true`
-_codeberg_token := `git config codeberg.ubiTestingToken 2>/dev/null || true`
+# Puts the integration test tokens in the environment of the command it runs. Only the recipes
+# that need them use it, and it is what lets the devcontainer CLI resolve the ${localEnv:...}
+# entries in devcontainer.json's remoteEnv.
+_with_tokens := ".devcontainer/with-tokens.sh"
 
 _host_only recipe:
     #!/usr/bin/env bash
@@ -39,13 +41,10 @@ rebuild: (_host_only "rebuild")
     .devcontainer/up.sh --workspace-folder . {{ _git_mount }} --remove-existing-container
 
 shell: _up
-    {{ _dce }} bash -i
+    {{ _with_tokens }} {{ _dce }} bash -i
 
 test rust-log="" *args: _up
-    {{ _dce }} \
-      {{ if _github_token != "" { _env + " GITHUB_TOKEN=" + _github_token } else { "" } }} \
-      {{ if _gitlab_token != "" { _env + " GITLAB_TOKEN=" + _gitlab_token } else { "" } }} \
-      {{ if _codeberg_token != "" { _env + " CODEBERG_TOKEN=" + _codeberg_token } else { "" } }} \
+    {{ _with_tokens }} {{ _dce }} \
       {{ if rust-log != "" { _env + " RUST_LOG=" + rust-log } else { "" } }} \
       cargo test {{ args }}
 
