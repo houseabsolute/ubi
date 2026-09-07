@@ -28,7 +28,7 @@ max_attempts=${DEVCONTAINER_UP_ATTEMPTS:-3}
 # The watchdog needs GNU `tail` and `stat`. Without them, run the CLI directly
 # and let the caller deal with the hang if it happens.
 if ! tail --pid=$$ -n 0 /dev/null 2>/dev/null || ! stat -c %Y /dev/null >/dev/null 2>&1; then
-    exec devcontainer up "$@"
+    exec mise exec -- devcontainer up "$@"
 fi
 
 log=$(mktemp)
@@ -74,7 +74,7 @@ is_stuck() {
 for attempt in $(seq 1 "$max_attempts"); do
     : >"$log"
 
-    devcontainer up "$@" >"$log" 2>&1 &
+    mise exec -- devcontainer up "$@" >"$log" 2>&1 &
     pid=$!
 
     tail -n +1 -f --pid="$pid" "$log" &
