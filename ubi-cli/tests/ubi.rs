@@ -593,7 +593,10 @@ fn glab_1_4_9_from_gitlab_with_releases_url(td: TempDir, ubi: &Path) -> Result<(
 #[serial]
 #[cfg(not(target_os = "windows"))]
 fn terra_transformer(td: TempDir, ubi: &Path) -> Result<()> {
-    // Test deeply nested GitLab project - skip on Windows there is no windows binary for target
+    // Test deeply nested GitLab project - skip on Windows there is no windows binary for target.
+    //
+    // This is pinned to a tag because newer releases of this project do not attach any binary
+    // assets. Resolving the latest release from GitLab is covered by `glab_from_gitlab`.
     run_test(
         td.path(),
         ubi,
@@ -602,6 +605,8 @@ fn terra_transformer(td: TempDir, ubi: &Path) -> Result<()> {
             "gitlab-com/gl-infra/terra-transformer",
             "--forge",
             "gitlab",
+            "--tag",
+            "v1.32.29",
         ],
         make_exe_pathbuf(&["bin", "terra-transformer"]),
     )
