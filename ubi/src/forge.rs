@@ -315,7 +315,41 @@ mod tests {
     use reqwest::Client;
     use serial_test::serial;
     use std::env;
+    use std::ffi::OsString;
     use test_log::test;
+
+    // Restores the environment when it goes out of scope, including when a test returns early from
+    // a `?` or a failed assertion. The hand-rolled restore this replaces sat at the end of each
+    // test, so an early return skipped it and left that test's token env vars set. Nothing breaks
+    // today, because every test here also removes the vars it cares about on the way in, but that
+    // only holds for as long as each new test remembers to do the same.
+    // The values are only ever round-tripped, so use the OsString variants. `env::vars` panics on a
+    // variable that isn't valid UTF-8, which has nothing to do with what these tests are checking.
+    struct EnvGuard {
+        saved: Vec<(OsString, OsString)>,
+    }
+
+    impl EnvGuard {
+        fn new() -> Self {
+            Self {
+                saved: env::vars_os().collect(),
+            }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            // Anything the test added has to go, not just anything it changed.
+            for (k, _) in env::vars_os() {
+                if !self.saved.iter().any(|(saved, _)| *saved == k) {
+                    env::remove_var(k);
+                }
+            }
+            for (k, v) in &self.saved {
+                env::set_var(k, v);
+            }
+        }
+    }
 
     #[test(tokio::test)]
     #[serial]
@@ -347,7 +381,7 @@ mod tests {
     }
 
     async fn forgejo_fetch_assets(tag: Option<&str>, token: Option<&str>) -> Result<()> {
-        let vars = env::vars();
+        let _env = EnvGuard::new();
         env::remove_var("CODEBERG_TOKEN");
         env::remove_var("FORGEJO_TOKEN");
 
@@ -400,17 +434,39 @@ mod tests {
 
         m.assert_async().await;
 
-        for (k, v) in vars {
-            env::set_var(k, v);
-        }
-
         Ok(())
     }
 
     #[test]
     #[serial]
+    fn env_guard_restores_the_environment() {
+        // The guard under test only covers the inner scope, so this one cleans up the setup.
+        let _env = EnvGuard::new();
+
+        env::set_var("UBI_TEST_CHANGED", "before");
+        env::remove_var("UBI_TEST_ADDED");
+
+        {
+            let _env = EnvGuard::new();
+            env::set_var("UBI_TEST_CHANGED", "during");
+            env::set_var("UBI_TEST_ADDED", "during");
+        }
+
+        assert_eq!(
+            env::var("UBI_TEST_CHANGED").ok().as_deref(),
+            Some("before"),
+            "a variable the test changed is put back"
+        );
+        assert!(
+            env::var("UBI_TEST_ADDED").is_err(),
+            "a variable the test added is removed"
+        );
+    }
+
+    #[test]
+    #[serial]
     fn empty_token_env_var_is_treated_as_no_token() -> Result<()> {
-        let vars = env::vars();
+        let _env = EnvGuard::new();
         env::remove_var("CODEBERG_TOKEN");
         env::remove_var("FORGEJO_TOKEN");
 
@@ -428,11 +484,6 @@ mod tests {
             Some("1234"),
             "a non-empty token env var is still used"
         );
-
-        env::remove_var("CODEBERG_TOKEN");
-        for (k, v) in vars {
-            env::set_var(k, v);
-        }
 
         Ok(())
     }
@@ -470,7 +521,7 @@ mod tests {
     }
 
     async fn github_fetch_assets(tag: Option<&str>, token: Option<&str>) -> Result<()> {
-        let vars = env::vars();
+        let _env = EnvGuard::new();
         env::remove_var("GITHUB_TOKEN");
 
         let assets = vec![Asset {
@@ -516,10 +567,6 @@ mod tests {
 
         m.assert_async().await;
 
-        for (k, v) in vars {
-            env::set_var(k, v);
-        }
-
         Ok(())
     }
 
@@ -556,7 +603,7 @@ mod tests {
     }
 
     async fn gitlab_fetch_assets(tag: Option<&str>, token: Option<&str>) -> Result<()> {
-        let vars = env::vars();
+        let _env = EnvGuard::new();
         env::remove_var("GITLAB_TOKEN");
         env::remove_var("CI_JOB_TOKEN");
         env::remove_var("CODEBERG_TOKEN");
@@ -606,10 +653,6 @@ mod tests {
         assert_eq!(got_assets, assets);
 
         m.assert_async().await;
-
-        for (k, v) in vars {
-            env::set_var(k, v);
-        }
 
         Ok(())
     }
