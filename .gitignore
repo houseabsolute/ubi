@@ -1,8 +1,8 @@
+/.claude/plans
+/.claude/specs
 /bin
 /mutants.out*
 /node_modules
 /package-lock.json
 /package.json
 /target
-/.claude/plans
-/.claude/specs

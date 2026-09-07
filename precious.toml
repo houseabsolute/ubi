@@ -82,7 +82,7 @@ lint-failure-exit-codes = 1
 [commands.omegasort-gitignore]
 type = "both"
 include = "**/.gitignore"
-cmd = ["omegasort", "--sort", "path", "--unique"]
+cmd = ["omegasort", "--sort", "gitignore", "--unique"]
 lint-flags = "--check"
 tidy-flags = "--in-place"
 ok-exit-codes = 0
