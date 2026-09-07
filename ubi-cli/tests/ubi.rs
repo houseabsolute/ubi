@@ -864,7 +864,17 @@ fn run_command(cmd: &Path, args: &[&str]) -> Result<(Option<String>, Option<Stri
     for a in args {
         c.arg(a);
     }
-    c.env("GITHUB_TOKEN", env::var("GITHUB_TOKEN").as_deref().unwrap());
+    // The child inherits our environment, so setting this is really a way of insisting that the
+    // token is there. An empty value is what we get when the dev container forwards a token that
+    // the host did not have, so treat that the same as not being set at all - otherwise the tests
+    // run unauthenticated and fail later with opaque rate limit errors.
+    let github_token = env::var("GITHUB_TOKEN").unwrap_or_default();
+    if github_token.is_empty() {
+        return Err(anyhow!(
+            "The GITHUB_TOKEN env var must be set to a non-empty value to run these tests"
+        ));
+    }
+    c.env("GITHUB_TOKEN", github_token);
     // Without this golangci-lint will try to use /.cache as its cache dir in
     // Docker containers, which it may not have access to.
     c.env("GOLANGCI_LINT_CACHE", env::temp_dir());

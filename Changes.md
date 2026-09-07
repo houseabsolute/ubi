@@ -2,6 +2,11 @@
 
 ## NEXT - TBD
 
+- Fixed a bug where a token env var set to the empty string, like `GITHUB_TOKEN=`, was treated as a
+  token. This made `ubi` send an `Authorization: Bearer ` header, which the forge rejects, instead
+  of simply making an unauthenticated request. An empty token is now treated as not being set at
+  all, whether it comes from an env var or is passed to `UbiBuilder::token`.
+
 ## 0.12.0 - 2026-08-31
 
 - Fixed a bug where `ubi` checked the env var `CI_TOKEN` for a GitLab token. This is now

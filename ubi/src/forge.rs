@@ -241,9 +241,17 @@ impl ForgeType {
             self.api_base_url()
         };
 
+        // A caller that reads its own token from somewhere can hand us an empty string just as
+        // easily as an env var can be set to one, and it fails the same way.
+        token = token.filter(|t| !t.is_empty());
+
         if token.is_none() {
             for name in self.env_var_names() {
-                token = env::var(name).ok();
+                // An empty value is treated as no token at all. Otherwise we'd send an
+                // "Authorization: Bearer " header, which the forge rejects. This happens when
+                // something forwards the variable without having a value for it, like a dev
+                // container passing the host's environment through.
+                token = env::var(name).ok().filter(|t| !t.is_empty());
                 if token.is_some() {
                     debug!(
                         "Using {} token from the {name} environment variable.",
@@ -392,6 +400,36 @@ mod tests {
 
         m.assert_async().await;
 
+        for (k, v) in vars {
+            env::set_var(k, v);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn empty_token_env_var_is_treated_as_no_token() -> Result<()> {
+        let vars = env::vars();
+        env::remove_var("CODEBERG_TOKEN");
+        env::remove_var("FORGEJO_TOKEN");
+
+        env::set_var("CODEBERG_TOKEN", "");
+        let forge = ForgeType::Forgejo.new_forge("some/project".to_string(), None, None, None)?;
+        assert!(
+            forge.token.is_none(),
+            "an empty token env var is not treated as a token"
+        );
+
+        env::set_var("CODEBERG_TOKEN", "1234");
+        let forge = ForgeType::Forgejo.new_forge("some/project".to_string(), None, None, None)?;
+        assert_eq!(
+            forge.token.as_deref(),
+            Some("1234"),
+            "a non-empty token env var is still used"
+        );
+
+        env::remove_var("CODEBERG_TOKEN");
         for (k, v) in vars {
             env::set_var(k, v);
         }
