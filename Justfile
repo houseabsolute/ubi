@@ -63,3 +63,50 @@ tidy *args: _up
 # because the commit and tag are signed and the signing key lives outside the container.
 release level: (_host_only "release") (test "" "--workspace --locked") (lint "-a")
     mise exec -- cargo-release release {{ level }} --workspace --execute
+
+# Upgrade the Rust dependencies and the tools in mise.toml, skipping any release that is less than
+# three days old. Brand new releases are where a compromised package is most likely to show up, and
+# a short wait gives the ecosystem time to notice and yank it.
+#
+# For mise, the cutoff comes from `minimum_release_age` in mise.toml. Keep the two ages in sync.
+#
+# Cargo's version of this is still unstable. RUSTC_BOOTSTRAP is what lets a stable cargo accept
+# the -Z flag, so this does not need a nightly toolchain, but it does need cargo 1.99 or newer.
+#
+# `cargo upgrade` knows nothing about release ages and always picks the newest version. So rather
+# than letting it choose, we update Cargo.lock with the age limit first, and then tell `cargo
+# upgrade` to set each requirement in Cargo.toml to the version that ended up in the lockfile.
+# Requirements that are deliberately loose, like "0.4", are left alone.
+#
+# Like `release`, this runs on the host, because it needs cargo-edit and jq, which are not in the
+# dev container.
+upgrade-deps: (_host_only "upgrade-deps")
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export RUSTC_BOOTSTRAP=1
+    mise exec -- cargo update -Z min-publish-age \
+        --config 'registry.global-min-publish-age="3 days"'
+    packages=$(mise exec -- cargo metadata --format-version 1 | mise exec -- jq -r '
+        . as $md
+        | ([$md.resolve.nodes[] | select(.id | IN($md.workspace_members[])) | .deps[].pkg]
+            | unique) as $ids
+        | ([$md.packages[] | select(.id | IN($ids[])) | {key: .name, value: .version}]
+            | from_entries) as $locked
+        | [$md.packages[]
+            | select(.id | IN($md.workspace_members[]))
+            | .dependencies[]
+            | select(.source != null and (.req | test("^\\^?[0-9]+\\.[0-9]+\\.[0-9]+$")))
+            | "--package=\(.name)@\($locked[.name])"]
+        | unique
+        | .[]
+    ')
+    # `cargo upgrade` re-resolves the lockfile without the age limit, even with `--recursive
+    # false`. The lockfile we already have still satisfies the new requirements, so put it back.
+    lock=$(mktemp)
+    trap 'rm -f "$lock"' EXIT
+    cp Cargo.lock "$lock"
+    # shellcheck disable=SC2086 # one argument per line of $packages
+    mise exec -- cargo upgrade --recursive false $packages
+    cp "$lock" Cargo.lock
+    mise exec -- cargo metadata --locked --format-version 1 >/dev/null
+    mise upgrade --bump
