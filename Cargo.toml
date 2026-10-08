@@ -69,7 +69,7 @@ zip = { version = "8.6.0", default-features = false, features = [
     "xz",
     "zstd",
 ] }
-zstd = { version = "0.13.3", default-features = false }
+zstd = { version = "0.14.0", default-features = false }
 
 [workspace.lints.clippy]
 fallible_impl_from = "deny"
