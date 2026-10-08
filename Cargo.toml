@@ -40,8 +40,8 @@ rstest = { version = "0.27.0", default-features = false }
 rustls = { version = "0.23.45", default-features = false, features = ["ring", "std", "tls12"] }
 serde = { version = "1.0.229", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.151", default-features = false }
-serial_test = { version = "3.5.0", default-features = false }
-sevenz-rust2 = { version = "0.20.2", default-features = false, features = ["util"] }
+serial_test = { version = "4.0.1", default-features = false }
+sevenz-rust2 = { version = "0.23.0", default-features = false, features = ["util"] }
 strum = { version = "0.28.0", features = ["derive"] }
 tempfile = { version = "3.27.0", default-features = false }
 test-log = { version = "0.2.21", default-features = false }
