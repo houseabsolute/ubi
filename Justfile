@@ -106,7 +106,7 @@ upgrade-deps: (_host_only "upgrade-deps")
     trap 'rm -f "$lock"' EXIT
     cp Cargo.lock "$lock"
     # shellcheck disable=SC2086 # one argument per line of $packages
-    mise exec -- cargo upgrade --recursive false $packages
+    mise exec -- cargo upgrade --incompatible --recursive false $packages
     cp "$lock" Cargo.lock
     mise exec -- cargo metadata --locked --format-version 1 >/dev/null
     mise upgrade --bump
