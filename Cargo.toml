@@ -20,24 +20,24 @@ document-features = { version = "0.2" }
 # Used in some test code which can't use test_log.
 env_logger = { version = "0.11.11", default-features = false }
 fern = { version = "0.7.1", default-features = false, features = ["colored"] }
-flate2 = { version = "1.1.9", default-features = false }
+flate2 = { version = "1.1.10", default-features = false }
 itertools = { version = "0.15.0" }
-lazy-regex = { version = "3.6.1" }
+lazy-regex = { version = "3.6.2" }
 log = { version = "0.4.34", default-features = false }
 mockito = { version = "1.7.2", default-features = false }
-platforms = { version = "4.1.1" }
+platforms = { version = "4.2.1" }
 regex = { version = "1.13.1", default-features = false }
 # reqwest 0.13's `rustls` feature pulls in the aws-lc-rs crypto provider, which needs a C/C++
 # toolchain and fails to build under `cross` for targets like NetBSD and PowerPC64. We use
 # `rustls-no-provider` instead and install the `ring` provider ourselves. See
 # `ubi::builder::install_crypto_provider`.
-reqwest = { version = "0.13.4", default-features = false, features = [
+reqwest = { version = "0.13.5", default-features = false, features = [
     "gzip",
     "json",
     "rustls-no-provider",
 ] }
 rstest = { version = "0.26.1", default-features = false }
-rustls = { version = "0.23.43", default-features = false, features = ["ring", "std", "tls12"] }
+rustls = { version = "0.23.45", default-features = false, features = ["ring", "std", "tls12"] }
 serde = { version = "1.0.229", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.151", default-features = false }
 serial_test = { version = "3.5.0", default-features = false }
@@ -45,8 +45,8 @@ sevenz-rust2 = { version = "0.20.2", default-features = false, features = ["util
 strum = { version = "0.28.0", features = ["derive"] }
 tempfile = { version = "3.27.0", default-features = false }
 test-log = { version = "0.2.21", default-features = false }
-thiserror = { version = "2.0.20" }
-tokio = { version = "1.53.1", default-features = false, features = ["macros", "rt"] }
+thiserror = { version = "2.0.21" }
+tokio = { version = "1.53.2", default-features = false, features = ["macros", "rt"] }
 url = { version = "2.5.8", default-features = false, features = ["serde"] }
 walkdir = { version = "2.5.0", default-features = false }
 which = { version = "8.0.6" }
