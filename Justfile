@@ -100,13 +100,20 @@ upgrade-deps: (_host_only "upgrade-deps")
         | unique
         | .[]
     ')
-    # `cargo upgrade` re-resolves the lockfile without the age limit, even with `--recursive
-    # false`. The lockfile we already have still satisfies the new requirements, so put it back.
-    lock=$(mktemp)
-    trap 'rm -f "$lock"' EXIT
-    cp Cargo.lock "$lock"
-    # shellcheck disable=SC2086 # one argument per line of $packages
-    mise exec -- cargo upgrade --incompatible --recursive false $packages
-    cp "$lock" Cargo.lock
-    mise exec -- cargo metadata --locked --format-version 1 >/dev/null
+    # With no `--package` arguments, `cargo upgrade` upgrades every dependency to its latest
+    # version, which ignores the age limit. So skip it when there is nothing to upgrade.
+    if [ -n "$packages" ]; then
+        # `cargo upgrade` re-resolves the lockfile without the age limit, even with `--recursive
+        # false`. The lockfile we already have still satisfies the new requirements, so put it
+        # back.
+        lock=$(mktemp)
+        trap 'rm -f "$lock"' EXIT
+        cp Cargo.lock "$lock"
+        # shellcheck disable=SC2086 # one argument per line of $packages
+        mise exec -- cargo upgrade --incompatible --recursive false $packages
+        cp "$lock" Cargo.lock
+        mise exec -- cargo metadata --locked --format-version 1 >/dev/null
+    else
+        echo "No Rust dependencies to upgrade in Cargo.toml" >&2
+    fi
     mise upgrade --bump
