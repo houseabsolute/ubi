@@ -2,6 +2,8 @@
 
 ## NEXT - TBD
 
+- The `ubi` crate no longer declares a minimum supported Rust version (MSRV). It was 1.88. The crate
+  is now only tested with the current stable Rust release.
 - Fixed a bug where a token env var set to the empty string, like `GITHUB_TOKEN=`, was treated as a
   token. This made `ubi` send an `Authorization: Bearer ` header, which the forge rejects, instead
   of simply making an unauthenticated request. An empty token is now treated as not being set at
