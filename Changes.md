@@ -2,6 +2,10 @@
 
 ## NEXT - TBD
 
+- Fixed a bug where `--min-age-days` only looked at the first page of releases, which is the 30 most
+  recent on GitHub. If none of those were old enough, `ubi` gave up, even when an older release
+  existed. It now follows the forge's pagination links, looking at up to 100 pages. The error when
+  no release is old enough now says how many pages it looked at.
 - Fixed a bug where `--min-age-days` could install a prerelease on GitHub and Forgejo. Without that
   flag, `ubi` installs the latest release, which is never a prerelease. With it, `ubi` took the
   first release that was old enough, prerelease or not. Prereleases are now skipped.

@@ -1229,7 +1229,7 @@ async fn min_age_days_no_old_enough_release() -> Result<()> {
     let err = result.unwrap_err();
     assert!(
         err.to_string()
-            .contains("No releases found older than 10 days"),
+            .contains("No releases found older than 10 days after looking at 1 page of releases"),
         "error message should mention no releases found, got: {err}"
     );
 
@@ -1375,4 +1375,163 @@ async fn min_age_days_skips_prereleases() -> Result<()> {
     m.assert_async().await;
 
     Ok(())
+}
+
+#[test(tokio::test)]
+async fn min_age_days_follows_pagination() -> Result<()> {
+    // The release list is paginated. When every release on the first page is too new, ubi has to
+    // follow the `Link` header to the next page to find one that is old enough.
+    let mut server = Server::new_async().await;
+    let url = server.url();
+
+    let now = chrono::Utc::now();
+    let one_day_ago = now - chrono::Duration::days(1);
+    let sixty_days_ago = now - chrono::Duration::days(60);
+
+    let page_1: Vec<_> = (0..30)
+        .map(|i| {
+            serde_json::json!({
+                "assets": [{
+                    "browser_download_url": format!("https://api.github.com/repos/test/project/releases/assets/{i}"),
+                    "name": format!("project-Linux-x86_64-v2.0.{i}.tar.gz"),
+                }],
+                "published_at": one_day_ago.to_rfc3339(),
+            })
+        })
+        .collect();
+    let page_2 = serde_json::json!([{
+        "assets": [{
+            "browser_download_url": "https://api.github.com/repos/test/project/releases/assets/100",
+            "name": "project-Linux-x86_64-v1.0.0.tar.gz",
+        }],
+        "published_at": sixty_days_ago.to_rfc3339(),
+    }]);
+
+    // The next page lives at a path of its own, so the test does not depend on how ubi builds the
+    // query string for the first request. A real forge puts a query string in this URL, and ubi
+    // should follow whatever URL it is given.
+    let m1 = server
+        .mock("GET", "/repos/test/project/releases")
+        .match_query(mockito::Matcher::Any)
+        .match_header(ACCEPT.as_str(), "application/json")
+        .with_status(reqwest::StatusCode::OK.as_u16() as usize)
+        .with_header(
+            "link",
+            &format!(r#"<{url}/next-page>; rel="next", <{url}/next-page>; rel="last""#),
+        )
+        .with_body(serde_json::to_string(&page_1)?)
+        .expect(1)
+        .create_async()
+        .await;
+    let m2 = server
+        .mock("GET", "/next-page")
+        .match_header(ACCEPT.as_str(), "application/json")
+        .with_status(reqwest::StatusCode::OK.as_u16() as usize)
+        .with_body(page_2.to_string())
+        .expect(1)
+        .create_async()
+        .await;
+
+    let p = "x86_64-unknown-linux-musl";
+    let req = PlatformReq::from_str(p)
+        .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
+    let platform = req.matching_platforms().next().unwrap();
+
+    let mut ubi = UbiBuilder::new()
+        .project("test/project")
+        .platform(platform)
+        .api_base_url(&url)
+        .min_age_days(7)
+        .build()?;
+
+    let asset = ubi.asset().await?;
+    assert_eq!(
+        asset.name, "project-Linux-x86_64-v1.0.0.tar.gz",
+        "should pick the old enough release from the second page"
+    );
+
+    m1.assert_async().await;
+    m2.assert_async().await;
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn min_age_days_does_not_follow_next_link_to_another_origin() -> Result<()> {
+    // Every API request carries the token, so following a `next` link to another host would send
+    // the token there.
+    let mut server = Server::new_async().await;
+    let mut other_server = Server::new_async().await;
+    let other_url = other_server.url();
+
+    let m1 = mock_new_releases_page(&mut server, &format!("{other_url}/next-page")).await?;
+    let m2 = other_server
+        .mock("GET", mockito::Matcher::Any)
+        .expect(0)
+        .create_async()
+        .await;
+
+    let err = min_age_ubi(&server.url())?.asset().await.unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("No releases found older than 7 days after looking at 1 page of releases"),
+        "got: {err}"
+    );
+
+    m1.assert_async().await;
+    m2.assert_async().await;
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn min_age_days_stops_after_max_pages() -> Result<()> {
+    // A forge that always returns a `next` link must not send ubi into an endless loop.
+    let mut server = Server::new_async().await;
+    let url = server.url();
+
+    let m = mock_new_releases_page(&mut server, &format!("{url}/repos/test/project/releases"))
+        .await?
+        .expect(100);
+
+    let err = min_age_ubi(&url)?.asset().await.unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("No releases found older than 7 days after looking at 100 pages of releases"),
+        "got: {err}"
+    );
+
+    m.assert_async().await;
+
+    Ok(())
+}
+
+fn min_age_ubi(api_base_url: &str) -> Result<crate::Ubi<'_>> {
+    UbiBuilder::new()
+        .project("test/project")
+        .platform(platforms::Platform::find("x86_64-unknown-linux-musl").unwrap())
+        .api_base_url(api_base_url)
+        .min_age_days(7)
+        .build()
+}
+
+// Mocks a page with one release that is too new for `--min-age-days 7`, with a `next` link to
+// `next_url`.
+async fn mock_new_releases_page(server: &mut Server, next_url: &str) -> Result<mockito::Mock> {
+    let body = serde_json::json!([{
+        "assets": [{
+            "browser_download_url": "https://api.github.com/repos/test/project/releases/assets/1",
+            "name": "project-Linux-x86_64-v2.0.0.tar.gz",
+        }],
+        "published_at": (chrono::Utc::now() - chrono::Duration::days(1)).to_rfc3339(),
+    }]);
+
+    Ok(server
+        .mock("GET", "/repos/test/project/releases")
+        .match_query(mockito::Matcher::Any)
+        .with_status(reqwest::StatusCode::OK.as_u16() as usize)
+        .with_header("link", &format!(r#"<{next_url}>; rel="next""#))
+        .with_body(body.to_string())
+        .create_async()
+        .await)
 }

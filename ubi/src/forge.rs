@@ -2,12 +2,16 @@ use crate::{forgejo, github, gitlab, ubi::Asset};
 use anyhow::{anyhow, Context, Result};
 use log::debug;
 use reqwest::{
-    header::{HeaderValue, ACCEPT, AUTHORIZATION},
+    header::{HeaderValue, ACCEPT, AUTHORIZATION, LINK},
     Client, RequestBuilder, Response,
 };
 use serde::Deserialize;
 use std::env;
 use url::Url;
+
+// At GitHub's default of 30 releases per page, this looks at the most recent 3,000 releases. Other
+// forges use other page sizes.
+const MAX_RELEASE_LIST_PAGES: usize = 100;
 
 // It'd be nice to use clap::ValueEnum here, but then we'd need to add clap as a dependency for the
 // library code, which would be annoying for downstream users who just want to use the library.
@@ -95,36 +99,80 @@ impl Forge {
         );
 
         let min_date = chrono::Utc::now() - chrono::Duration::days(i64::from(min_age_days));
-        for release in self.fetch_releases_list(client).await? {
-            // The normal path asks for the latest release, which is never a prerelease, so this
-            // path has to skip them to match.
-            if release.prerelease {
-                debug!("Skipping prerelease from {}", release.date);
-                continue;
+        let mut url = Some(
+            self.forge_type
+                .releases_list_url(&self.project_name, self.api_base_url.clone()),
+        );
+        let mut pages = 0;
+        while let Some(page_url) = url.take() {
+            // A cap keeps a forge that keeps returning `next` links from sending us into an
+            // endless loop.
+            if pages == MAX_RELEASE_LIST_PAGES {
+                debug!("Stopping after {MAX_RELEASE_LIST_PAGES} pages of releases");
+                break;
             }
-            if release.date <= min_date {
-                debug!(
-                    "Found release from {} (older than {min_age_days} days)",
-                    release.date
-                );
-                return Ok(release.assets);
+            pages += 1;
+
+            let (releases, next_url) = self.fetch_releases_page(client, page_url).await?;
+            for release in releases {
+                // The normal path asks for the latest release, which is never a prerelease, so
+                // this path has to skip them to match.
+                if release.prerelease {
+                    debug!("Skipping prerelease from {}", release.date);
+                    continue;
+                }
+                if release.date <= min_date {
+                    debug!(
+                        "Found release from {} (older than {min_age_days} days)",
+                        release.date
+                    );
+                    return Ok(release.assets);
+                }
             }
+            url = next_url;
         }
 
-        Err(anyhow!("No releases found older than {min_age_days} days"))
+        let page_word = if pages == 1 { "page" } else { "pages" };
+        Err(anyhow!(
+            "No releases found older than {min_age_days} days after looking at {pages} {page_word} \
+             of releases"
+        ))
     }
 
-    async fn fetch_releases_list(&self, client: &Client) -> Result<Vec<Release>> {
-        let url = self
-            .forge_type
-            .releases_list_url(&self.project_name, self.api_base_url.clone());
+    async fn fetch_releases_page(
+        &self,
+        client: &Client,
+        url: Url,
+    ) -> Result<(Vec<Release>, Option<Url>)> {
         let resp = self
             .make_api_request(client, url, "Getting releases list")
             .await?;
+        let next_url = self.next_page_url(&resp);
 
-        resp.json::<Vec<Release>>()
+        let releases = resp
+            .json::<Vec<Release>>()
             .await
-            .context("failed to parse releases list JSON response")
+            .context("failed to parse releases list JSON response")?;
+        Ok((releases, next_url))
+    }
+
+    // Every API request carries the token, so we only follow a `next` link that stays on the
+    // API's origin.
+    fn next_page_url(&self, resp: &Response) -> Option<Url> {
+        let next = resp
+            .headers()
+            .get_all(LINK)
+            .iter()
+            .filter_map(|v| v.to_str().ok())
+            .find_map(next_link)?;
+        // The link may be relative, so we resolve it against the URL of the page that sent it.
+        let next = resp.url().join(next).ok()?;
+        if next.origin() == self.api_base_url.origin() {
+            Some(next)
+        } else {
+            debug!("Not following a next page link to another origin: `{next}`");
+            None
+        }
     }
 
     async fn make_release_info_request(&self, client: &Client) -> Result<Response> {
@@ -350,6 +398,32 @@ impl ForgeType {
     }
 }
 
+// Finds the `rel="next"` URL in a `Link` header value like
+// `<https://example.com/x?page=2>; rel="next", <https://example.com/x?page=5>; rel="last"`.
+fn next_link(header: &str) -> Option<&str> {
+    header.split(',').find_map(|part| {
+        let mut pieces = part.split(';');
+        let target = pieces.next()?.trim();
+        let is_next = pieces.any(|param| {
+            let param = param.trim();
+            // RFC 8288 allows spaces around `=` and says relation types are case-insensitive.
+            param.split_once('=').is_some_and(|(name, value)| {
+                name.trim().eq_ignore_ascii_case("rel")
+                    && value
+                        .trim()
+                        .trim_matches('"')
+                        .split_whitespace()
+                        .any(|r| r.eq_ignore_ascii_case("next"))
+            })
+        });
+        if is_next {
+            target.strip_prefix('<')?.strip_suffix('>')
+        } else {
+            None
+        }
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -529,6 +603,18 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[test_case(r#"<https://x.test/a?page=2>; rel="next", <https://x.test/a?page=5>; rel="last""#, Some("https://x.test/a?page=2") ; "next first")]
+    #[test_case(r#"<https://x.test/a?page=1>; rel="prev", <https://x.test/a?page=3>; rel="next""#, Some("https://x.test/a?page=3") ; "next second")]
+    #[test_case(r"<https://x.test/a?page=3>; rel=next", Some("https://x.test/a?page=3") ; "unquoted rel")]
+    #[test_case(r#"<https://x.test/a?page=3>; rel="next last""#, Some("https://x.test/a?page=3") ; "multiple rels")]
+    #[test_case(r#"<https://x.test/a?page=1>; rel="prev", <https://x.test/a?page=1>; rel="first""#, None ; "no next")]
+    #[test_case(r#"<https://x.test/a?page=3>; REL = "Next""#, Some("https://x.test/a?page=3") ; "spaces and case")]
+    #[test_case(r#"</a?page=3>; rel="next""#, Some("/a?page=3") ; "relative")]
+    #[test_case("", None ; "empty")]
+    fn next_link(header: &str, expect: Option<&str>) {
+        assert_eq!(super::next_link(header), expect);
     }
 
     // The public forge hosts are only allowed when the API base URL is that forge's default. With a
