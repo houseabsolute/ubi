@@ -75,6 +75,9 @@ impl<'a> UbiBuilder<'a> {
     /// to set a token env var except when downloading a release from a private repo when the URL is
     /// set.
     ///
+    /// The token is only sent if this URL is on the forge's API or project site. For a private
+    /// repo on GitHub Enterprise or a self-hosted forge, also set `api_base_url` for that server.
+    ///
     /// You must set this or set `project`, but not both. You cannot set this with the `tag` or
     /// `min_age_days` options.
     #[must_use]

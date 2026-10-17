@@ -58,6 +58,7 @@ env_logger.workspace = true
 fern.workspace = true
 mockito.workspace = true
 rstest.workspace = true
+test-case.workspace = true
 test-log.workspace = true
 tokio.workspace = true
 

@@ -157,6 +157,12 @@ for anonymous API requests.
 However, you can also use the `--url` option to bypass the forge site API by providing the download
 link directly.
 
+The token is only sent to the forge's own sites, like `api.github.com` and `github.com`, and never
+to any other host. This applies to `--url` and to release assets that link to another site. If you
+use `--url` with a private repo on GitHub Enterprise or a self-hosted forge, also pass
+`--api-base-url` for that server, so that `ubi` knows it can send the token there. When you pass
+`--api-base-url`, the token is only sent to that URL's host, and not to the public forge site.
+
 ## Installed Executable Naming
 
 If the release is in the form of a tarball or zip file, `ubi` will look in that archive file for a

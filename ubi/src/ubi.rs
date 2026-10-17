@@ -142,7 +142,9 @@ impl<'a> Ubi<'a> {
             HeaderValue::from_str("application/octet-stream")
                 .context("failed to create header value for Accept header")?,
         );
-        req_builder = self.forge.maybe_add_token_header(req_builder)?;
+        req_builder = self
+            .forge
+            .maybe_add_token_header_for_download(&asset.url, req_builder)?;
         let req = req_builder
             .build()
             .with_context(|| format!("failed to build HTTP request for {}", asset.url))?;
@@ -196,6 +198,9 @@ impl<'a> Ubi<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::UbiBuilder;
+    use mockito::{Matcher, Mock, Server, ServerGuard};
+    use platforms::Platform;
     use rstest::rstest;
 
     struct AssetTextInput {
@@ -262,5 +267,138 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    const TOKEN: &str = "not-a-real-token";
+    const ASSET_NAME: &str = "project-Linux-x86_64.tar.gz";
+
+    #[test_log::test(tokio::test)]
+    async fn token_is_sent_to_a_release_asset_on_the_forge_host() -> Result<()> {
+        let mut forge = Server::new_async().await;
+        let path = "/test/project/releases/download/v1.0.0/project-Linux-x86_64.tar.gz";
+        let asset_url = Url::parse(&forge.url())?.join(path)?;
+        let release = mock_latest_release(&mut forge, &asset_url).await;
+        let (with_token, without_token) = mock_download(&mut forge, path, 1, 0).await;
+
+        let forge_url = forge.url();
+        let mut ubi = UbiBuilder::new()
+            .project("test/project")
+            .platform(linux_platform())
+            .api_base_url(&forge_url)
+            .token(TOKEN)
+            .build()?;
+        let asset = ubi.asset().await?;
+        ubi.download_asset(&ubi.reqwest_client, asset).await?;
+
+        release.assert_async().await;
+        with_token.assert_async().await;
+        without_token.assert_async().await;
+
+        Ok(())
+    }
+
+    #[test_log::test(tokio::test)]
+    async fn token_is_not_sent_to_a_release_asset_on_another_host() -> Result<()> {
+        let mut forge = Server::new_async().await;
+        let mut other = Server::new_async().await;
+        let path = "/files/project-Linux-x86_64.tar.gz";
+        let asset_url = url_on_another_host(&other, path)?;
+        let release = mock_latest_release(&mut forge, &asset_url).await;
+        let (with_token, without_token) = mock_download(&mut other, path, 0, 1).await;
+
+        let forge_url = forge.url();
+        let mut ubi = UbiBuilder::new()
+            .project("test/project")
+            .platform(linux_platform())
+            .api_base_url(&forge_url)
+            .token(TOKEN)
+            .build()?;
+        let asset = ubi.asset().await?;
+        ubi.download_asset(&ubi.reqwest_client, asset).await?;
+
+        release.assert_async().await;
+        with_token.assert_async().await;
+        without_token.assert_async().await;
+
+        Ok(())
+    }
+
+    #[test_log::test(tokio::test)]
+    async fn token_is_not_sent_to_a_url_on_another_host() -> Result<()> {
+        let mut other = Server::new_async().await;
+        let path = "/files/tools/project-linux-amd64";
+        let url = url_on_another_host(&other, path)?;
+        let (with_token, without_token) = mock_download(&mut other, path, 0, 1).await;
+
+        let mut ubi = UbiBuilder::new()
+            .url(url.as_str())
+            .platform(linux_platform())
+            .token(TOKEN)
+            .build()?;
+        let asset = ubi.asset().await?;
+        ubi.download_asset(&ubi.reqwest_client, asset).await?;
+
+        with_token.assert_async().await;
+        without_token.assert_async().await;
+
+        Ok(())
+    }
+
+    // Makes one mock for a download that carries the token and one for a download that does not,
+    // each expecting the given number of requests. Both return a 200, so a test fails on the
+    // request count, which says what went wrong, and not on a download error.
+    async fn mock_download(
+        server: &mut ServerGuard,
+        path: &str,
+        expect_with_token: usize,
+        expect_without_token: usize,
+    ) -> (Mock, Mock) {
+        let with_token = server
+            .mock("GET", path)
+            .match_header("Authorization", Matcher::Exact(format!("Bearer {TOKEN}")))
+            .with_status(200)
+            .with_body("asset")
+            .expect(expect_with_token)
+            .create_async()
+            .await;
+        let without_token = server
+            .mock("GET", path)
+            .match_header("Authorization", Matcher::Missing)
+            .with_status(200)
+            .with_body("asset")
+            .expect(expect_without_token)
+            .create_async()
+            .await;
+        (with_token, without_token)
+    }
+
+    async fn mock_latest_release(server: &mut ServerGuard, asset_url: &Url) -> Mock {
+        server
+            .mock("GET", "/repos/test/project/releases/latest")
+            .match_header("Authorization", Matcher::Exact(format!("Bearer {TOKEN}")))
+            .with_status(200)
+            .with_body(
+                serde_json::json!({
+                    "assets": [{ "name": ASSET_NAME, "browser_download_url": asset_url }],
+                    "published_at": "2024-01-01T00:00:00Z",
+                })
+                .to_string(),
+            )
+            .expect(1)
+            .create_async()
+            .await
+    }
+
+    // Every mock server listens on 127.0.0.1, so two of them differ only in their port. Naming one
+    // of them `localhost` makes its host differ too, so these tests do not depend on whether the
+    // port counts as part of what makes a download host the same as the forge host.
+    fn url_on_another_host(server: &ServerGuard, path: &str) -> Result<Url> {
+        let mut url = Url::parse(&server.url())?.join(path)?;
+        url.set_host(Some("localhost"))?;
+        Ok(url)
+    }
+
+    fn linux_platform() -> &'static Platform {
+        Platform::find("x86_64-unknown-linux-musl").unwrap()
     }
 }

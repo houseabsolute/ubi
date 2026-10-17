@@ -2,6 +2,14 @@
 
 ## NEXT - TBD
 
+- Fixed a security bug where `ubi` sent the forge token to any host it downloaded a release from.
+  With `--url`, or with a release asset link that points somewhere other than the forge, the
+  `Authorization` header went to that other host, even over plain `http`. The token is now only sent
+  to the forge's API and project sites, like `api.github.com` and `github.com`. If you use `--url`
+  with a private repo on GitHub Enterprise or a self-hosted forge, you must now also pass
+  `--api-base-url` for that server so that `ubi` knows to send it the token. With a custom
+  `--api-base-url`, the token is only sent to that server, and not to the public forge site.
+
 ## 0.13.0 - 2026-10-21
 
 - The `ubi` crate no longer declares a minimum supported Rust version (MSRV). It was 1.88. The crate

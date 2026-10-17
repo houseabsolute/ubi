@@ -153,6 +153,26 @@ impl Forge {
             .with_context(|| format!("HTTP request to {url} returned an error status"))
     }
 
+    // A release asset link or a `--url` can point at any host, and the token belongs to the forge,
+    // so we only send it to the forge's API and project origins. Comparing whole origins, not just
+    // hosts, also keeps the token off a plain `http` URL for a forge that is served over `https`.
+    pub(crate) fn maybe_add_token_header_for_download(
+        &self,
+        url: &Url,
+        req_builder: RequestBuilder,
+    ) -> Result<RequestBuilder> {
+        if self.is_forge_url(url) {
+            return self.maybe_add_token_header(req_builder);
+        }
+        if self.token.is_some() {
+            debug!(
+                "Not adding token to download request because {url} is not on the {} origin.",
+                self.forge_type.forge_name()
+            );
+        }
+        Ok(req_builder)
+    }
+
     pub(crate) fn maybe_add_token_header(
         &self,
         mut req_builder: RequestBuilder,
@@ -168,6 +188,18 @@ impl Forge {
             debug!("No token given.");
         }
         Ok(req_builder)
+    }
+
+    fn is_forge_url(&self, url: &Url) -> bool {
+        let origin = url.origin();
+        if origin == self.api_base_url.origin() {
+            return true;
+        }
+        // The public project site, like github.com, only belongs to the same forge as the API when
+        // the API is that forge's default. With a custom API base URL, like a GitHub Enterprise
+        // server, the token is for that server, and github.com must not get it.
+        self.api_base_url.origin() == self.forge_type.api_base_url().origin()
+            && origin == self.forge_type.project_base_url().origin()
     }
 }
 
@@ -316,6 +348,7 @@ mod tests {
     use serial_test::serial;
     use std::env;
     use std::ffi::OsString;
+    use test_case::test_case;
     use test_log::test;
 
     // Restores the environment when it goes out of scope, including when a test returns early from
@@ -485,6 +518,35 @@ mod tests {
             "a non-empty token env var is still used"
         );
 
+        Ok(())
+    }
+
+    // The public forge hosts are only allowed when the API base URL is that forge's default. With a
+    // custom one, like a GitHub Enterprise server, the token belongs to that server, so it must not
+    // go to github.com.
+    #[test_case(ForgeType::GitHub, None, "https://api.github.com/repos/o/r/releases/assets/1", true ; "github api host")]
+    #[test_case(ForgeType::GitHub, None, "https://github.com/o/r/releases/download/v1/x", true ; "github project host")]
+    #[test_case(ForgeType::GitHub, None, "http://github.com/o/r/releases/download/v1/x", false ; "github over http")]
+    #[test_case(ForgeType::GitHub, None, "https://example.com/x", false ; "github other host")]
+    #[test_case(ForgeType::GitLab, None, "https://gitlab.com/o/r/-/releases/v1/downloads/x", true ; "gitlab project host")]
+    #[test_case(ForgeType::Forgejo, None, "https://codeberg.org/o/r/releases/download/v1/x", true ; "forgejo project host")]
+    #[test_case(ForgeType::GitHub, Some("https://ghe.example.com/api/v3"), "https://ghe.example.com/o/r/releases/download/v1/x", true ; "custom api host")]
+    #[test_case(ForgeType::GitHub, Some("https://ghe.example.com/api/v3"), "https://github.com/o/r/releases/download/v1/x", false ; "custom api then github")]
+    #[test_case(ForgeType::GitLab, Some("https://gitlab.example.com/api/v4"), "https://gitlab.com/o/r/-/releases/v1/downloads/x", false ; "custom api then gitlab")]
+    #[test_case(ForgeType::Forgejo, Some("https://forgejo.example.com/api/v1"), "https://codeberg.org/o/r/releases/download/v1/x", false ; "custom api then codeberg")]
+    fn is_forge_url(
+        forge_type: ForgeType,
+        api_base: Option<&str>,
+        url: &str,
+        expect: bool,
+    ) -> Result<()> {
+        let forge = forge_type.new_forge(
+            "o/r".to_string(),
+            None,
+            api_base.map(String::from),
+            Some("not-a-real-token".to_string()),
+        )?;
+        assert_eq!(forge.is_forge_url(&Url::parse(url)?), expect);
         Ok(())
     }
 
