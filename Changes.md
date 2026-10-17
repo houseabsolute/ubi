@@ -2,6 +2,9 @@
 
 ## NEXT - TBD
 
+- Fixed a bug where `--min-age-days` failed with "failed to parse releases list JSON response" when
+  the list held a draft release. GitHub lists drafts when the token has push access to the repo.
+  Draft releases are now skipped.
 - Fixed a bug where `--min-age-days` only looked at the first page of releases, which is the 30 most
   recent on GitHub. If none of those were old enough, `ubi` gave up, even when an older release
   existed. It now follows the forge's pagination links, looking at up to 100 pages. The error when

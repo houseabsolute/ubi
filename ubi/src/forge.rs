@@ -47,8 +47,10 @@ unsafe impl Sync for Forge {}
 #[derive(Debug, Deserialize)]
 struct Release {
     // Accept both "published_at" (GitHub) and "released_at" (GitLab)
+    // This is null for a GitHub draft release, which is only listed when the token has push
+    // access.
     #[serde(alias = "published_at", alias = "released_at")]
-    date: chrono::DateTime<chrono::Utc>,
+    date: Option<chrono::DateTime<chrono::Utc>>,
 
     // Handle both direct array (GitHub) and nested object (GitLab)
     #[serde(deserialize_with = "deserialize_assets")]
@@ -57,6 +59,10 @@ struct Release {
     // GitHub and Forgejo send this. GitLab has no prerelease flag, so it is always false there.
     #[serde(default)]
     prerelease: bool,
+
+    // GitHub and Forgejo send this. GitLab has no drafts.
+    #[serde(default)]
+    draft: bool,
 }
 
 // Custom deserializer to handle both GitHub's direct array and GitLab's nested structure
@@ -115,17 +121,24 @@ impl Forge {
 
             let (releases, next_url) = self.fetch_releases_page(client, page_url).await?;
             for release in releases {
+                // A draft has not been published, so it is not something the normal path would
+                // ever install.
+                if release.draft {
+                    debug!("Skipping draft release");
+                    continue;
+                }
+                let Some(date) = release.date else {
+                    debug!("Skipping release with no publish date");
+                    continue;
+                };
                 // The normal path asks for the latest release, which is never a prerelease, so
                 // this path has to skip them to match.
                 if release.prerelease {
-                    debug!("Skipping prerelease from {}", release.date);
+                    debug!("Skipping prerelease from {date}");
                     continue;
                 }
-                if release.date <= min_date {
-                    debug!(
-                        "Found release from {} (older than {min_age_days} days)",
-                        release.date
-                    );
+                if date <= min_date {
+                    debug!("Found release from {date} (older than {min_age_days} days)");
                     return Ok(release.assets);
                 }
             }

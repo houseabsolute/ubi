@@ -1506,6 +1506,47 @@ async fn min_age_days_stops_after_max_pages() -> Result<()> {
     Ok(())
 }
 
+#[test(tokio::test)]
+async fn min_age_days_skips_drafts() -> Result<()> {
+    // GitHub lists draft releases when the token has push access. A draft has no publish date, and
+    // it is not a real release, so ubi must skip it.
+    let mut server = Server::new_async().await;
+
+    let body = serde_json::json!([
+        {
+            "assets": [{
+                "browser_download_url": "https://api.github.com/repos/test/project/releases/assets/1",
+                "name": "project-Linux-x86_64-v2.0.0.tar.gz",
+            }],
+            "draft": true,
+            "published_at": null,
+        },
+        {
+            "assets": [{
+                "browser_download_url": "https://api.github.com/repos/test/project/releases/assets/2",
+                "name": "project-Linux-x86_64-v1.0.0.tar.gz",
+            }],
+            "draft": false,
+            "published_at": (chrono::Utc::now() - chrono::Duration::days(60)).to_rfc3339(),
+        },
+    ]);
+    let m = server
+        .mock("GET", "/repos/test/project/releases")
+        .match_query(mockito::Matcher::Any)
+        .with_status(reqwest::StatusCode::OK.as_u16() as usize)
+        .with_body(body.to_string())
+        .expect(1)
+        .create_async()
+        .await;
+
+    let asset = min_age_ubi(&server.url())?.asset().await?;
+    assert_eq!(asset.name, "project-Linux-x86_64-v1.0.0.tar.gz");
+
+    m.assert_async().await;
+
+    Ok(())
+}
+
 fn min_age_ubi(api_base_url: &str) -> Result<crate::Ubi<'_>> {
     UbiBuilder::new()
         .project("test/project")
