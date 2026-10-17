@@ -49,6 +49,10 @@ struct Release {
     // Handle both direct array (GitHub) and nested object (GitLab)
     #[serde(deserialize_with = "deserialize_assets")]
     assets: Vec<Asset>,
+
+    // GitHub and Forgejo send this. GitLab has no prerelease flag, so it is always false there.
+    #[serde(default)]
+    prerelease: bool,
 }
 
 // Custom deserializer to handle both GitHub's direct array and GitLab's nested structure
@@ -92,6 +96,12 @@ impl Forge {
 
         let min_date = chrono::Utc::now() - chrono::Duration::days(i64::from(min_age_days));
         for release in self.fetch_releases_list(client).await? {
+            // The normal path asks for the latest release, which is never a prerelease, so this
+            // path has to skip them to match.
+            if release.prerelease {
+                debug!("Skipping prerelease from {}", release.date);
+                continue;
+            }
             if release.date <= min_date {
                 debug!(
                     "Found release from {} (older than {min_age_days} days)",

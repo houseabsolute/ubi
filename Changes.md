@@ -2,6 +2,9 @@
 
 ## NEXT - TBD
 
+- Fixed a bug where `--min-age-days` could install a prerelease on GitHub and Forgejo. Without that
+  flag, `ubi` installs the latest release, which is never a prerelease. With it, `ubi` took the
+  first release that was old enough, prerelease or not. Prereleases are now skipped.
 - Fixed a security bug where `ubi` sent the forge token to any host it downloaded a release from.
   With `--url`, or with a release asset link that points somewhere other than the forge, the
   `Authorization` header went to that other host, even over plain `http`. The token is now only sent

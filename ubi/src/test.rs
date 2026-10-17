@@ -1306,3 +1306,73 @@ async fn min_age_days_picks_exact_threshold() -> Result<()> {
 
     Ok(())
 }
+
+#[test(tokio::test)]
+async fn min_age_days_skips_prereleases() -> Result<()> {
+    // Without min_age_days, ubi asks for /releases/latest, which never returns a prerelease. The
+    // release list includes prereleases, so the min_age_days path has to skip them itself.
+    let mut server = Server::new_async().await;
+    let url = server.url();
+
+    let now = chrono::Utc::now();
+    let ten_days_ago = now - chrono::Duration::days(10);
+    let forty_days_ago = now - chrono::Duration::days(40);
+
+    let releases_response = format!(
+        r#"[
+  {{
+    "assets": [
+      {{
+        "browser_download_url": "https://api.github.com/repos/test/project/releases/assets/2",
+        "name": "project-Linux-x86_64-v2.0.0-rc1.tar.gz"
+      }}
+    ],
+    "prerelease": true,
+    "published_at": "{}"
+  }},
+  {{
+    "assets": [
+      {{
+        "browser_download_url": "https://api.github.com/repos/test/project/releases/assets/1",
+        "name": "project-Linux-x86_64-v1.0.0.tar.gz"
+      }}
+    ],
+    "prerelease": false,
+    "published_at": "{}"
+  }}
+]"#,
+        ten_days_ago.to_rfc3339(),
+        forty_days_ago.to_rfc3339()
+    );
+
+    let m = server
+        .mock("GET", "/repos/test/project/releases")
+        .match_header(ACCEPT.as_str(), "application/json")
+        .with_status(reqwest::StatusCode::OK.as_u16() as usize)
+        .with_body(releases_response)
+        .expect(1)
+        .create_async()
+        .await;
+
+    let p = "x86_64-unknown-linux-musl";
+    let req = PlatformReq::from_str(p)
+        .unwrap_or_else(|e| panic!("could not create PlatformReq for {p}: {e}"));
+    let platform = req.matching_platforms().next().unwrap();
+
+    let mut ubi = UbiBuilder::new()
+        .project("test/project")
+        .platform(platform)
+        .api_base_url(&url)
+        .min_age_days(7)
+        .build()?;
+
+    let asset = ubi.asset().await?;
+    assert_eq!(
+        asset.name, "project-Linux-x86_64-v1.0.0.tar.gz",
+        "should skip the prerelease and pick the stable release"
+    );
+
+    m.assert_async().await;
+
+    Ok(())
+}
