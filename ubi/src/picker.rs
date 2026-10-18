@@ -350,7 +350,7 @@ impl<'a> AssetPicker<'a> {
 
         let sixty_four_bit = matches
             .into_iter()
-            .filter(|a| a.name.contains("64"))
+            .filter(|a| cpu_64_bit_re().is_match(&a.name))
             .collect::<Vec<_>>();
         debug!(
             "found 64-bit assets: {}",
@@ -500,6 +500,13 @@ mod test {
         None,
         None,
         0
+    )]
+    #[case::x86_64_unknown_linux_gnu_pick_64_bit_asset_when_version_has_64(
+        "x86_64-unknown-linux-gnu",
+        &["project-1.64.5-linux-386.tar.gz", "project-1.64.5-linux-amd64.tar.gz"],
+        None,
+        None,
+        1
     )]
     #[case::x86_64_unknown_linux_gnu_pick_first_asset_from_two_matching_32_bit_assets(
         "x86_64-unknown-linux-gnu",

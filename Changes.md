@@ -2,6 +2,10 @@
 
 ## NEXT - TBD
 
+- Fixed a bug where, on a 64-bit host, `ubi` could pick a 32-bit asset when the version number
+  contained `64`, like `golangci-lint-1.64.5-linux-386.tar.gz` over
+  `golangci-lint-1.64.5-linux-amd64.tar.gz`. The 0.8.3 release said this was fixed, but the fix was
+  incomplete.
 - Fixed a bug where a GitLab release could be backdated to pass `--min-age-days`. Whoever creates a
   GitLab release can set its `released_at` date to anything. `ubi` now uses the later of
   `released_at` and `created_at`, which the GitLab server sets itself.
