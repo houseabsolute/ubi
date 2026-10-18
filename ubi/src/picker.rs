@@ -273,12 +273,16 @@ impl<'a> AssetPicker<'a> {
         libc_matches
     }
 
+    // Target triples for some arches add an ABI right after the libc, e.g. `gnueabihf`, `gnux32`
+    // or `muslabi64`, so we allow those suffixes here.
     fn glibc_regex() -> &'static Lazy<Regex> {
-        regex!(r"(?i:(?:\b|_)(?:gnu|glibc)(?:\b|_))")
+        regex!(
+            r"(?i:(?:\b|_)(?:gnu(?:eabihf|eabi|abi64|abin32|abiv2hf|abiv2|x32|spe|sf)?|glibc)(?:\b|_))"
+        )
     }
 
     fn musl_regex() -> &'static Lazy<Regex> {
-        regex!(r"(?i:(?:\b|_)(?:alpine|musl)(?:\b|_))")
+        regex!(r"(?i:(?:\b|_)(?:alpine|musl(?:eabihf|eabi|abi64|abin32|spe|sf)?)(?:\b|_))")
     }
 
     fn libc_name(&mut self) -> &'static str {
@@ -717,6 +721,43 @@ mod test {
     #[case::x86_64_unknown_linux_musl_pick_the_musl_asset_over_unspecified_libc_on_a_musl_platform(
         "x86_64-unknown-linux-musl",
         &["project-Linux-x86_64.tar.gz", "project-Linux-x86_64-musl.tar.gz"],
+        None,
+        None,
+        1
+    )]
+    #[case::armv7_unknown_linux_musleabihf_pick_the_musleabihf_asset_over_gnueabihf(
+        "armv7-unknown-linux-musleabihf",
+        &[
+            "ripgrep-14.1.1-armv7-unknown-linux-gnueabihf.tar.gz",
+            "ripgrep-14.1.1-armv7-unknown-linux-musleabihf.tar.gz",
+        ],
+        None,
+        None,
+        1
+    )]
+    #[case::armv7_unknown_linux_musleabi_pick_the_musleabi_asset_over_gnueabi(
+        "armv7-unknown-linux-musleabi",
+        &[
+            "project-armv7-unknown-linux-gnueabi.tar.gz",
+            "project-armv7-unknown-linux-musleabi.tar.gz",
+        ],
+        None,
+        None,
+        1
+    )]
+    #[case::mips64_unknown_linux_muslabi64_pick_the_muslabi64_asset_over_gnuabi64(
+        "mips64-unknown-linux-muslabi64",
+        &[
+            "tool-mips64-unknown-linux-gnuabi64.tar.gz",
+            "tool-mips64-unknown-linux-muslabi64.tar.gz",
+        ],
+        None,
+        None,
+        1
+    )]
+    #[case::armv7_unknown_linux_musleabihf_pick_the_musleabihf_asset_over_unspecified_libc(
+        "armv7-unknown-linux-musleabihf",
+        &["project-armv7-linux.tar.gz", "project-linux-armv7-musleabihf.tar.gz"],
         None,
         None,
         1

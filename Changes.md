@@ -2,6 +2,10 @@
 
 ## NEXT - TBD
 
+- Fixed a bug where, on a musl host, `ubi` did not recognize libc names with an ABI suffix, such as
+  `gnueabihf`, `gnuabi64`, `musleabihf` or `muslabi64`. So on a host like
+  `armv7-unknown-linux-musleabihf`, it could pick a `gnueabihf` asset over the `musleabihf` one.
+  This was a regression in 0.8.3.
 - Fixed a bug where, on a 64-bit host, `ubi` could pick a 32-bit asset when the version number
   contained `64`, like `golangci-lint-1.64.5-linux-386.tar.gz` over
   `golangci-lint-1.64.5-linux-amd64.tar.gz`. The 0.8.3 release said this was fixed, but the fix was
