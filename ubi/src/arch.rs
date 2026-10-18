@@ -18,6 +18,9 @@ pub(crate) fn macos_aarch64_and_x86_64_re() -> &'static Lazy<Regex> {
             |
             arm_?64
             |
+            # Release names almost always use `armv8` to mean 64-bit ARM.
+            armv8
+            |
             arm
             |
             x86[_-]64
@@ -50,6 +53,9 @@ pub(crate) fn macos_aarch64_only_re() -> &'static Lazy<Regex> {
             |
             arm_?64
             |
+            # Release names almost always use `armv8` to mean 64-bit ARM.
+            armv8
+            |
             arm
         )
         (?:
@@ -73,6 +79,9 @@ pub(crate) fn aarch64_re() -> &'static Lazy<Regex> {
             aarch_?64
             |
             arm_?64
+            |
+            # Release names almost always use `armv8` to mean 64-bit ARM.
+            armv8
         )
         (?:
             \b
@@ -91,7 +100,32 @@ pub(crate) fn arm_re() -> &'static Lazy<Regex> {
             |
             _
         )
-        arm(?:v[0-7])?
+        (?:
+            # `armv7l` and `armv6l` are what `uname -m` prints. `armhf` and `armel` are Debian's
+            # names for hard-float and soft-float 32-bit ARM.
+            arm(?:v[0-7]l?)?
+            |
+            arm(?:hf|el)
+        )
+        (?:
+            \b
+            |
+            _
+        )
+        "
+    )
+}
+
+pub(crate) fn loongarch64_re() -> &'static Lazy<Regex> {
+    regex!(
+        r"(?ix)
+        (?:
+            \b
+            |
+            _
+        )
+        # Go calls this `loong64`.
+        loong(?:arch)?64
         (?:
             \b
             |
@@ -237,12 +271,13 @@ pub(crate) fn ppc64le_re() -> &'static Lazy<Regex> {
             _
         )
         (?:
+             # Debian calls this `ppc64el`.
              (?:
                  powerpc64
                  |
                  ppc64
              )
-             le
+             (?:le|el)
              |
              (?:
                  powerpc
@@ -407,6 +442,10 @@ pub(crate) fn cpu_64_bit_re() -> &'static Lazy<Regex> {
             |
             arm[_-]?64
             |
+            armv8
+            |
+            loong(?:arch)?64
+            |
             mips[_-]?64
             |
             powerpc(?:le)?[_-]?64
@@ -472,6 +511,7 @@ pub(crate) static ALL_ARCHES_RE: LazyLock<Regex> = LazyLock::new(|| {
         &[
             aarch64_re(),
             arm_re(),
+            loongarch64_re(),
             mipsle_re(),
             mips_re(),
             mips64le_re(),
@@ -510,14 +550,59 @@ mod test {
     #[test_case("project-linux-x86_64_v2.tar.gz", true ; "x86_64_v2")]
     #[test_case("project-linux-x86_64v2.tar.gz", true ; "x86_64v2")]
     #[test_case("project-linux-amd64v10.tar.gz", true ; "multi-digit microarch level")]
+    #[test_case("project-linux-armv8.tar.gz", true ; "armv8")]
+    #[test_case("project-linux-loong64.tar.gz", true ; "loong64")]
+    #[test_case("project-linux-loongarch64.tar.gz", true ; "loongarch64")]
     // Third-party arm64e binaries don't run on macOS without a special boot setting, so this must
     // not count as a normal 64-bit ARM build.
     #[test_case("project-darwin-arm64e.tar.gz", false ; "arm64e")]
     #[test_case("project-1.64.5-linux-386.tar.gz", false ; "64 in version")]
     #[test_case("project-linux-i686.tar.gz", false ; "i686")]
     #[test_case("project-linux-amd64x.tar.gz", false ; "unknown suffix")]
+    #[test_case("project-linux-armv7l.tar.gz", false ; "armv7l")]
+    #[test_case("project-linux-armhf.tar.gz", false ; "armhf")]
     fn cpu_64_bit_re(name: &str, expect: bool) {
         assert_eq!(super::cpu_64_bit_re().is_match(name), expect, "{name}");
+    }
+
+    #[test_case("project-linux-armv7.tar.gz", true ; "armv7")]
+    #[test_case("project-linux-armv7l.tar.gz", true ; "armv7l")]
+    #[test_case("project-linux-armv6l.tar.gz", true ; "armv6l")]
+    #[test_case("project-linux-armhf.tar.gz", true ; "armhf")]
+    #[test_case("project-linux-armel.tar.gz", true ; "armel")]
+    #[test_case("project-linux-armv8.tar.gz", false ; "armv8 is 64-bit")]
+    #[test_case("project-linux-armx.tar.gz", false ; "unknown suffix")]
+    fn arm_re(name: &str, expect: bool) {
+        assert_eq!(super::arm_re().is_match(name), expect, "{name}");
+    }
+
+    #[test_case("project-linux-arm64.tar.gz", true ; "arm64")]
+    #[test_case("project-linux-armv8.tar.gz", true ; "armv8")]
+    #[test_case("project-linux-armv7.tar.gz", false ; "armv7")]
+    fn aarch64_re(name: &str, expect: bool) {
+        assert_eq!(super::aarch64_re().is_match(name), expect, "{name}");
+    }
+
+    #[test_case("project-linux-ppc64.tar.gz", true ; "ppc64")]
+    #[test_case("project-linux-ppc64le.tar.gz", false ; "ppc64le")]
+    #[test_case("project-linux-ppc64el.tar.gz", false ; "ppc64el")]
+    fn ppc64_re(name: &str, expect: bool) {
+        assert_eq!(super::ppc64_re().is_match(name), expect, "{name}");
+    }
+
+    #[test_case("project-linux-loong64.tar.gz", true ; "loong64")]
+    #[test_case("project-linux-loongarch64.tar.gz", true ; "loongarch64")]
+    #[test_case("project-linux-loongarch.tar.gz", false ; "loongarch")]
+    #[test_case("project-linux-loong32.tar.gz", false ; "loong32")]
+    fn loongarch64_re(name: &str, expect: bool) {
+        assert_eq!(super::loongarch64_re().is_match(name), expect, "{name}");
+    }
+
+    #[test_case("project-linux-ppc64le.tar.gz", true ; "ppc64le")]
+    #[test_case("project-linux-ppc64el.tar.gz", true ; "ppc64el")]
+    #[test_case("project-linux-ppc64.tar.gz", false ; "ppc64")]
+    fn ppc64le_re(name: &str, expect: bool) {
+        assert_eq!(super::ppc64le_re().is_match(name), expect, "{name}");
     }
 
     #[test_case("project-linux-386.tar.gz", true ; "386")]
@@ -638,6 +723,14 @@ mod test {
 
     #[test_case("project-linux-riscv64gc.tar.gz", true ; "riscv64gc")]
     #[test_case("project-linux-amd64v3.tar.gz", true ; "amd64v3")]
+    #[test_case("project-linux-armv7l.tar.gz", true ; "armv7l")]
+    #[test_case("project-linux-armv6l.tar.gz", true ; "armv6l")]
+    #[test_case("project-linux-armhf.tar.gz", true ; "armhf")]
+    #[test_case("project-linux-armel.tar.gz", true ; "armel")]
+    #[test_case("project-linux-armv8.tar.gz", true ; "armv8")]
+    #[test_case("project-linux-ppc64el.tar.gz", true ; "ppc64el")]
+    #[test_case("project-linux-loong64.tar.gz", true ; "loong64")]
+    #[test_case("project-linux-loongarch64.tar.gz", true ; "loongarch64")]
     fn all_arches_re(name: &str, expect: bool) {
         assert_eq!(super::ALL_ARCHES_RE.is_match(name), expect, "{name}");
     }

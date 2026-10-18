@@ -291,6 +291,7 @@ mod test {
         Ok(None)
     )]
     #[case::platform_looks_like_extension("some-tool.linux.i386", Ok(None))]
+    #[case::platform_looks_like_extension2("some-tool.linux.armhf", Ok(None))]
     #[case::version_looks_like_extension1("i386-linux-ghcup-0.1.30.0", Ok(None))]
     #[case::unknown_extension(
         "foo.bar",

@@ -2,9 +2,10 @@ use std::path::Path;
 
 use crate::{
     arch::{
-        aarch64_re, arm_re, cpu_64_bit_re, macos_aarch64_and_x86_64_re, macos_aarch64_only_re,
-        mips64_re, mips64le_re, mips_re, mipsle_re, ppc32_re, ppc64_re, ppc64le_re, riscv64_re,
-        s390x_re, sparc64_re, x86_32_re, x86_64_microarch_level_re, x86_64_re, ALL_ARCHES_RE,
+        aarch64_re, arm_re, cpu_64_bit_re, loongarch64_re, macos_aarch64_and_x86_64_re,
+        macos_aarch64_only_re, mips64_re, mips64le_re, mips_re, mipsle_re, ppc32_re, ppc64_re,
+        ppc64le_re, riscv64_re, s390x_re, sparc64_re, x86_32_re, x86_64_microarch_level_re,
+        x86_64_re, ALL_ARCHES_RE,
     },
     extension::Extension,
     os::{
@@ -335,6 +336,7 @@ impl<'a> AssetPicker<'a> {
         if !matches!(
             self.platform.target_arch,
             Arch::AArch64
+                | Arch::Loongarch64
                 | Arch::Mips64
                 | Arch::PowerPc64
                 | Arch::Riscv64
@@ -451,6 +453,7 @@ impl<'a> AssetPicker<'a> {
         match (self.platform.target_arch, self.platform.target_endian) {
             (Arch::AArch64, _) => aarch64_re(),
             (Arch::Arm, _) => arm_re(),
+            (Arch::Loongarch64, _) => loongarch64_re(),
             (Arch::Mips, Endian::Little) => mipsle_re(),
             (Arch::Mips, Endian::Big) => mips_re(),
             (Arch::Mips64, Endian::Little) => mips64le_re(),
@@ -739,6 +742,48 @@ mod test {
         None,
         1
     )]
+    #[case::armv7_unknown_linux_gnueabihf_pick_armv7l(
+        "armv7-unknown-linux-gnueabihf",
+        &["tool-linux-armv7l.tar.gz", "tool-generic-linux.tar.gz"],
+        None,
+        None,
+        0
+    )]
+    #[case::armv7_unknown_linux_gnueabihf_pick_armhf(
+        "armv7-unknown-linux-gnueabihf",
+        &["tool-linux-armhf.tar.gz", "tool-generic-linux.tar.gz"],
+        None,
+        None,
+        0
+    )]
+    #[case::aarch64_unknown_linux_gnu_pick_armv8(
+        "aarch64-unknown-linux-gnu",
+        &["tool-linux-armv8.tar.gz", "tool-generic-linux.tar.gz"],
+        None,
+        None,
+        0
+    )]
+    #[case::powerpc64le_unknown_linux_gnu_pick_ppc64el(
+        "powerpc64le-unknown-linux-gnu",
+        &["tool-linux-ppc64el.tar.gz", "tool-generic-linux.tar.gz"],
+        None,
+        None,
+        0
+    )]
+    #[case::loongarch64_unknown_linux_gnu_pick_loong64(
+        "loongarch64-unknown-linux-gnu",
+        &["tool-linux-loong64.tar.gz", "tool-generic-linux.tar.gz"],
+        None,
+        None,
+        0
+    )]
+    #[case::loongarch64_unknown_linux_gnu_pick_loongarch64(
+        "loongarch64-unknown-linux-gnu",
+        &["tool-linux-loongarch64.tar.gz", "tool-generic-linux.tar.gz"],
+        None,
+        None,
+        0
+    )]
     #[case::armv7_unknown_linux_musleabihf_pick_the_musleabihf_asset_over_gnueabihf(
         "armv7-unknown-linux-musleabihf",
         &[
@@ -984,6 +1029,70 @@ mod test {
         None,
         None,
         "could not find a release asset for this OS (linux) and architecture (aarch64)"
+    )]
+    #[case::x86_64_unknown_linux_gnu_does_not_pick_armv7l(
+        "x86_64-unknown-linux-gnu",
+        false,
+        &["tool-linux-arm64.tar.gz", "tool-linux-armv7l.tar.gz"],
+        None,
+        None,
+        "could not find a release asset for this OS (linux) and architecture (x86_64)"
+    )]
+    #[case::x86_64_unknown_linux_gnu_does_not_pick_armhf(
+        "x86_64-unknown-linux-gnu",
+        false,
+        &["tool-linux-arm64.tar.gz", "tool-linux-armhf.tar.gz"],
+        None,
+        None,
+        "could not find a release asset for this OS (linux) and architecture (x86_64)"
+    )]
+    #[case::x86_64_unknown_linux_gnu_does_not_pick_armel(
+        "x86_64-unknown-linux-gnu",
+        false,
+        &["tool-linux-arm64.tar.gz", "tool-linux-armel.tar.gz"],
+        None,
+        None,
+        "could not find a release asset for this OS (linux) and architecture (x86_64)"
+    )]
+    #[case::x86_64_unknown_linux_gnu_does_not_pick_armv6l(
+        "x86_64-unknown-linux-gnu",
+        false,
+        &["tool-linux-arm64.tar.gz", "tool-linux-armv6l.tar.gz"],
+        None,
+        None,
+        "could not find a release asset for this OS (linux) and architecture (x86_64)"
+    )]
+    #[case::x86_64_unknown_linux_gnu_does_not_pick_armv8(
+        "x86_64-unknown-linux-gnu",
+        false,
+        &["tool-linux-arm64.tar.gz", "tool-linux-armv8.tar.gz"],
+        None,
+        None,
+        "could not find a release asset for this OS (linux) and architecture (x86_64)"
+    )]
+    #[case::x86_64_unknown_linux_gnu_does_not_pick_ppc64el(
+        "x86_64-unknown-linux-gnu",
+        false,
+        &["tool-linux-arm64.tar.gz", "tool-linux-ppc64el.tar.gz"],
+        None,
+        None,
+        "could not find a release asset for this OS (linux) and architecture (x86_64)"
+    )]
+    #[case::x86_64_unknown_linux_gnu_does_not_pick_loong64(
+        "x86_64-unknown-linux-gnu",
+        false,
+        &["tool-linux-arm64.tar.gz", "tool-linux-loong64.tar.gz"],
+        None,
+        None,
+        "could not find a release asset for this OS (linux) and architecture (x86_64)"
+    )]
+    #[case::x86_64_unknown_linux_gnu_does_not_pick_loongarch64(
+        "x86_64-unknown-linux-gnu",
+        false,
+        &["tool-linux-arm64.tar.gz", "tool-linux-loongarch64.tar.gz"],
+        None,
+        None,
+        "could not find a release asset for this OS (linux) and architecture (x86_64)"
     )]
     #[allow(non_snake_case)]
     fn pick_asset_errors(

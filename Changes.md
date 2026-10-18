@@ -2,6 +2,11 @@
 
 ## NEXT - TBD
 
+- Added support for more CPU arch names in asset names: `armv7l`, `armv6l`, `armhf`, `armel`,
+  `armv8` (treated as 64-bit ARM), `ppc64el`, `loong64` and `loongarch64`. Before this, `ubi`
+  treated assets with these names as having no arch. This meant that on a host with no asset for its
+  CPU, `ubi` could install one of these assets instead of failing.
+- Fixed a panic on LoongArch64 hosts. `ubi` did not know how to match assets for this CPU.
 - Fixed a bug where `ubi` did not know that `i386` in an asset name means 32-bit x86. On a host with
   no asset for its CPU, like an aarch64 host with only `i386` and `amd64` assets, it would install
   the `i386` asset instead of failing. On an i686 host, it could pick the wrong asset instead of the
