@@ -2,6 +2,10 @@
 
 ## NEXT - TBD
 
+- Fixed a bug where, on Windows, `ubi` installed some executables without a `.exe` extension, so
+  Windows could not run them. This affected assets that are a single compressed file (`.gz`, `.bz`,
+  `.bz2`, `.xz` and `.zst`), bare files with no extension, and archive members with no extension.
+  This was a regression in 0.5.0.
 - Added support for more CPU arch names in asset names: `armv7l`, `armv6l`, `armhf`, `armel`,
   `armv8` (treated as 64-bit ARM), `ppc64el`, `loong64` and `loongarch64`. Before this, `ubi`
   treated assets with these names as having no arch. This meant that on a host with no asset for its

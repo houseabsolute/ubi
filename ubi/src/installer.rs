@@ -106,7 +106,7 @@ impl ExeInstaller {
         }
     }
 
-    fn extract_executable(&self, downloaded_file: &Path) -> Result<Option<PathBuf>> {
+    fn extract_executable(&self, downloaded_file: &Path) -> Result<PathBuf> {
         match Extension::from_path(downloaded_file)? {
             Some(
                 Extension::Tar
@@ -119,27 +119,13 @@ impl ExeInstaller {
                 | Extension::Tgz
                 | Extension::Txz
                 | Extension::Tzst,
-            ) => Ok(Some(self.extract_executable_from_tarball(downloaded_file)?)),
-            Some(Extension::Bz | Extension::Bz2) => {
-                self.unbzip(downloaded_file)?;
-                Ok(None)
-            }
-            Some(Extension::Gz) => {
-                self.ungzip(downloaded_file)?;
-                Ok(None)
-            }
-            Some(Extension::Xz) => {
-                self.unxz(downloaded_file)?;
-                Ok(None)
-            }
-            Some(Extension::Zst) => {
-                self.unzstd(downloaded_file)?;
-                Ok(None)
-            }
-            Some(Extension::SevenZip) => {
-                Ok(Some(self.extract_executable_from_7z(downloaded_file)?))
-            }
-            Some(Extension::Zip) => Ok(Some(self.extract_executable_from_zip(downloaded_file)?)),
+            ) => self.extract_executable_from_tarball(downloaded_file),
+            Some(Extension::Bz | Extension::Bz2) => self.unbzip(downloaded_file),
+            Some(Extension::Gz) => self.ungzip(downloaded_file),
+            Some(Extension::Xz) => self.unxz(downloaded_file),
+            Some(Extension::Zst) => self.unzstd(downloaded_file),
+            Some(Extension::SevenZip) => self.extract_executable_from_7z(downloaded_file),
+            Some(Extension::Zip) => self.extract_executable_from_zip(downloaded_file),
             Some(
                 Extension::AppImage
                 | Extension::Bat
@@ -150,7 +136,7 @@ impl ExeInstaller {
                 | Extension::Pyz
                 | Extension::Sh,
             )
-            | None => Ok(Some(self.copy_executable(downloaded_file)?)),
+            | None => self.copy_executable(downloaded_file),
         }
     }
 
@@ -475,44 +461,48 @@ impl ExeInstaller {
         ))
     }
 
-    fn unbzip(&self, downloaded_file: &Path) -> Result<()> {
+    fn unbzip(&self, downloaded_file: &Path) -> Result<PathBuf> {
         debug!("uncompressing executable from bzip file");
         let reader = BzDecoder::new(open_file(downloaded_file)?);
         self.write_to_install_path(reader)
     }
 
-    fn ungzip(&self, downloaded_file: &Path) -> Result<()> {
+    fn ungzip(&self, downloaded_file: &Path) -> Result<PathBuf> {
         debug!("uncompressing executable from gzip file");
         let reader = GzDecoder::new(open_file(downloaded_file)?);
         self.write_to_install_path(reader)
     }
 
-    fn unxz(&self, downloaded_file: &Path) -> Result<()> {
+    fn unxz(&self, downloaded_file: &Path) -> Result<PathBuf> {
         debug!("uncompressing executable from xz file");
         let reader = XzDecoder::new(open_file(downloaded_file)?);
         self.write_to_install_path(reader)
     }
 
-    fn unzstd(&self, downloaded_file: &Path) -> Result<()> {
+    fn unzstd(&self, downloaded_file: &Path) -> Result<PathBuf> {
         debug!("uncompressing executable from zstd file");
         let reader = ZstdDecoder::new(open_file(downloaded_file)?)?;
         self.write_to_install_path(reader)
     }
 
-    fn write_to_install_path(&self, mut reader: impl Read) -> Result<()> {
+    fn write_to_install_path(&self, mut reader: impl Read) -> Result<PathBuf> {
         self.create_install_dir().with_context(|| {
             format!(
                 "failed to create installation directory for {}",
                 self.install_path.display()
             )
         })?;
-        self.check_install_path_is_not_a_dir(&self.install_path)?;
-        let mut writer = File::create(&self.install_path)
-            .with_context(|| format!("Cannot write to {}", self.install_path.display()))?;
-        std::io::copy(&mut reader, &mut writer).with_context(|| {
-            format!("failed to copy content to {}", self.install_path.display())
-        })?;
-        Ok(())
+        let install_path = if self.install_path_is_from_rename_exe_to {
+            self.install_path.clone()
+        } else {
+            self.maybe_add_windows_exe_extension(self.install_path.clone())
+        };
+        self.check_install_path_is_not_a_dir(&install_path)?;
+        let mut writer = File::create(&install_path)
+            .with_context(|| format!("Cannot write to {}", install_path.display()))?;
+        std::io::copy(&mut reader, &mut writer)
+            .with_context(|| format!("failed to copy content to {}", install_path.display()))?;
+        Ok(install_path)
     }
 
     fn copy_executable(&self, exe_file: &Path) -> Result<PathBuf> {
@@ -593,10 +583,32 @@ impl ExeInstaller {
             if ext.should_preserve_extension_on_install() {
                 debug!("preserving the {} extension on install", ext.extension());
                 install_path.set_extension(ext.extension_without_dot());
+                return Ok(install_path);
             }
         }
 
-        Ok(install_path)
+        Ok(self.maybe_add_windows_exe_extension(install_path))
+    }
+
+    // Windows only runs a file as a program if it has an extension like `.exe`. When the file we
+    // install has no extension of its own to keep, like a gzipped binary, we add `.exe` so the
+    // installed file can be run. We append it instead of using `set_extension` so that a name with
+    // a dot, like `tool.v2`, keeps all of its parts.
+    fn maybe_add_windows_exe_extension(&self, install_path: PathBuf) -> PathBuf {
+        if !self.is_windows {
+            return install_path;
+        }
+        if install_path
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("exe") || ext.eq_ignore_ascii_case("bat"))
+        {
+            return install_path;
+        }
+
+        debug!("adding the .exe extension to the install path for Windows");
+        let mut name = install_path.clone().into_os_string();
+        name.push(".exe");
+        PathBuf::from(name)
     }
 
     #[cfg(target_family = "windows")]
@@ -623,7 +635,8 @@ impl Installer for ExeInstaller {
 
         // We only know the final install path up front when the user named it exactly. Otherwise
         // the downloaded file may have an extension that we preserve, which we cannot know until
-        // we have seen the file, and the install path grows that extension. Checking the path
+        // we have seen the file, and the install path grows that extension. On Windows we may also
+        // add `.exe`. Checking the path
         // without the extension here would reject an install that was going to write to the path
         // with the extension and succeed. Those cases are caught by the check at each install site
         // instead, just not as early.
@@ -635,9 +648,8 @@ impl Installer for ExeInstaller {
     }
 
     fn install(&self, download: &Download) -> Result<()> {
-        let exe = self.extract_executable(&download.archive_path)?;
-        let real_exe = exe.as_deref().unwrap_or(&self.install_path);
-        Self::chmod_executable(real_exe).with_context(|| {
+        let real_exe = self.extract_executable(&download.archive_path)?;
+        Self::chmod_executable(&real_exe).with_context(|| {
             format!(
                 "failed to set executable permissions on {}",
                 real_exe.display()
@@ -1197,6 +1209,14 @@ mod tests {
     // And these check that we match project-with-stuff.exe.
     #[case("test-data/windows-project-exe-with-partial-match.tar.gz", "exe")]
     #[case("test-data/windows-project-exe-with-partial-match.zip", "exe")]
+    // A single compressed file or a bare file has no extension of its own to keep, but Windows
+    // still needs `.exe` to run it.
+    #[case("test-data/project.bz", "exe")]
+    #[case("test-data/project.bz2", "exe")]
+    #[case("test-data/project.gz", "exe")]
+    #[case("test-data/project.xz", "exe")]
+    #[case("test-data/project.zst", "exe")]
+    #[case("test-data/project", "exe")]
     fn exe_installer_on_windows(#[case] archive_path: &str, #[case] extension: &str) -> Result<()> {
         crate::test_log::init_logging();
 
@@ -1204,6 +1224,31 @@ mod tests {
         let install_dir = td.path().to_path_buf();
 
         test_exe_installer(archive_path, Some(extension), install_dir, true)
+    }
+
+    #[rstest]
+    #[case::adds_exe("project", true, "project.exe")]
+    #[case::keeps_exe("project.exe", true, "project.exe")]
+    #[case::keeps_upper_case_exe("PROJECT.EXE", true, "PROJECT.EXE")]
+    #[case::keeps_bat("project.bat", true, "project.bat")]
+    #[case::keeps_dotted_name("tool.v2", true, "tool.v2.exe")]
+    #[case::not_on_windows("project", false, "project")]
+    fn maybe_add_windows_exe_extension(
+        #[case] name: &str,
+        #[case] is_windows: bool,
+        #[case] expect: &str,
+    ) {
+        let installer = ExeInstaller::new(
+            PathBuf::from(name),
+            false,
+            false,
+            "project".to_string(),
+            is_windows,
+        );
+        assert_eq!(
+            installer.maybe_add_windows_exe_extension(PathBuf::from(name)),
+            PathBuf::from(expect),
+        );
     }
 
     fn test_exe_installer(
