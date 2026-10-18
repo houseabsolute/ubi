@@ -5,7 +5,12 @@
 - Fixed a bug where, on a 64-bit host, `ubi` could pick a 32-bit asset when the version number
   contained `64`, like `golangci-lint-1.64.5-linux-386.tar.gz` over
   `golangci-lint-1.64.5-linux-amd64.tar.gz`. The 0.8.3 release said this was fixed, but the fix was
-  incomplete.
+  incomplete. The 64-bit check also now knows about names with a suffix after the `64`, like
+  `ppc64le`, `mips64el`, `riscv64gc` and `amd64v3`.
+- `ubi` now matches `riscv64gc` asset names on RISC-V hosts and x86-64 microarch level names like
+  `amd64v3` and `amd64-v3` on x86-64 hosts. A microarch level build needs newer CPU features and can
+  crash on an older CPU, so when both a plain build and a level build are available, `ubi` now picks
+  the plain one.
 - Fixed a bug where a GitLab release could be backdated to pass `--min-age-days`. Whoever creates a
   GitLab release can set its `released_at` date to anything. `ubi` now uses the later of
   `released_at` and `created_at`, which the GitLab server sets itself.

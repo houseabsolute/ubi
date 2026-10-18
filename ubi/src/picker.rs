@@ -4,7 +4,7 @@ use crate::{
     arch::{
         aarch64_re, arm_re, cpu_64_bit_re, macos_aarch64_and_x86_64_re, macos_aarch64_only_re,
         mips64_re, mips64le_re, mips_re, mipsle_re, ppc32_re, ppc64_re, ppc64le_re, riscv64_re,
-        s390x_re, sparc64_re, x86_32_re, x86_64_re, ALL_ARCHES_RE,
+        s390x_re, sparc64_re, x86_32_re, x86_64_microarch_level_re, x86_64_re, ALL_ARCHES_RE,
     },
     extension::Extension,
     os::{
@@ -307,7 +307,8 @@ impl<'a> AssetPicker<'a> {
             return Ok(asset);
         }
 
-        let mut filtered = self.maybe_filter_for_64_bit_arch(filtered);
+        let filtered = self.maybe_filter_for_64_bit_arch(filtered);
+        let mut filtered = maybe_filter_out_microarch_levels(filtered);
 
         if filtered.len() == 1 {
             debug!("only found one candidate asset after filtering");
@@ -473,6 +474,24 @@ impl<'a> AssetPicker<'a> {
     }
 }
 
+// A microarch level build like `amd64v3` needs newer CPU features and can crash on an older CPU,
+// so we prefer a plain build when there is one. When only level builds are left, we keep them all.
+fn maybe_filter_out_microarch_levels(matches: Vec<Asset>) -> Vec<Asset> {
+    let (levels, plain): (Vec<_>, Vec<_>) = matches
+        .into_iter()
+        .partition(|a| x86_64_microarch_level_re().is_match(&a.name));
+    if plain.is_empty() {
+        return levels;
+    }
+    if !levels.is_empty() {
+        debug!(
+            "dropping microarch level assets in favor of plain builds: {}",
+            levels.iter().map(|a| a.name.as_str()).join(",")
+        );
+    }
+    plain
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -504,6 +523,51 @@ mod test {
     #[case::x86_64_unknown_linux_gnu_pick_64_bit_asset_when_version_has_64(
         "x86_64-unknown-linux-gnu",
         &["project-1.64.5-linux-386.tar.gz", "project-1.64.5-linux-amd64.tar.gz"],
+        None,
+        None,
+        1
+    )]
+    #[case::x86_64_unknown_linux_gnu_pick_microarch_level_asset_over_32_bit(
+        "x86_64-unknown-linux-gnu",
+        &["project-linux-386.tar.gz", "project-linux-amd64v3.tar.gz"],
+        None,
+        None,
+        1
+    )]
+    // A microarch level build like `amd64_v3` needs newer CPU features, like AVX2, so it can crash
+    // on an older CPU. A plain build is safer, even when the level build sorts first by name.
+    #[case::x86_64_unknown_linux_gnu_prefer_plain_asset_over_microarch_level(
+        "x86_64-unknown-linux-gnu",
+        &["project-amd64_v3-linux.tar.gz", "project-x86_64-linux.tar.gz"],
+        None,
+        None,
+        1
+    )]
+    #[case::x86_64_unknown_linux_gnu_prefer_plain_asset_over_microarch_level_without_separator(
+        "x86_64-unknown-linux-gnu",
+        &["project-amd64v3-linux.tar.gz", "project-x86_64-linux.tar.gz"],
+        None,
+        None,
+        1
+    )]
+    // The `-v4.0.0` here is a version, not a microarch level, so that asset is the plain build.
+    #[case::x86_64_unknown_linux_gnu_prefer_plain_asset_with_version_over_microarch_level(
+        "x86_64-unknown-linux-gnu",
+        &["project-linux-amd64-v3-v4.0.0.gz", "project-linux-amd64-v4.0.0.gz"],
+        None,
+        None,
+        1
+    )]
+    #[case::x86_64_unknown_linux_gnu_keep_microarch_levels_when_no_plain_asset(
+        "x86_64-unknown-linux-gnu",
+        &["project-linux-amd64-v3.tar.gz", "project-linux-amd64-v2.tar.gz"],
+        None,
+        None,
+        1
+    )]
+    #[case::riscv64gc_unknown_linux_gnu_pick_riscv64gc_asset(
+        "riscv64gc-unknown-linux-gnu",
+        &["project-linux-386.tar.gz", "project-linux-riscv64gc.tar.gz"],
         None,
         None,
         1
