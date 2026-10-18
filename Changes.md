@@ -2,6 +2,10 @@
 
 ## NEXT - TBD
 
+- Fixed a bug where `ubi` did not know that `i386` in an asset name means 32-bit x86. On a host with
+  no asset for its CPU, like an aarch64 host with only `i386` and `amd64` assets, it would install
+  the `i386` asset instead of failing. On an i686 host, it could pick the wrong asset instead of the
+  `i386` one. Names ending in `.i386` were also rejected as having an unknown extension.
 - Fixed a bug where, on a musl host, `ubi` did not recognize libc names with an ABI suffix, such as
   `gnueabihf`, `gnuabi64`, `musleabihf` or `muslabi64`. So on a host like
   `armv7-unknown-linux-musleabihf`, it could pick a `gnueabihf` asset over the `musleabihf` one.

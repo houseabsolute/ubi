@@ -604,6 +604,20 @@ mod test {
         Some(r"\d+\.tar"),
         1
     )]
+    #[case::x86_64_unknown_linux_gnu_pick_amd64_over_i386(
+        "x86_64-unknown-linux-gnu",
+        &["tool-linux-i386.tar.gz", "tool-linux-amd64.tar.gz"],
+        None,
+        None,
+        1
+    )]
+    #[case::i686_unknown_linux_gnu_pick_i386_over_amd64(
+        "i686-unknown-linux-gnu",
+        &["some-tool.linux.amd64", "some-tool.linux.i386"],
+        None,
+        None,
+        1
+    )]
     #[case::i686_unknown_linux_gnu_pick_one_asset(
         "i686-unknown-linux-gnu",
         &["project-Linux-i686.tar.gz"],
@@ -962,6 +976,14 @@ mod test {
         None,
         None,
         "could not find a release asset after filtering for valid extensions"
+    )]
+    #[case::aarch64_unknown_linux_gnu_does_not_pick_i386(
+        "aarch64-unknown-linux-gnu",
+        false,
+        &["tool-linux-i386.tar.gz", "tool-linux-amd64.tar.gz"],
+        None,
+        None,
+        "could not find a release asset for this OS (linux) and architecture (aarch64)"
     )]
     #[allow(non_snake_case)]
     fn pick_asset_errors(

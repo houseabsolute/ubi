@@ -326,7 +326,7 @@ pub(crate) fn x86_32_re() -> &'static Lazy<Regex> {
             _
         )
         (?:
-            386 | i586 | i686
+            386 | i386 | i586 | i686
             |
             x86[_-]32
             |
@@ -352,7 +352,7 @@ pub(crate) fn x86_64_re() -> &'static Lazy<Regex> {
             _
         )
         (?:
-            386 | i586 | i686
+            386 | i386 | i586 | i686
             |
             x86[_-]32
             |
@@ -520,10 +520,20 @@ mod test {
         assert_eq!(super::cpu_64_bit_re().is_match(name), expect, "{name}");
     }
 
+    #[test_case("project-linux-386.tar.gz", true ; "386")]
+    #[test_case("project-linux-i386.tar.gz", true ; "i386")]
+    #[test_case("project.linux.i386", true ; "i386 as extension")]
+    #[test_case("project-linux-i686.tar.gz", true ; "i686")]
+    #[test_case("project-linux-i3860.tar.gz", false ; "unknown suffix")]
+    fn x86_32_re(name: &str, expect: bool) {
+        assert_eq!(super::x86_32_re().is_match(name), expect, "{name}");
+    }
+
     #[test_case("project-linux-x86_64.tar.gz", true ; "x86_64")]
     #[test_case("project-linux-amd64v3.tar.gz", true ; "amd64v3")]
     #[test_case("project-linux-x86_64v2.tar.gz", true ; "x86_64v2")]
     #[test_case("project-linux-x64v4.tar.gz", true ; "x64v4")]
+    #[test_case("project-linux-i386.tar.gz", true ; "i386")]
     #[test_case("project-linux-amd64x.tar.gz", false ; "unknown suffix")]
     fn x86_64_re(name: &str, expect: bool) {
         assert_eq!(super::x86_64_re().is_match(name), expect, "{name}");
