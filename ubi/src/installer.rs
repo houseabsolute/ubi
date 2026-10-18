@@ -777,6 +777,7 @@ impl ArchiveInstaller {
             Some(dir) => dir,
             None => td.path().to_path_buf(),
         };
+        check_extracted_symlinks(&copy_from)?;
 
         debug!(
             "copying extracted contents from {} to {}",
@@ -784,19 +785,35 @@ impl ArchiveInstaller {
             self.install_root.display(),
         );
 
-        for entry in WalkDir::new(&copy_from).into_iter().filter_map(Result::ok) {
+        for entry in WalkDir::new(&copy_from) {
+            let entry = entry.with_context(|| {
+                format!(
+                    "failed to read the extracted contents in {}",
+                    copy_from.display()
+                )
+            })?;
             let full_path = entry.path();
-            let target_path =
-                self.install_root
-                    .join(full_path.strip_prefix(&copy_from).with_context(|| {
-                        format!(
-                            "failed to strip prefix {} from path {}",
-                            copy_from.display(),
-                            full_path.display()
-                        )
-                    })?);
+            let rel_path = full_path.strip_prefix(&copy_from).with_context(|| {
+                format!(
+                    "failed to strip prefix {} from path {}",
+                    copy_from.display(),
+                    full_path.display()
+                )
+            })?;
+            let target_path = self.install_root.join(rel_path);
 
-            if full_path.is_dir() {
+            // We look at the entry's own type, not the type of what a symlink points to. Following
+            // links would turn a link to a directory into an empty directory, a link to a file into
+            // a copy, and a dangling link into an error.
+            let file_type = entry.file_type();
+            check_for_symlinks_in_install_path(
+                &self.install_root,
+                rel_path,
+                file_type.is_symlink(),
+            )?;
+            if file_type.is_symlink() {
+                copy_symlink(full_path, &target_path)?;
+            } else if file_type.is_dir() {
                 debug!("creating directory {}", target_path.display());
                 create_dir_all(&target_path).with_context(|| {
                     format!("failed to create directory at {}", target_path.display())
@@ -886,6 +903,173 @@ impl ArchiveInstaller {
 
         Ok(None)
     }
+}
+
+// A symlink that is already in the install root, maybe from an earlier install, could point
+// anywhere. Creating a directory or copying a file through it could write outside the install
+// root, so we refuse to do that. The last part of the path is allowed to be a symlink when we are
+// about to replace it with a new symlink, since we remove the old one first and never write
+// through it.
+fn check_for_symlinks_in_install_path(
+    install_root: &Path,
+    rel_path: &Path,
+    replacing_last_part: bool,
+) -> Result<()> {
+    let parts = rel_path.components().collect::<Vec<_>>();
+    let mut path = install_root.to_path_buf();
+    for (i, part) in parts.iter().enumerate() {
+        path.push(part);
+        if replacing_last_part && i == parts.len() - 1 {
+            break;
+        }
+        if fs::symlink_metadata(&path).is_ok_and(|m| m.file_type().is_symlink()) {
+            return Err(anyhow!(
+                "cannot install into {} because {} is a symlink, and writing through it could write outside the install directory",
+                install_root.display(),
+                path.display(),
+            ));
+        }
+    }
+    Ok(())
+}
+
+// We check every link in the archive before we copy anything, so that a bad link doesn't leave a
+// partial install behind. The links are already on disk in the temp dir, so we let the OS resolve
+// them. That handles chains of links and `..` the same way the OS will after we install them.
+fn check_extracted_symlinks(copy_from: &Path) -> Result<()> {
+    if fs::symlink_metadata(copy_from).is_ok_and(|m| m.file_type().is_symlink()) {
+        return Err(anyhow!(
+            "the top-level directory in the archive, {}, is a symlink, which ubi will not install",
+            file_name_for_error(copy_from),
+        ));
+    }
+
+    let root = fs::canonicalize(copy_from)
+        .with_context(|| format!("failed to resolve the path {}", copy_from.display()))?;
+    for entry in WalkDir::new(copy_from) {
+        let entry = entry.with_context(|| {
+            format!(
+                "failed to read the extracted contents in {}",
+                copy_from.display()
+            )
+        })?;
+        if !entry.file_type().is_symlink() {
+            continue;
+        }
+
+        let link = entry.path();
+        let target = fs::read_link(link)
+            .with_context(|| format!("failed to read the symlink at {}", link.display()))?;
+        let resolved = match fs::canonicalize(link) {
+            Ok(resolved) => resolved,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                resolve_broken_symlink(link, &target)?
+            }
+            Err(e) => {
+                return Err(e).with_context(|| {
+                    format!("failed to resolve the symlink at {}", link.display())
+                })
+            }
+        };
+        if !resolved.starts_with(&root) {
+            return Err(anyhow!(
+                "the symlink at {} in the archive points outside the install directory, to {}",
+                link.strip_prefix(copy_from).unwrap_or(link).display(),
+                target.display(),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn file_name_for_error(path: &Path) -> String {
+    path.file_name().map_or_else(
+        || path.display().to_string(),
+        |n| n.to_string_lossy().into_owned(),
+    )
+}
+
+// The OS can't resolve a broken link, so we walk the target one part at a time. We let the OS
+// resolve each part that exists, since it might be another link. Once we reach a part that doesn't
+// exist, nothing after it can be a link, so we handle the rest without looking at the disk.
+fn resolve_broken_symlink(link: &Path, target: &Path) -> Result<PathBuf> {
+    use std::path::Component;
+
+    let link_dir = link.parent().unwrap_or(link);
+    let mut resolved = fs::canonicalize(link_dir)
+        .with_context(|| format!("failed to resolve the path {}", link_dir.display()))?;
+    let mut exists = true;
+    for part in target.components() {
+        match part {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                resolved.pop();
+            }
+            Component::Prefix(_) | Component::RootDir => {
+                resolved = PathBuf::from(part.as_os_str());
+            }
+            Component::Normal(_) => {
+                resolved.push(part);
+                if exists && fs::symlink_metadata(&resolved).is_ok() {
+                    // If this fails, this part is itself a broken link. We don't try to follow a
+                    // chain of broken links, so we treat it as pointing outside.
+                    resolved = fs::canonicalize(&resolved).map_err(|_| {
+                        anyhow!(
+                            "the symlink at {} points to another broken symlink, {}, which ubi will not install",
+                            link.display(),
+                            resolved.display(),
+                        )
+                    })?;
+                } else {
+                    exists = false;
+                }
+            }
+        }
+    }
+    Ok(resolved)
+}
+
+#[cfg(target_family = "unix")]
+fn copy_symlink(from: &Path, to: &Path) -> Result<()> {
+    let target = fs::read_link(from)
+        .with_context(|| format!("failed to read the symlink at {}", from.display()))?;
+    debug!(
+        "creating symlink {} pointing to {}",
+        to.display(),
+        target.display()
+    );
+    // Creating a symlink fails if something is already at the path, so we remove an old file or
+    // link left from an earlier install. We leave a directory alone so that we don't delete a tree.
+    if fs::symlink_metadata(to).is_ok_and(|m| !m.is_dir()) {
+        fs::remove_file(to)
+            .with_context(|| format!("failed to remove the old file at {}", to.display()))?;
+    }
+    std::os::unix::fs::symlink(&target, to).with_context(|| {
+        format!(
+            "failed to create a symlink at {} pointing to {}",
+            to.display(),
+            target.display()
+        )
+    })
+}
+
+// Creating symlinks on Windows needs special rights, so we copy what the link points to.
+#[cfg(target_family = "windows")]
+fn copy_symlink(from: &Path, to: &Path) -> Result<()> {
+    if from.is_dir() {
+        return create_dir_all(to)
+            .with_context(|| format!("failed to create directory at {}", to.display()));
+    }
+    fs::copy(from, to)
+        .with_context(|| {
+            format!(
+                "failed to copy file from {} to {}",
+                from.display(),
+                to.display()
+            )
+        })
+        .map(|_| ())
 }
 
 impl Installer for ArchiveInstaller {
@@ -1379,6 +1563,301 @@ mod tests {
             assert!(exe.is_file());
         }
 
+        Ok(())
+    }
+
+    #[cfg(target_family = "unix")]
+    #[rstest]
+    #[case::tarball("project.tar.gz")]
+    #[case::zip("project.zip")]
+    fn archive_installer_keeps_symlinks(#[case] archive_name: &str) -> Result<()> {
+        crate::test_log::init_logging();
+
+        let td = tempdir()?;
+        let archive_path = td.path().join(archive_name);
+        write_archive(
+            &archive_path,
+            &[
+                ("project/bin/tool-alias", "tool"),
+                ("project/lib/current", "v1"),
+                ("project/bin/dangling", "missing"),
+                ("project/bin/v1", "../lib/v1"),
+            ],
+        )?;
+
+        let install_root = td.path().join("installed");
+        let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
+        installer.install(&Download {
+            _temp_dir: tempdir()?,
+            archive_path,
+        })?;
+
+        for (link, target) in [
+            ("bin/tool-alias", "tool"),
+            ("lib/current", "v1"),
+            ("bin/dangling", "missing"),
+            ("bin/v1", "../lib/v1"),
+        ] {
+            let path = install_root.join(link);
+            let meta = fs::symlink_metadata(&path)
+                .with_context(|| format!("{} should exist", path.display()))?;
+            assert!(meta.file_type().is_symlink(), "{link} is a symlink");
+            assert_eq!(
+                fs::read_link(&path)?,
+                PathBuf::from(target),
+                "{link} target"
+            );
+        }
+        assert!(install_root.join("bin/tool").is_file());
+        assert!(install_root.join("lib/v1/data").is_file());
+
+        Ok(())
+    }
+
+    // The `zip` crate refuses some of these links itself, before our own check sees them, so those
+    // cases expect its error instead of ours.
+    #[cfg(target_family = "unix")]
+    #[rstest]
+    #[case::absolute_tarball("project.tar.gz", "/etc/passwd", OUTSIDE_INSTALL_DIR)]
+    #[case::absolute_zip("project.zip", "/etc/passwd", ZIP_SYMLINK_ESCAPES)]
+    #[case::parent_dirs_tarball("project.tar.gz", "../../outside", OUTSIDE_INSTALL_DIR)]
+    #[case::parent_dirs_zip("project.zip", "../../outside", OUTSIDE_INSTALL_DIR)]
+    // The first link points at the install root, which is fine by itself. But the OS follows `up`
+    // before it applies the `..` after it, so the second link points outside the root.
+    #[case::chain_tarball("project.tar.gz", "up/../../outside", OUTSIDE_INSTALL_DIR)]
+    #[case::chain_zip("project.zip", "up/../../outside", ZIP_PATH_ESCAPES)]
+    #[case::broken_parent_dirs("project.tar.gz", "missing/../../../outside", OUTSIDE_INSTALL_DIR)]
+    #[case::broken_absolute("project.tar.gz", "/nonexistent/outside", OUTSIDE_INSTALL_DIR)]
+    fn archive_installer_rejects_symlinks_that_leave_the_install_root(
+        #[case] archive_name: &str,
+        #[case] target: &str,
+        #[case] expect_err: &str,
+    ) -> Result<()> {
+        crate::test_log::init_logging();
+
+        let td = tempdir()?;
+        let archive_path = td.path().join(archive_name);
+        write_archive(
+            &archive_path,
+            &[("project/bin/up", ".."), ("project/bin/escape", target)],
+        )?;
+
+        let install_root = td.path().join("installed");
+        let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
+        let err = installer
+            .install(&Download {
+                _temp_dir: tempdir()?,
+                archive_path,
+            })
+            .unwrap_err();
+        let err = format!("{err:#}");
+        assert!(err.contains(expect_err), "got error: {err}");
+        // We check the whole archive before installing anything, so a bad link doesn't leave a
+        // partial install behind.
+        assert!(
+            !install_root.exists(),
+            "nothing was installed to {}",
+            install_root.display(),
+        );
+
+        Ok(())
+    }
+
+    #[cfg(target_family = "unix")]
+    #[rstest]
+    #[case::loop_(&[("project/bin/a", "b"), ("project/bin/b", "a")], "failed to resolve the symlink")]
+    #[case::link_to_broken_link(
+        &[("project/bin/broken", "missing"), ("project/bin/x", "broken/../../outside")],
+        "points to another broken symlink",
+    )]
+    fn archive_installer_rejects_links_it_cannot_check(
+        #[case] links: &[(&str, &str)],
+        #[case] expect_err: &str,
+    ) -> Result<()> {
+        crate::test_log::init_logging();
+
+        let td = tempdir()?;
+        let archive_path = td.path().join("project.tar.gz");
+        write_archive(&archive_path, links)?;
+
+        let install_root = td.path().join("installed");
+        let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
+        let err = installer
+            .install(&Download {
+                _temp_dir: tempdir()?,
+                archive_path,
+            })
+            .unwrap_err();
+        let err = format!("{err:#}");
+        assert!(err.contains(expect_err), "got error: {err}");
+        assert!(!install_root.exists());
+
+        Ok(())
+    }
+
+    // Installing over an earlier install has to replace the old links, not write through them.
+    #[cfg(target_family = "unix")]
+    #[test]
+    fn archive_installer_replaces_symlinks_on_reinstall() -> Result<()> {
+        crate::test_log::init_logging();
+
+        let td = tempdir()?;
+        let archive_path = td.path().join("project.tar.gz");
+        write_archive(&archive_path, &[("project/bin/tool-alias", "tool")])?;
+
+        let install_root = td.path().join("installed");
+        let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
+        for _ in 0..2 {
+            installer.install(&Download {
+                _temp_dir: tempdir()?,
+                archive_path: archive_path.clone(),
+            })?;
+        }
+        assert_eq!(
+            fs::read_link(install_root.join("bin/tool-alias"))?,
+            PathBuf::from("tool"),
+        );
+
+        Ok(())
+    }
+
+    // A link left by an earlier install must not let this install write outside the install root.
+    #[cfg(target_family = "unix")]
+    #[test]
+    fn archive_installer_does_not_write_through_an_existing_symlink() -> Result<()> {
+        crate::test_log::init_logging();
+
+        let td = tempdir()?;
+        let archive_path = td.path().join("project.tar.gz");
+        write_archive(&archive_path, &[])?;
+
+        let outside = td.path().join("outside");
+        create_dir_all(&outside)?;
+        let install_root = td.path().join("installed");
+        create_dir_all(&install_root)?;
+        symlink(&outside, install_root.join("lib"))?;
+
+        let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
+        let err = installer
+            .install(&Download {
+                _temp_dir: tempdir()?,
+                archive_path,
+            })
+            .unwrap_err();
+        let err = format!("{err:#}");
+        assert!(err.contains("is a symlink"), "got error: {err}");
+        assert!(
+            fs::read_dir(&outside)?.next().is_none(),
+            "nothing was written to {}",
+            outside.display(),
+        );
+
+        Ok(())
+    }
+
+    // If the archive's only top-level entry is a link, we must not follow it and copy whatever it
+    // points to into the install root.
+    // As above, the `zip` crate refuses this link itself.
+    #[cfg(target_family = "unix")]
+    #[rstest]
+    #[case::tarball(
+        "project.tar.gz",
+        "top-level directory in the archive, project, is a symlink"
+    )]
+    #[case::zip("project.zip", ZIP_SYMLINK_ESCAPES)]
+    fn archive_installer_does_not_follow_a_top_level_symlink(
+        #[case] archive_name: &str,
+        #[case] expect_err: &str,
+    ) -> Result<()> {
+        crate::test_log::init_logging();
+
+        let td = tempdir()?;
+        let outside = td.path().join("outside");
+        create_dir_all(&outside)?;
+        fs::write(outside.join("secret"), "abc")?;
+
+        let archive_path = td.path().join(archive_name);
+        let outside_str = outside.to_string_lossy();
+        write_archive_with_files(&archive_path, &[], &[("project", outside_str.as_ref())])?;
+
+        let install_root = td.path().join("installed");
+        let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
+        let res = installer.install(&Download {
+            _temp_dir: tempdir()?,
+            archive_path,
+        });
+        let err = format!("{:#}", res.unwrap_err());
+        assert!(err.contains(expect_err), "got error: {err}");
+        assert!(!install_root.join("secret").exists());
+
+        Ok(())
+    }
+
+    // Every archive gets the same two files, `project/bin/tool` and `project/lib/v1/data`, plus
+    // the given `(name, target)` symlinks.
+    #[cfg(target_family = "unix")]
+    fn write_archive(path: &Path, links: &[(&str, &str)]) -> Result<()> {
+        write_archive_with_files(path, &ARCHIVE_FILES, links)
+    }
+
+    #[cfg(target_family = "unix")]
+    fn write_archive_with_files(path: &Path, files: &[&str], links: &[(&str, &str)]) -> Result<()> {
+        if path
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("zip"))
+        {
+            write_zip(path, files, links)
+        } else {
+            write_tarball(path, files, links)
+        }
+    }
+
+    #[cfg(target_family = "unix")]
+    const ARCHIVE_FILES: [&str; 2] = ["project/bin/tool", "project/lib/v1/data"];
+
+    #[cfg(target_family = "unix")]
+    const OUTSIDE_INSTALL_DIR: &str = "points outside the install directory";
+    #[cfg(target_family = "unix")]
+    const ZIP_SYMLINK_ESCAPES: &str = "Symlink target escapes the destination directory";
+    #[cfg(target_family = "unix")]
+    const ZIP_PATH_ESCAPES: &str = "Path escapes the destination directory";
+
+    #[cfg(target_family = "unix")]
+    fn write_tarball(path: &Path, files: &[&str], links: &[(&str, &str)]) -> Result<()> {
+        let mut builder = binstall_tar::Builder::new(flate2::write::GzEncoder::new(
+            File::create(path)?,
+            flate2::Compression::default(),
+        ));
+        for name in files {
+            let mut header = binstall_tar::Header::new_gnu();
+            header.set_size(3);
+            header.set_mode(0o755);
+            header.set_cksum();
+            builder.append_data(&mut header, name, &b"abc"[..])?;
+        }
+        for (name, target) in links {
+            let mut header = binstall_tar::Header::new_gnu();
+            header.set_entry_type(binstall_tar::EntryType::Symlink);
+            header.set_size(0);
+            header.set_mode(0o777);
+            builder.append_link(&mut header, name, target)?;
+        }
+        builder.into_inner()?.finish()?;
+        Ok(())
+    }
+
+    #[cfg(target_family = "unix")]
+    fn write_zip(path: &Path, files: &[&str], links: &[(&str, &str)]) -> Result<()> {
+        let mut zip = zip::ZipWriter::new(File::create(path)?);
+        let options = zip::write::SimpleFileOptions::default().unix_permissions(0o755);
+        for name in files {
+            zip.start_file(name, options)?;
+            zip.write_all(b"abc")?;
+        }
+        for (name, target) in links {
+            zip.add_symlink(*name, *target, options)?;
+        }
+        zip.finish()?;
         Ok(())
     }
 

@@ -2,6 +2,13 @@
 
 ## NEXT - TBD
 
+- Fixed a bug where `--extract-all` did not keep symlinks on Unix. A link to a directory became an
+  empty directory, a link to a file became a copy, and a broken link stopped the install partway
+  through. This was a regression in 0.7.0. `ubi` now checks every link in the archive before it
+  installs anything, and refuses to install an archive with a link that points outside the install
+  directory. It also refuses to write through a symlink that is already in the install directory. On
+  Windows, `ubi` still copies what each link points to, since creating links there needs special
+  rights.
 - Fixed a bug where, on Windows, `ubi` installed some executables without a `.exe` extension, so
   Windows could not run them. This affected assets that are a single compressed file (`.gz`, `.bz`,
   `.bz2`, `.xz` and `.zst`), bare files with no extension, and archive members with no extension.
