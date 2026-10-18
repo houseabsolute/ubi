@@ -393,7 +393,7 @@ pub(crate) fn cpu_64_bit_re() -> &'static Lazy<Regex> {
             _
         )
         (?:
-            x86[_-]?64
+            x86[_-]64
             |
             x64
             |
@@ -445,7 +445,7 @@ pub(crate) fn x86_64_microarch_level_re() -> &'static Lazy<Regex> {
             _
         )
         (?:
-            x86[_-]?64
+            x86[_-]64
             |
             x64
             |
@@ -550,6 +550,79 @@ mod test {
             super::x86_64_microarch_level_re().is_match(name),
             expect,
             "{name}"
+        );
+    }
+
+    // The x86-64 spellings and microarch levels are written out separately in several regexes, so
+    // this checks that they all agree on the same set of names.
+    #[test_case("x86_64", false)]
+    #[test_case("x86-64", false)]
+    #[test_case("x64", false)]
+    #[test_case("amd64", false)]
+    #[test_case("AMD64", false)]
+    #[test_case("X86_64", false)]
+    #[test_case("linux64", false)]
+    #[test_case("win64", false)]
+    #[test_case("x86_64v2", true)]
+    #[test_case("x86_64_v2", true)]
+    #[test_case("x86_64-v2", true)]
+    #[test_case("x86-64-v3", true)]
+    #[test_case("x64v3", true)]
+    #[test_case("x64-v4", true)]
+    #[test_case("amd64v3", true)]
+    #[test_case("amd64_v3", true)]
+    #[test_case("amd64-v3", true)]
+    #[test_case("x86-64_v2", true)]
+    #[test_case("AMD64V3", true)]
+    fn x86_64_regexes_agree(arch: &str, is_level: bool) {
+        let name = format!("project-linux-{arch}.tar.gz");
+        assert!(super::x86_64_re().is_match(&name), "x86_64_re: {name}");
+        assert!(
+            super::cpu_64_bit_re().is_match(&name),
+            "cpu_64_bit_re: {name}"
+        );
+        assert!(
+            super::ALL_ARCHES_RE.is_match(&name),
+            "ALL_ARCHES_RE: {name}"
+        );
+        assert_eq!(
+            super::x86_64_microarch_level_re().is_match(&name),
+            is_level,
+            "x86_64_microarch_level_re: {name}"
+        );
+    }
+
+    // This writes out the x86-64 spellings too, so it has to stay in sync with `x86_64_re` for
+    // plain builds. It does not take microarch levels.
+    #[test_case("x86_64")]
+    #[test_case("x86-64")]
+    #[test_case("x64")]
+    #[test_case("amd64")]
+    fn macos_aarch64_and_x86_64_re_agrees(arch: &str) {
+        let name = format!("project-darwin-{arch}.tar.gz");
+        assert!(
+            super::macos_aarch64_and_x86_64_re().is_match(&name),
+            "{name}"
+        );
+    }
+
+    #[test_case("x8664")]
+    #[test_case("x8664v3")]
+    #[test_case("x8664-v3")]
+    fn x86_64_regexes_reject(arch: &str) {
+        let name = format!("project-linux-{arch}.tar.gz");
+        assert!(!super::x86_64_re().is_match(&name), "x86_64_re: {name}");
+        assert!(
+            !super::cpu_64_bit_re().is_match(&name),
+            "cpu_64_bit_re: {name}"
+        );
+        assert!(
+            !super::ALL_ARCHES_RE.is_match(&name),
+            "ALL_ARCHES_RE: {name}"
+        );
+        assert!(
+            !super::x86_64_microarch_level_re().is_match(&name),
+            "x86_64_microarch_level_re: {name}"
         );
     }
 

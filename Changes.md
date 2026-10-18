@@ -6,7 +6,8 @@
   contained `64`, like `golangci-lint-1.64.5-linux-386.tar.gz` over
   `golangci-lint-1.64.5-linux-amd64.tar.gz`. The 0.8.3 release said this was fixed, but the fix was
   incomplete. The 64-bit check also now knows about names with a suffix after the `64`, like
-  `ppc64le`, `mips64el`, `riscv64gc` and `amd64v3`.
+  `ppc64le`, `mips64el`, `riscv64gc` and `amd64v3`. It no longer treats `x8664`, with no separator,
+  as 64-bit, which matches how `ubi` matches x86-64 names for the host.
 - `ubi` now matches `riscv64gc` asset names on RISC-V hosts and x86-64 microarch level names like
   `amd64v3` and `amd64-v3` on x86-64 hosts. A microarch level build needs newer CPU features and can
   crash on an older CPU, so when both a plain build and a level build are available, `ubi` now picks
