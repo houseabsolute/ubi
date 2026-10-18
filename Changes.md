@@ -2,6 +2,9 @@
 
 ## NEXT - TBD
 
+- Fixed a bug where a GitLab release could be backdated to pass `--min-age-days`. Whoever creates a
+  GitLab release can set its `released_at` date to anything. `ubi` now uses the later of
+  `released_at` and `created_at`, which the GitLab server sets itself.
 - Fixed a bug where `--min-age-days` failed with "failed to parse releases list JSON response" when
   the list held a draft release. GitHub lists drafts when the token has push access to the repo.
   Draft releases are now skipped.

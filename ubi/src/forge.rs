@@ -52,6 +52,10 @@ struct Release {
     #[serde(alias = "published_at", alias = "released_at")]
     date: Option<chrono::DateTime<chrono::Utc>>,
 
+    // Whoever creates a GitLab release can set `released_at` to any date, but the server sets this
+    // itself. We use the later of the two so a backdated release can't pass `--min-age-days`.
+    created_at: Option<chrono::DateTime<chrono::Utc>>,
+
     // Handle both direct array (GitHub) and nested object (GitLab)
     #[serde(deserialize_with = "deserialize_assets")]
     assets: Vec<Asset>,
@@ -127,7 +131,7 @@ impl Forge {
                     debug!("Skipping draft release");
                     continue;
                 }
-                let Some(date) = release.date else {
+                let Some(date) = release.age_date() else {
                     debug!("Skipping release with no publish date");
                     continue;
                 };
@@ -408,6 +412,13 @@ impl ForgeType {
                 url
             }
         }
+    }
+}
+
+impl Release {
+    fn age_date(&self) -> Option<chrono::DateTime<chrono::Utc>> {
+        self.date
+            .map(|date| self.created_at.map_or(date, |created| date.max(created)))
     }
 }
 

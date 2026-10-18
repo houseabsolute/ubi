@@ -1547,6 +1547,61 @@ async fn min_age_days_skips_drafts() -> Result<()> {
     Ok(())
 }
 
+#[test(tokio::test)]
+async fn min_age_days_uses_gitlab_created_at_when_later() -> Result<()> {
+    // Whoever creates a GitLab release can set `released_at` to any date, so a new release could be
+    // backdated to pass the age check. The server sets `created_at` itself, so ubi must use the
+    // later of the two dates.
+    let mut server = Server::new_async().await;
+
+    let now = chrono::Utc::now();
+    let sixty_days_ago = (now - chrono::Duration::days(60)).to_rfc3339();
+    let body = serde_json::json!([
+        {
+            "assets": { "links": [{
+                "name": "project-Linux-x86_64-v2.0.0.tar.gz",
+                "url": "https://gitlab.com/test/project/-/releases/v2.0.0/downloads/2",
+            }]},
+            "created_at": now.to_rfc3339(),
+            "released_at": sixty_days_ago,
+        },
+        {
+            "assets": { "links": [{
+                "name": "project-Linux-x86_64-v1.0.0.tar.gz",
+                "url": "https://gitlab.com/test/project/-/releases/v1.0.0/downloads/1",
+            }]},
+            "created_at": sixty_days_ago,
+            "released_at": sixty_days_ago,
+        },
+    ]);
+    let url = server.url();
+    let m = server
+        .mock("GET", "/projects/test%2Fproject/releases")
+        .match_query(mockito::Matcher::Any)
+        .with_status(reqwest::StatusCode::OK.as_u16() as usize)
+        .with_body(body.to_string())
+        .expect(1)
+        .create_async()
+        .await;
+
+    let mut ubi = UbiBuilder::new()
+        .project("test/project")
+        .forge(crate::ForgeType::GitLab)
+        .platform(platforms::Platform::find("x86_64-unknown-linux-musl").unwrap())
+        .api_base_url(&url)
+        .min_age_days(7)
+        .build()?;
+    let asset = ubi.asset().await?;
+    assert_eq!(
+        asset.name, "project-Linux-x86_64-v1.0.0.tar.gz",
+        "should skip the release that was created today with an old released_at"
+    );
+
+    m.assert_async().await;
+
+    Ok(())
+}
+
 fn min_age_ubi(api_base_url: &str) -> Result<crate::Ubi<'_>> {
     UbiBuilder::new()
         .project("test/project")
