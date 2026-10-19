@@ -607,7 +607,7 @@ impl ExeInstaller {
     }
 
     fn maybe_munged_install_path<P: AsRef<Path>>(&self, path: P) -> Result<PathBuf> {
-        let mut install_path = self.install_path.clone();
+        let install_path = self.install_path.clone();
 
         // If the user specifies an explicit path with `--rename-exe`, then we want to use that
         // exactly as given.
@@ -629,8 +629,7 @@ impl ExeInstaller {
         if let Some(ext) = ext {
             if ext.should_preserve_extension_on_install() {
                 debug!("preserving the {} extension on install", ext.extension());
-                install_path.set_extension(ext.extension_without_dot());
-                return Ok(install_path);
+                return Ok(add_extension(install_path, ext.extension_without_dot()));
             }
         }
 
@@ -639,8 +638,7 @@ impl ExeInstaller {
 
     // Windows only runs a file as a program if it has an extension like `.exe`. When the file we
     // install has no extension of its own to keep, like a gzipped binary, we add `.exe` so the
-    // installed file can be run. We append it instead of using `set_extension` so that a name with
-    // a dot, like `tool.v2`, keeps all of its parts.
+    // installed file can be run.
     fn maybe_add_windows_exe_extension(&self, install_path: PathBuf) -> PathBuf {
         if !self.is_windows {
             return install_path;
@@ -653,9 +651,7 @@ impl ExeInstaller {
         }
 
         debug!("adding the .exe extension to the install path for Windows");
-        let mut name = install_path.clone().into_os_string();
-        name.push(".exe");
-        PathBuf::from(name)
+        add_extension(install_path, "exe")
     }
 
     #[cfg(target_family = "windows")]
@@ -670,6 +666,23 @@ impl ExeInstaller {
             Err(e) => Err(anyhow::Error::new(e)),
         }
     }
+}
+
+// We append the extension instead of using `set_extension`, because `set_extension` replaces
+// everything after the last dot, so a name like `lua5.4` would become `lua5.exe`. If the name
+// already ends with the extension, ignoring case, we leave it alone so we don't make `tool.exe.exe`.
+fn add_extension(path: PathBuf, ext: &str) -> PathBuf {
+    if path
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case(ext))
+    {
+        return path;
+    }
+
+    let mut name = path.into_os_string();
+    name.push(".");
+    name.push(ext);
+    PathBuf::from(name)
 }
 
 impl Installer for ExeInstaller {
@@ -1547,7 +1560,8 @@ mod tests {
                 let path = PathBuf::from(format!("foo.{installed_extension}"));
                 let ext = Extension::from_path(&path).unwrap().unwrap();
                 if ext.should_preserve_extension_on_install() {
-                    expect_install_path.set_extension(ext.extension_without_dot());
+                    expect_install_path =
+                        add_extension(expect_install_path, ext.extension_without_dot());
                 }
             }
         }
@@ -1742,6 +1756,36 @@ mod tests {
         let err = format!("{err:#}");
         assert!(err.contains(expect_err), "got error: {err}");
         assert!(!install_root.exists());
+
+        Ok(())
+    }
+
+    // The install name can have dots of its own, like `lua5.4`. Adding the member's extension must
+    // keep every part of that name.
+    #[rstest]
+    #[case::dotted_name_on_windows("lua5.4", "lua5.4.exe", true, "lua5.4.exe")]
+    #[case::dotted_name("tool.v2", "tool.v2.AppImage", false, "tool.v2.AppImage")]
+    #[case::plain_name("tool", "tool.AppImage", false, "tool.AppImage")]
+    #[case::name_already_has_the_extension("tool.exe", "tool.exe", true, "tool.exe")]
+    #[case::name_has_the_extension_in_another_case("tool.EXE", "tool.exe", true, "tool.EXE")]
+    fn exe_installer_adds_the_extension_to_the_install_name(
+        #[case] exe: &str,
+        #[case] member: &str,
+        #[case] is_windows: bool,
+        #[case] expect: &str,
+    ) -> Result<()> {
+        let td = tempdir()?;
+        let installer = ExeInstaller::new(
+            td.path().join(exe),
+            false,
+            false,
+            exe.to_string(),
+            is_windows,
+        );
+        assert_eq!(
+            installer.maybe_munged_install_path(member)?,
+            td.path().join(expect),
+        );
 
         Ok(())
     }
