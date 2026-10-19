@@ -307,11 +307,7 @@ impl<'a> AssetPicker<'a> {
 
         // This comes before 64-bit filtering so that we pick assets with just "arm" in the name
         // (not "arm64") on macOS ARM over something with "x86-64" in the name.
-        let (filtered, asset) = self.maybe_pick_asset_for_macos_arm(matches);
-        if let Some(asset) = asset {
-            return Ok(asset);
-        }
-
+        let filtered = self.maybe_filter_for_macos_arm(matches);
         let filtered = self.maybe_filter_for_64_bit_arch(filtered);
         let mut filtered = maybe_filter_out_microarch_levels(filtered);
 
@@ -385,12 +381,9 @@ impl<'a> AssetPicker<'a> {
         Ok(filtered)
     }
 
-    fn maybe_pick_asset_for_macos_arm(
-        &self,
-        mut matches: Vec<Asset>,
-    ) -> (Vec<Asset>, Option<Asset>) {
+    fn maybe_filter_for_macos_arm(&self, matches: Vec<Asset>) -> Vec<Asset> {
         if !self.running_on_macos_arm() {
-            return (matches, None);
+            return matches;
         }
 
         let asset_names = matches.iter().map(|a| a.name.as_str()).collect::<Vec<_>>();
@@ -399,25 +392,35 @@ impl<'a> AssetPicker<'a> {
         );
 
         let arch_matcher = macos_aarch64_only_re();
-
-        if let Some(idx) = matches.iter().position(|a| arch_matcher.is_match(&a.name)) {
-            debug!("found ARM binary named {}", matches[idx].name);
-            return (vec![], Some(matches.remove(idx)));
+        if matches.iter().any(|a| arch_matcher.is_match(&a.name)) {
+            let filtered = matches
+                .into_iter()
+                .filter(|a| arch_matcher.is_match(&a.name))
+                .collect::<Vec<_>>();
+            debug!(
+                "found ARM binaries: {}",
+                filtered.iter().map(|a| a.name.as_str()).join(",")
+            );
+            return filtered;
         }
 
         // A universal build runs natively on ARM, so we want it over an x86-64 build that would run
         // under Rosetta. We look for it after ARM names so that an ARM-only build still wins.
         let universal_matcher = regex!(r"(?i:(?:\b|_)all(?:\b|_))");
-        if let Some(idx) = matches
-            .iter()
-            .position(|a| universal_matcher.is_match(&a.name))
-        {
-            debug!("found universal binary named {}", matches[idx].name);
-            return (vec![], Some(matches.remove(idx)));
+        if matches.iter().any(|a| universal_matcher.is_match(&a.name)) {
+            let filtered = matches
+                .into_iter()
+                .filter(|a| universal_matcher.is_match(&a.name))
+                .collect::<Vec<_>>();
+            debug!(
+                "found universal binaries: {}",
+                filtered.iter().map(|a| a.name.as_str()).join(",")
+            );
+            return filtered;
         }
 
         debug!("did not find any ARM or universal binaries");
-        (matches, None)
+        matches
     }
 
     fn os_matcher(&self) -> &'static Lazy<Regex> {
@@ -649,6 +652,20 @@ mod test {
     #[case::aarch64_apple_darwin_pick_arm64_over_all(
         "aarch64-apple-darwin",
         &["tool-macos-all.tar.gz", "tool-macos-arm64.tar.gz"],
+        None,
+        None,
+        1
+    )]
+    #[case::aarch64_apple_darwin_sort_arm_assets_by_name(
+        "aarch64-apple-darwin",
+        &["tool-macos-arm64-b.tar.gz", "tool-macos-arm64-a.tar.gz"],
+        None,
+        None,
+        1
+    )]
+    #[case::aarch64_apple_darwin_pick_arm64_over_arm(
+        "aarch64-apple-darwin",
+        &["tool-macos-arm.tar.gz", "tool-macos-arm64.tar.gz"],
         None,
         None,
         1

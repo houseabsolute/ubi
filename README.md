@@ -252,11 +252,12 @@ this in several stages:
 At this point, any remaining assets should work on your platform, so if there's more than one match,
 it attempts to pick the best one.
 
-- If it finds both 64-bit and 32-bit assets and you are on a 64-bit platform, it filters out the
-  32-bit assets.
 - If you've provided a `--matching` string, this is used as a filter at this point.
 - If your platform is macOS on ARM64 and there are assets for both x86-64 and ARM64, it filters out
-  the non-ARM64 assets.
+  the non-ARM64 assets. If there are no ARM64 assets but there is a universal asset with `all` in
+  its name, it keeps only the universal assets.
+- If it finds both 64-bit and 32-bit assets and you are on a 64-bit platform, it filters out the
+  32-bit assets.
 
 Finally, if there are still multiple assets left, it sorts them by file name and picks the first
 one. The sorting is done to make sure it always picks the same one every time it's run.

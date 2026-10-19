@@ -2,6 +2,9 @@
 
 ## NEXT - TBD
 
+- On macOS ARM, when more than one ARM asset matched, `ubi` picked the first one the forge listed.
+  It skipped the 64-bit filter and the sort by name that the README describes. Now it runs both, so
+  it picks `arm64` over plain `arm` and picks the same asset every time.
 - Fixed a bug where `ubi` on macOS ARM would pick an x86-64 asset over a universal asset named with
   `all`, like `tool-macos-all.tar.gz`. The universal build runs natively, so `ubi` now picks it.
 - Fixed a bug where `ubi` on 64-bit Windows would not pick an asset named with `win32`, like
