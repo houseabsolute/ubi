@@ -405,7 +405,18 @@ impl<'a> AssetPicker<'a> {
             return (vec![], Some(matches.remove(idx)));
         }
 
-        debug!("did not find any ARM binaries");
+        // A universal build runs natively on ARM, so we want it over an x86-64 build that would run
+        // under Rosetta. We look for it after ARM names so that an ARM-only build still wins.
+        let universal_matcher = regex!(r"(?i:(?:\b|_)all(?:\b|_))");
+        if let Some(idx) = matches
+            .iter()
+            .position(|a| universal_matcher.is_match(&a.name))
+        {
+            debug!("found universal binary named {}", matches[idx].name);
+            return (vec![], Some(matches.remove(idx)));
+        }
+
+        debug!("did not find any ARM or universal binaries");
         (matches, None)
     }
 
@@ -624,6 +635,20 @@ mod test {
     #[case::x86_64_pc_windows_msvc_pick_win64_over_win32(
         "x86_64-pc-windows-msvc",
         &["tool-win32.zip", "tool-win64.zip"],
+        None,
+        None,
+        1
+    )]
+    #[case::aarch64_apple_darwin_pick_all_over_x86_64(
+        "aarch64-apple-darwin",
+        &["tool-macos-all.tar.gz", "tool-macos-x86_64.tar.gz"],
+        None,
+        None,
+        0
+    )]
+    #[case::aarch64_apple_darwin_pick_arm64_over_all(
+        "aarch64-apple-darwin",
+        &["tool-macos-all.tar.gz", "tool-macos-arm64.tar.gz"],
         None,
         None,
         1
