@@ -2,6 +2,9 @@
 
 ## NEXT - TBD
 
+- Fixed a bug where a failed `--self-upgrade` on Windows left no `ubi.exe` behind. `ubi` renames
+  itself to `ubi-old.exe` before the upgrade, and nothing renamed it back when the upgrade failed.
+  Now `ubi` moves the old binary back.
 - The `Debug` output for `UbiBuilder` and `Ubi` no longer shows the API token. The `ubi` CLI never
   printed it, but code that uses the library and logs these values with `{:?}` would have shown the
   token.

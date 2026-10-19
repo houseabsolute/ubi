@@ -1,7 +1,11 @@
 use anyhow::{anyhow, Context, Result};
 use clap::{builder::BoolishValueParser, Arg, ArgAction, ArgGroup, ArgMatches, Command};
 use log::{debug, error};
-use std::{env, path::Path, str::FromStr};
+use std::{
+    env,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 use strum::VariantNames;
 use ubi::{ColorChoice, ForgeType, Ubi, UbiBuilder};
 
@@ -28,18 +32,7 @@ async fn main() {
         }
     };
     let status = match make_ubi(&matches, &ubi_exe_path) {
-        Ok((mut u, post_run)) => match u.install_binary().await {
-            Ok(()) => {
-                if let Some(post_run) = post_run {
-                    post_run();
-                }
-                0
-            }
-            Err(e) => {
-                error!("{e:?}");
-                1
-            }
-        },
+        Ok((mut u, old_exe)) => finish(u.install_binary().await, old_exe),
         Err(e) => {
             error!("{e:?}");
             127
@@ -335,7 +328,7 @@ pub(crate) fn init_logger_from_matches(matches: &ArgMatches) -> Result<()> {
 fn make_ubi<'a>(
     matches: &'a ArgMatches,
     ubi_exe_path: &'a Path,
-) -> Result<(Ubi<'a>, Option<impl FnOnce()>)> {
+) -> Result<(Ubi<'a>, Option<OldExe>)> {
     if matches.get_flag("self-upgrade") {
         return self_upgrade_ubi(
             ubi_exe_path,
@@ -389,7 +382,7 @@ fn make_ubi<'a>(
 fn self_upgrade_ubi(
     ubi_exe_path: &Path,
     min_age_days: Option<u32>,
-) -> Result<(Ubi<'_>, Option<impl FnOnce()>)> {
+) -> Result<(Ubi<'_>, Option<OldExe>)> {
     let mut builder = UbiBuilder::new().project("houseabsolute/ubi").install_dir(
         ubi_exe_path
             .parent()
@@ -400,32 +393,67 @@ fn self_upgrade_ubi(
     }
     let ubi = builder.build()?;
 
-    let post_run = if cfg!(target_os = "windows") {
-        let mut old_exe = ubi_exe_path.to_path_buf();
-        old_exe.set_file_name("ubi-old.exe");
-        debug!(
-            "renaming {} to {}",
-            ubi_exe_path.display(),
-            old_exe.display()
-        );
-        std::fs::rename(ubi_exe_path, &old_exe).with_context(|| {
-            format!(
-                "failed to rename {} to {}",
-                ubi_exe_path.display(),
-                old_exe.display()
-            )
-        })?;
-        Some(move || {
-            println!(
-                "The self-upgrade operation left an old binary behind that must be deleted manually: {}",
-                old_exe.display(),
-            );
-        })
+    // Windows won't let us replace the exe that is running, but it does let us rename it.
+    let old_exe = if cfg!(target_os = "windows") {
+        Some(OldExe::move_aside(ubi_exe_path)?)
     } else {
         None
     };
 
-    Ok((ubi, post_run))
+    Ok((ubi, old_exe))
+}
+
+fn finish(res: Result<()>, old_exe: Option<OldExe>) -> i32 {
+    match res {
+        Ok(()) => {
+            if let Some(old_exe) = old_exe {
+                println!(
+                    "The self-upgrade operation left an old binary behind that must be deleted manually: {}",
+                    old_exe.old.display(),
+                );
+            }
+            0
+        }
+        Err(e) => {
+            error!("{e:?}");
+            if let Some(old_exe) = old_exe {
+                old_exe.restore();
+            }
+            1
+        }
+    }
+}
+
+struct OldExe {
+    exe: PathBuf,
+    old: PathBuf,
+}
+
+impl OldExe {
+    fn move_aside(exe: &Path) -> Result<OldExe> {
+        let mut old = exe.to_path_buf();
+        old.set_file_name("ubi-old.exe");
+        debug!("renaming {} to {}", exe.display(), old.display());
+        std::fs::rename(exe, &old)
+            .with_context(|| format!("failed to rename {} to {}", exe.display(), old.display()))?;
+        Ok(OldExe {
+            exe: exe.to_path_buf(),
+            old,
+        })
+    }
+
+    // On Windows, once the new exe is fully written, nothing else in the install can fail. So if
+    // there is a new exe here, it's a partial write, and we replace it with the old one.
+    fn restore(self) {
+        debug!("renaming {} to {}", self.old.display(), self.exe.display());
+        if let Err(e) = std::fs::rename(&self.old, &self.exe) {
+            error!(
+                "Could not move the old binary at {} back to {}: {e}",
+                self.old.display(),
+                self.exe.display(),
+            );
+        }
+    }
 }
 
 #[cfg(test)]
@@ -433,6 +461,60 @@ mod tests {
     use super::*;
     use serial_test::serial;
     use std::ffi::OsString;
+
+    // On Windows we move the running exe aside before the upgrade. If the upgrade fails, the user
+    // must still have a working ubi, so we move the old exe back.
+    #[test]
+    fn a_failed_self_upgrade_restores_the_old_exe() -> Result<()> {
+        let td = tempfile::tempdir()?;
+        let exe = td.path().join("ubi.exe");
+        std::fs::write(&exe, "old")?;
+
+        let old_exe = OldExe::move_aside(&exe)?;
+        let status = finish(Err(anyhow!("network is down")), Some(old_exe));
+
+        assert_eq!(status, 1);
+        assert_eq!(std::fs::read_to_string(&exe)?, "old");
+        assert!(!td.path().join("ubi-old.exe").exists());
+
+        Ok(())
+    }
+
+    #[test]
+    fn a_successful_self_upgrade_keeps_the_new_exe() -> Result<()> {
+        let td = tempfile::tempdir()?;
+        let exe = td.path().join("ubi.exe");
+        std::fs::write(&exe, "old")?;
+
+        let old_exe = OldExe::move_aside(&exe)?;
+        std::fs::write(&exe, "new")?;
+        let status = finish(Ok(()), Some(old_exe));
+
+        assert_eq!(status, 0);
+        assert_eq!(std::fs::read_to_string(&exe)?, "new");
+        assert_eq!(
+            std::fs::read_to_string(td.path().join("ubi-old.exe"))?,
+            "old"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn a_failed_self_upgrade_replaces_a_partial_new_exe() -> Result<()> {
+        let td = tempfile::tempdir()?;
+        let exe = td.path().join("ubi.exe");
+        std::fs::write(&exe, "old")?;
+
+        let old_exe = OldExe::move_aside(&exe)?;
+        std::fs::write(&exe, "ne")?;
+        let status = finish(Err(anyhow!("disk is full")), Some(old_exe));
+
+        assert_eq!(status, 1);
+        assert_eq!(std::fs::read_to_string(&exe)?, "old");
+
+        Ok(())
+    }
 
     /// Every env var the CLI knows about. The test guard clears all of these before each test so
     /// that a variable set in the developer's own shell cannot influence the results.
@@ -768,6 +850,9 @@ mod tests {
             .unwrap();
         let td = tempfile::tempdir().unwrap();
         let exe_path = td.path().join("ubi");
+        // On Windows, a self-upgrade moves the current exe aside before installing, so it has to
+        // exist.
+        std::fs::write(&exe_path, "").unwrap();
         let (ubi, _) = make_ubi(&matches, &exe_path).unwrap();
         // `Ubi` has no getter for this, so we look at its debug output.
         let debug = format!("{ubi:?}");
