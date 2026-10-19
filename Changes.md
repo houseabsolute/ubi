@@ -2,6 +2,9 @@
 
 ## NEXT - TBD
 
+- Fixed a bug where `--forge` and `UBI_FORGE` were ignored when `--project` was a full URL or when
+  `--url` was used. `ubi` then treated a self-hosted GitLab or Forgejo as GitHub, so it read the
+  wrong token and, for GitLab, used the wrong API path.
 - Fixed a bug where `--extract-all` did not keep symlinks on Unix. A link to a directory became an
   empty directory, a link to a file became a copy, and a broken link stopped the install partway
   through. This was a regression in 0.7.0. `ubi` now checks every link in the archive before it

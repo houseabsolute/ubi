@@ -371,7 +371,7 @@ fn parse_project_name(
                 format!("--project {project}"),
             )
         } else {
-            let base = forge.unwrap_or_default().project_base_url();
+            let base = forge.clone().unwrap_or_default().project_base_url();
             (
                 base.join(project).with_context(|| {
                     format!("failed to construct project URL from '{project}' with base URL {base}")
@@ -387,7 +387,9 @@ fn parse_project_name(
         );
     };
 
-    let forge_type = ForgeType::from_url(&parsed);
+    // We can only guess the forge from the host for the big public forges, so a forge the caller
+    // gave us must win. Otherwise a self-hosted GitLab or Forgejo would be treated as GitHub.
+    let forge_type = forge.unwrap_or_else(|| ForgeType::from_url(&parsed));
     let project_name = forge_type
         .parse_project_name_from_url(&parsed, &from)
         .with_context(|| format!("failed to parse project name from URL {parsed}"))?;
@@ -525,6 +527,44 @@ mod test {
             );
             assert_eq!(forge_type, ForgeType::GitHub);
         }
+
+        Ok(())
+    }
+
+    // An explicit forge must win over the guess we make from the URL's host, since a self-hosted
+    // forge can be on any host.
+    #[rstest]
+    #[case::gitlab_project_url(
+        Some("https://gitlab.example.com/owner/repo"),
+        None,
+        ForgeType::GitLab
+    )]
+    #[case::forgejo_project_url(
+        Some("https://git.example.com/owner/repo"),
+        None,
+        ForgeType::Forgejo
+    )]
+    #[case::gitlab_asset_url(
+        None,
+        Some("https://gitlab.example.com/owner/repo/-/releases/v1.0.0/downloads/tool.tar.gz"),
+        ForgeType::GitLab
+    )]
+    #[case::forgejo_asset_url(
+        None,
+        Some("https://git.example.com/owner/repo/releases/download/v1.0.0/tool.tar.gz"),
+        ForgeType::Forgejo
+    )]
+    #[case::short_name(Some("owner/repo"), None, ForgeType::GitLab)]
+    fn parse_project_name_uses_the_given_forge(
+        #[case] project: Option<&str>,
+        #[case] url: Option<&str>,
+        #[case] forge: ForgeType,
+    ) -> Result<()> {
+        let url = url.map(Url::parse).transpose()?;
+        let (project_name, forge_type) =
+            super::parse_project_name(project, url.as_ref(), Some(forge.clone()))?;
+        assert_eq!(project_name, "owner/repo");
+        assert_eq!(forge_type, forge);
 
         Ok(())
     }
