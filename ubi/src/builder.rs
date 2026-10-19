@@ -1,6 +1,6 @@
 /// The `builder` module contains the `UbiBuilder` struct which is used to create a `Ubi` instance.
 use crate::{
-    forge::ForgeType,
+    forge::{redacted, ForgeType},
     installer::{ArchiveInstaller, ExeInstaller, Installer},
     picker::AssetPicker,
     ubi::Ubi,
@@ -21,7 +21,7 @@ use url::Url;
 use which::which;
 
 /// `UbiBuilder` is used to create a [`Ubi`] instance.
-#[derive(Debug, Default)]
+#[derive(Default)]
 #[allow(clippy::module_name_repetitions)]
 pub struct UbiBuilder<'a> {
     project: Option<&'a str>,
@@ -39,6 +39,29 @@ pub struct UbiBuilder<'a> {
     api_base_url: Option<&'a str>,
     forge: Option<ForgeType>,
     min_age_days: Option<u32>,
+}
+
+// Debug output ends up in logs and panic messages, so we hide the token.
+impl std::fmt::Debug for UbiBuilder<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("UbiBuilder")
+            .field("project", &self.project)
+            .field("tag", &self.tag)
+            .field("url", &self.url)
+            .field("install_dir", &self.install_dir)
+            .field("matching", &self.matching)
+            .field("matching_regex", &self.matching_regex)
+            .field("exe", &self.exe)
+            .field("rename_exe_to", &self.rename_exe_to)
+            .field("extract_all", &self.extract_all)
+            .field("token", &redacted(self.token))
+            .field("platform", &self.platform)
+            .field("is_musl", &self.is_musl)
+            .field("api_base_url", &self.api_base_url)
+            .field("forge", &self.forge)
+            .field("min_age_days", &self.min_age_days)
+            .finish()
+    }
 }
 
 impl<'a> UbiBuilder<'a> {
@@ -482,6 +505,18 @@ fn reqwest_client() -> Result<Client> {
 mod test {
     use super::*;
     use rstest::rstest;
+
+    // Debug output ends up in logs and panic messages, so it must never show the token.
+    #[test]
+    fn builder_debug_hides_the_token() {
+        let builder = UbiBuilder::new()
+            .project("owner/repo")
+            .token("secret-token");
+        let debug = format!("{builder:?}");
+        assert!(!debug.contains("secret-token"));
+        assert!(debug.contains(r#"token: Some("<redacted>")"#));
+        assert!(debug.contains("owner/repo"));
+    }
 
     #[test]
     fn parse_project_name() -> Result<()> {

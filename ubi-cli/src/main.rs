@@ -769,12 +769,9 @@ mod tests {
         let td = tempfile::tempdir().unwrap();
         let exe_path = td.path().join("ubi");
         let (ubi, _) = make_ubi(&matches, &exe_path).unwrap();
-        // `Ubi` has no getter for this, so we look at its debug output. We don't print that output
-        // on failure, because it includes the forge token.
-        assert!(
-            format!("{ubi:?}").contains("min_age_days: Some(7)"),
-            "the Ubi was built without min_age_days set to 7",
-        );
+        // `Ubi` has no getter for this, so we look at its debug output.
+        let debug = format!("{ubi:?}");
+        assert!(debug.contains("min_age_days: Some(7)"), "got {debug}");
     }
 
     #[test]

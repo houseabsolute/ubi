@@ -2,6 +2,9 @@
 
 ## NEXT - TBD
 
+- The `Debug` output for `UbiBuilder` and `Ubi` no longer shows the API token. The `ubi` CLI never
+  printed it, but code that uses the library and logs these values with `{:?}` would have shown the
+  token.
 - Fixed a bug where `--self-upgrade` ignored `--min-age-days` and `UBI_MIN_AGE_DAYS`, so a
   self-upgrade skipped the minimum age check. It also quietly ignored `--matching`,
   `--matching-regex`, `--rename-exe` and `--api-base-url`. These four flags, and their env vars, are

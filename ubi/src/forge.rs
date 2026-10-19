@@ -29,7 +29,6 @@ pub enum ForgeType {
     GitLab,
 }
 
-#[derive(Debug)]
 pub(crate) struct Forge {
     project_name: String,
     tag: Option<String>,
@@ -37,6 +36,23 @@ pub(crate) struct Forge {
     token: Option<String>,
     #[allow(clippy::struct_field_names)] // We can't call this `type`.
     forge_type: ForgeType,
+}
+
+// Debug output ends up in logs and panic messages, so we hide the token.
+impl std::fmt::Debug for Forge {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Forge")
+            .field("project_name", &self.project_name)
+            .field("tag", &self.tag)
+            .field("api_base_url", &self.api_base_url)
+            .field("token", &redacted(self.token.as_deref()))
+            .field("forge_type", &self.forge_type)
+            .finish()
+    }
+}
+
+pub(crate) fn redacted(token: Option<&str>) -> Option<&'static str> {
+    token.map(|_| "<redacted>")
 }
 
 unsafe impl Send for Forge {}
@@ -458,6 +474,23 @@ mod tests {
     use std::ffi::OsString;
     use test_case::test_case;
     use test_log::test;
+
+    // Debug output ends up in logs and panic messages, so it must never show the token.
+    #[test]
+    fn forge_debug_hides_the_token() -> Result<()> {
+        let forge = ForgeType::GitHub.new_forge(
+            String::from("owner/repo"),
+            None,
+            None,
+            Some(String::from("secret-token")),
+        )?;
+        let debug = format!("{forge:?}");
+        assert!(!debug.contains("secret-token"));
+        assert!(debug.contains(r#"token: Some("<redacted>")"#));
+        assert!(debug.contains("owner/repo"));
+
+        Ok(())
+    }
 
     // Restores the environment when it goes out of scope, including when a test returns early from
     // a `?` or a failed assertion. The hand-rolled restore this replaces sat at the end of each
