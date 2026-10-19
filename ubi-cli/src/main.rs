@@ -191,8 +191,9 @@ fn cmd() -> Command {
                 ))
                 .help(concat!(
                     "The forge to use. If this isn't passed, then the value of `--project` or `--url`",
-                    " will be checked for gitlab.com. If this contains any other domain _or_ if it",
-                    " does not have a domain at all, then the default is GitHub.",
+                    " will be checked for codeberg.org (Forgejo) or gitlab.com (GitLab). If this",
+                    " contains any other domain _or_ if it does not have a domain at all, then the",
+                    " default is GitHub.",
                 )),
             "UBI_FORGE",
         ))
