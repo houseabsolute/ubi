@@ -133,10 +133,11 @@ environment variables.
 `0` is treated as not setting it at all, so color is left enabled. Passing `--color always` or
 `--color never` overrides `NO_COLOR` entirely.
 
-Also note that `--self-upgrade` conflicts with `--exe`, `--extract-all`, `--forge`, `--in`,
-`--project`, `--tag`, and `--url`, so if any of the corresponding environment variables are set in
-your shell, `ubi --self-upgrade` will fail with a conflict error. If you have one of these set in
-your shell profile, unset it for the duration of the command:
+Also note that `--self-upgrade` conflicts with `--api-base-url`, `--exe`, `--extract-all`,
+`--forge`, `--in`, `--matching`, `--matching-regex`, `--project`, `--rename-exe`, `--tag`, and
+`--url`, so if any of the corresponding environment variables are set in your shell,
+`ubi --self-upgrade` will fail with a conflict error. If you have one of these set in your shell
+profile, unset it for the duration of the command:
 
 ```sh
 env -u UBI_PROJECT -u UBI_IN ubi --self-upgrade
