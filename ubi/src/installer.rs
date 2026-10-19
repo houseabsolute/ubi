@@ -14,11 +14,11 @@ use std::{
     ffi::OsString,
     fmt::Debug,
     fs::{self, create_dir_all, File},
-    io::{Read, Write},
+    io::Read,
     path::{Path, PathBuf},
 };
 use strum::IntoEnumIterator;
-use tempfile::{tempdir, TempDir};
+use tempfile::{tempdir, NamedTempFile, TempDir};
 use walkdir::WalkDir;
 use xz2::read::XzDecoder;
 use zip::ZipArchive;
@@ -306,15 +306,7 @@ impl ExeInstaller {
             })?;
 
             self.check_install_path_is_not_a_dir(&install_path)?;
-            File::create(&install_path)
-                .with_context(|| format!("failed to create file at {}", install_path.display()))?
-                .write_all(&buffer)
-                .with_context(|| {
-                    format!(
-                        "failed to write extracted content to {}",
-                        install_path.display()
-                    )
-                })?;
+            replace_file(&install_path, &mut buffer.as_slice())?;
 
             return Ok(install_path);
         }
@@ -373,15 +365,7 @@ impl ExeInstaller {
             })?;
 
             self.check_install_path_is_not_a_dir(&install_path)?;
-            File::create(&install_path)
-                .with_context(|| format!("failed to create file at {}", install_path.display()))?
-                .write_all(&buffer)
-                .with_context(|| {
-                    format!(
-                        "failed to write extracted content to {}",
-                        install_path.display()
-                    )
-                })?;
+            replace_file(&install_path, &mut buffer.as_slice())?;
 
             return Ok(install_path);
         }
@@ -536,10 +520,7 @@ impl ExeInstaller {
             self.maybe_add_windows_exe_extension(self.install_path.clone())
         };
         self.check_install_path_is_not_a_dir(&install_path)?;
-        let mut writer = File::create(&install_path)
-            .with_context(|| format!("Cannot write to {}", install_path.display()))?;
-        std::io::copy(&mut reader, &mut writer)
-            .with_context(|| format!("failed to copy content to {}", install_path.display()))?;
+        replace_file(&install_path, &mut reader)?;
         Ok(install_path)
     }
 
@@ -554,13 +535,7 @@ impl ExeInstaller {
 
         let install_path = self.maybe_munged_install_path(exe_file)?;
         self.check_install_path_is_not_a_dir(&install_path)?;
-        std::fs::copy(exe_file, &install_path).with_context(|| {
-            format!(
-                "error copying file from {} to {}",
-                exe_file.display(),
-                install_path.display()
-            )
-        })?;
+        replace_file(&install_path, &mut open_file(exe_file)?)?;
 
         Ok(install_path)
     }
@@ -667,6 +642,28 @@ impl ExeInstaller {
             Err(e) => Err(anyhow::Error::new(e)),
         }
     }
+}
+
+// We write to a temp file in the same directory and then rename it over the install path, like
+// tarball installs do. Writing into the old file fails on Linux when the old executable is running,
+// and it writes through a symlink at the install path to whatever the link points to. The temp file
+// must be in the same directory so the rename stays on one filesystem.
+fn replace_file(install_path: &Path, reader: &mut impl Read) -> Result<()> {
+    let dir = install_path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    let mut temp = NamedTempFile::new_in(dir)
+        .with_context(|| format!("failed to create a temp file in {}", dir.display()))?;
+    std::io::copy(reader, &mut temp)
+        .with_context(|| format!("failed to write content for {}", install_path.display()))?;
+    temp.persist(install_path).with_context(|| {
+        format!(
+            "failed to move the new file into place at {}",
+            install_path.display()
+        )
+    })?;
+    Ok(())
 }
 
 // We append the extension instead of using `set_extension`, because `set_extension` replaces
@@ -1233,6 +1230,7 @@ fn open_file(path: &Path) -> Result<File> {
 mod tests {
     use super::*;
     use rstest::rstest;
+    use std::io::Write;
     #[cfg(target_family = "unix")]
     use std::os::unix::fs::{symlink, PermissionsExt};
     use tempfile::tempdir;
@@ -1584,6 +1582,50 @@ mod tests {
             fs::read_to_string(install_dir.join(expect_installed))?,
             expect_member,
         );
+
+        Ok(())
+    }
+
+    // Every format should replace the old file instead of writing into it. Writing into it fails
+    // on Linux when the old executable is running, and it writes through a symlink at the install
+    // path.
+    #[cfg(target_family = "unix")]
+    #[rstest]
+    #[case("test-data/project.7z")]
+    #[case("test-data/project.bz2")]
+    #[case("test-data/project.gz")]
+    #[case("test-data/project.tar.gz")]
+    #[case("test-data/project.xz")]
+    #[case("test-data/project.zip")]
+    #[case("test-data/project.zst")]
+    #[case("test-data/project")]
+    fn exe_installer_replaces_a_symlink_at_the_install_path(
+        #[case] archive_path: &str,
+    ) -> Result<()> {
+        crate::test_log::init_logging();
+
+        let td = tempdir()?;
+        let target = td.path().join("target");
+        fs::write(&target, "original")?;
+        let install_path = td.path().join("project");
+        symlink(&target, &install_path)?;
+
+        let installer = ExeInstaller::new(
+            install_path.clone(),
+            false,
+            false,
+            "project".to_string(),
+            false,
+        );
+        installer.install(&Download {
+            _temp_dir: tempdir()?,
+            archive_path: PathBuf::from(archive_path),
+        })?;
+
+        assert_eq!(fs::read_to_string(&target)?, "original");
+        let meta = install_path.symlink_metadata()?;
+        assert!(!meta.file_type().is_symlink());
+        assert_eq!(meta.permissions().mode() & 0o777, 0o755);
 
         Ok(())
     }

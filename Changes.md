@@ -2,6 +2,12 @@
 
 ## NEXT - TBD
 
+- Fixed a bug where installing a single executable from anything other than a tarball wrote into the
+  old file instead of replacing it. On Linux this failed with `Text file busy` when the old
+  executable was running, and if the install path was a symlink, it overwrote the file the link
+  pointed to. Now every format replaces the file, the way tarball installs already did. This means
+  the new file is owned by the user running `ubi`, and it no longer shares hard links with other
+  paths.
 - Fixed some case-sensitive name matching. On Windows, with `--exe Foo` and an archive that held
   `Foo-cli.exe` before `Foo.exe`, `ubi` installed `Foo-cli.exe`. Matching the `--exe` name to an
   archive member on Windows now ignores case everywhere. Also, file extensions are now matched
