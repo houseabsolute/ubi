@@ -2,6 +2,10 @@
 
 ## NEXT - TBD
 
+- Fixed a bug where `ubi` read only the first stream of a gzip, bzip2, or xz file that held several
+  streams, like the files `pigz` and `pbzip2` write. For a bare compressed executable, `ubi`
+  installed a truncated file and reported success. For a tarball, it could fail to find the
+  executable.
 - Fixed a bug where installing a file from an archive failed if the file had an extension `ubi`
   didn't know, like `pkg/project.bin`. The error was `pkg/project.bin has unknown extension bin`.
   Now `ubi` installs the file without that extension.

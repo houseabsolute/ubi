@@ -5,8 +5,8 @@ use crate::{
 };
 use anyhow::{anyhow, Context, Result};
 use binstall_tar::Archive as TarArchive;
-use bzip2::read::BzDecoder;
-use flate2::read::GzDecoder;
+use bzip2::read::MultiBzDecoder;
+use flate2::read::MultiGzDecoder;
 use itertools::Itertools;
 use log::{debug, info};
 use std::{
@@ -500,19 +500,19 @@ impl ExeInstaller {
 
     fn unbzip(&self, downloaded_file: &Path) -> Result<PathBuf> {
         debug!("uncompressing executable from bzip file");
-        let reader = BzDecoder::new(open_file(downloaded_file)?);
+        let reader = MultiBzDecoder::new(open_file(downloaded_file)?);
         self.write_to_install_path(reader)
     }
 
     fn ungzip(&self, downloaded_file: &Path) -> Result<PathBuf> {
         debug!("uncompressing executable from gzip file");
-        let reader = GzDecoder::new(open_file(downloaded_file)?);
+        let reader = MultiGzDecoder::new(open_file(downloaded_file)?);
         self.write_to_install_path(reader)
     }
 
     fn unxz(&self, downloaded_file: &Path) -> Result<PathBuf> {
         debug!("uncompressing executable from xz file");
-        let reader = XzDecoder::new(open_file(downloaded_file)?);
+        let reader = XzDecoder::new_multi_decoder(open_file(downloaded_file)?);
         self.write_to_install_path(reader)
     }
 
@@ -1141,15 +1141,19 @@ impl Installer for ArchiveInstaller {
 fn tar_reader_for(downloaded_file: &Path) -> Result<TarArchive<Box<dyn Read>>> {
     let file = open_file(downloaded_file)?;
 
+    // Tools like `pbzip2` and `pigz` write a file as several compressed streams, so we use the
+    // decoders that read all of them. The zstd decoder already does this.
     let ext = downloaded_file.extension();
     match ext {
         Some(ext) => match ext.to_str() {
             Some("tar") => Ok(TarArchive::new(Box::new(file))),
             Some("bz" | "tbz" | "bz2" | "tbz2") => {
-                Ok(TarArchive::new(Box::new(BzDecoder::new(file))))
+                Ok(TarArchive::new(Box::new(MultiBzDecoder::new(file))))
             }
-            Some("gz" | "tgz") => Ok(TarArchive::new(Box::new(GzDecoder::new(file)))),
-            Some("xz" | "txz") => Ok(TarArchive::new(Box::new(XzDecoder::new(file)))),
+            Some("gz" | "tgz") => Ok(TarArchive::new(Box::new(MultiGzDecoder::new(file)))),
+            Some("xz" | "txz") => Ok(TarArchive::new(Box::new(XzDecoder::new_multi_decoder(
+                file,
+            )))),
             Some("zst" | "tzst") => Ok(TarArchive::new(Box::new(ZstdDecoder::new(file)?))),
             Some(e) => Err(anyhow!(
                 "don't know how to uncompress a tarball with extension = {e}",
@@ -1816,6 +1820,112 @@ mod tests {
         assert_eq!(fs::read_dir(td.path().join("bin"))?.count(), 1);
 
         Ok(())
+    }
+
+    // A compressed file can hold several streams one after the other, and the file is all of them
+    // put together. Reading only the first stream would install a cut off file.
+    #[rstest]
+    #[case::gz("project.gz")]
+    #[case::bz2("project.bz2")]
+    #[case::xz("project.xz")]
+    #[case::zst("project.zst")]
+    fn exe_installer_reads_every_stream_in_a_compressed_file(#[case] name: &str) -> Result<()> {
+        crate::test_log::init_logging();
+
+        let td = tempdir()?;
+        let compressed_path = td.path().join(name);
+        let mut compressed = vec![];
+        for part in [&b"abc"[..], &b"defgh"[..]] {
+            compressed.extend(compress(name, part)?);
+        }
+        fs::write(&compressed_path, compressed)?;
+
+        let install_path = td.path().join("bin").join("project");
+        let installer = ExeInstaller::new(
+            install_path.clone(),
+            false,
+            false,
+            "project".to_string(),
+            false,
+        );
+        installer.install(&Download {
+            _temp_dir: tempdir()?,
+            archive_path: compressed_path,
+        })?;
+        assert_eq!(fs::read(&install_path)?, b"abcdefgh");
+
+        Ok(())
+    }
+
+    // Tools like `pbzip2` and `pigz` write a compressed tarball as several streams. Here the first
+    // stream ends after the first entry, so the executable is only in the second stream.
+    #[rstest]
+    #[case::tar_gz("project.tar.gz")]
+    #[case::tar_bz2("project.tar.bz2")]
+    #[case::tar_xz("project.tar.xz")]
+    #[case::tar_zst("project.tar.zst")]
+    fn exe_installer_reads_every_stream_in_a_compressed_tarball(#[case] name: &str) -> Result<()> {
+        crate::test_log::init_logging();
+
+        let mut builder = binstall_tar::Builder::new(vec![]);
+        for (path, data) in [("pkg/README", &b"readme"[..]), ("pkg/project", &b"abc"[..])] {
+            let mut header = binstall_tar::Header::new_gnu();
+            header.set_size(data.len() as u64);
+            header.set_mode(0o755);
+            header.set_cksum();
+            builder.append_data(&mut header, path, data)?;
+        }
+        let tar = builder.into_inner()?;
+        // Each entry is a 512 byte header plus its data padded to 512 bytes.
+        let (first, rest) = tar.split_at(1024);
+
+        let td = tempdir()?;
+        let tarball_path = td.path().join(name);
+        let mut compressed = compress(name, first)?;
+        compressed.extend(compress(name, rest)?);
+        fs::write(&tarball_path, compressed)?;
+
+        let install_path = td.path().join("bin").join("project");
+        let installer = ExeInstaller::new(
+            install_path.clone(),
+            false,
+            false,
+            "project".to_string(),
+            false,
+        );
+        installer.install(&Download {
+            _temp_dir: tempdir()?,
+            archive_path: tarball_path,
+        })?;
+        assert_eq!(fs::read(&install_path)?, b"abc");
+
+        Ok(())
+    }
+
+    fn compress(name: &str, data: &[u8]) -> Result<Vec<u8>> {
+        let mut out = vec![];
+        match Extension::from_path(Path::new(name))? {
+            Some(Extension::Gz | Extension::TarGz) => {
+                let mut w = flate2::write::GzEncoder::new(&mut out, flate2::Compression::default());
+                w.write_all(data)?;
+                w.finish()?;
+            }
+            Some(Extension::Bz2 | Extension::TarBz2) => {
+                let mut w = bzip2::write::BzEncoder::new(&mut out, bzip2::Compression::default());
+                w.write_all(data)?;
+                w.finish()?;
+            }
+            Some(Extension::Xz | Extension::TarXz) => {
+                let mut w = xz2::write::XzEncoder::new(&mut out, 6);
+                w.write_all(data)?;
+                w.finish()?;
+            }
+            Some(Extension::Zst | Extension::TarZst) => {
+                out = zstd::stream::encode_all(data, 0)?;
+            }
+            _ => return Err(anyhow!("no compressor for {name}")),
+        }
+        Ok(out)
     }
 
     // We only look at a member's extension to decide whether to keep it on the installed file. An
