@@ -2,6 +2,9 @@
 
 ## NEXT - TBD
 
+- Fixed a bug where `ubi` on 64-bit Windows would not pick an asset named with `win32`, like
+  `tool-win32.zip`, when the release also had assets for other platforms. A 32-bit build runs on
+  64-bit Windows, so `ubi` now picks it when there's no 64-bit build.
 - Fixed a bug where a failed `--self-upgrade` on Windows left no `ubi.exe` behind. `ubi` renames
   itself to `ubi-old.exe` before the upgrade, and nothing renamed it back when the upgrade failed.
   Now `ubi` moves the old binary back.

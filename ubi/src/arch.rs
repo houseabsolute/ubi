@@ -407,6 +407,9 @@ pub(crate) fn x86_64_re() -> &'static Lazy<Regex> {
             # This is gross but the OS matcher will reject this on non-Windows
             # platforms.
             win64
+            |
+            # A 32-bit Windows build runs on 64-bit Windows, and some projects only ship that.
+            win32
         )
         (?:
             \b
@@ -619,6 +622,7 @@ mod test {
     #[test_case("project-linux-x86_64v2.tar.gz", true ; "x86_64v2")]
     #[test_case("project-linux-x64v4.tar.gz", true ; "x64v4")]
     #[test_case("project-linux-i386.tar.gz", true ; "i386")]
+    #[test_case("project-win32.zip", true ; "win32")]
     #[test_case("project-linux-amd64x.tar.gz", false ; "unknown suffix")]
     fn x86_64_re(name: &str, expect: bool) {
         assert_eq!(super::x86_64_re().is_match(name), expect, "{name}");

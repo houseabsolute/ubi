@@ -614,6 +614,20 @@ mod test {
         None,
         1
     )]
+    #[case::x86_64_pc_windows_msvc_pick_win32_over_other_os(
+        "x86_64-pc-windows-msvc",
+        &["tool-win32.zip", "tool-linux-amd64.tar.gz"],
+        None,
+        None,
+        0
+    )]
+    #[case::x86_64_pc_windows_msvc_pick_win64_over_win32(
+        "x86_64-pc-windows-msvc",
+        &["tool-win32.zip", "tool-win64.zip"],
+        None,
+        None,
+        1
+    )]
     #[case::i686_unknown_linux_gnu_pick_i386_over_amd64(
         "i686-unknown-linux-gnu",
         &["some-tool.linux.amd64", "some-tool.linux.i386"],
