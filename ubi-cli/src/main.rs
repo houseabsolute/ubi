@@ -223,9 +223,25 @@ fn cmd() -> Command {
         .arg(
             Arg::new("self-upgrade")
                 .long("self-upgrade")
-                .conflicts_with_all(["exe", "extract-all", "forge", "in", "project", "tag", "url"])
+                .conflicts_with_all([
+                    "api-base-url",
+                    "exe",
+                    "extract-all",
+                    "forge",
+                    "in",
+                    "matching",
+                    "matching-regex",
+                    "project",
+                    "rename-exe-to",
+                    "tag",
+                    "url",
+                ])
                 .action(ArgAction::SetTrue)
-                .help("Use ubi to upgrade to the latest version of ubi."),
+                .help(concat!(
+                    "Use ubi to upgrade to the latest version of ubi. You can pass",
+                    " --min-age-days with this, but not flags that choose what to install or",
+                    " where.",
+                )),
         )
         .arg(
             Arg::new("verbose")
@@ -320,7 +336,10 @@ fn make_ubi<'a>(
     ubi_exe_path: &'a Path,
 ) -> Result<(Ubi<'a>, Option<impl FnOnce()>)> {
     if matches.get_flag("self-upgrade") {
-        return self_upgrade_ubi(ubi_exe_path);
+        return self_upgrade_ubi(
+            ubi_exe_path,
+            matches.get_one::<u32>("min-age-days").copied(),
+        );
     }
 
     let mut builder = UbiBuilder::new();
@@ -366,14 +385,19 @@ fn make_ubi<'a>(
     Ok((builder.build()?, None))
 }
 
-fn self_upgrade_ubi(ubi_exe_path: &Path) -> Result<(Ubi<'_>, Option<impl FnOnce()>)> {
-    let ubi =
-        UbiBuilder::new()
-            .project("houseabsolute/ubi")
-            .install_dir(ubi_exe_path.parent().ok_or_else(|| {
-                anyhow!("executable path `{}` has no parent", ubi_exe_path.display())
-            })?)
-            .build()?;
+fn self_upgrade_ubi(
+    ubi_exe_path: &Path,
+    min_age_days: Option<u32>,
+) -> Result<(Ubi<'_>, Option<impl FnOnce()>)> {
+    let mut builder = UbiBuilder::new().project("houseabsolute/ubi").install_dir(
+        ubi_exe_path
+            .parent()
+            .ok_or_else(|| anyhow!("executable path `{}` has no parent", ubi_exe_path.display()))?,
+    );
+    if let Some(days) = min_age_days {
+        builder = builder.min_age_days(days);
+    }
+    let ubi = builder.build()?;
 
     let post_run = if cfg!(target_os = "windows") {
         let mut old_exe = ubi_exe_path.to_path_buf();
@@ -702,6 +726,54 @@ mod tests {
             .try_get_matches_from(["ubi", "--project", "houseabsolute/precious"])
             .unwrap_err();
         assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
+    }
+
+    // These flags only make sense for a project you pick. `--self-upgrade` always installs ubi
+    // itself, so we reject them instead of ignoring them.
+    #[rstest::rstest]
+    #[case::matching(&["--matching", "musl"])]
+    #[case::matching_regex(&["--matching-regex", "x"])]
+    #[case::rename_exe(&["--rename-exe", "foo"])]
+    #[case::api_base_url(&["--api-base-url", "https://example.com"])]
+    #[serial]
+    fn self_upgrade_conflicts_with(#[case] args: &[&str]) {
+        let _guard = EnvGuard::new(&[]);
+        let err = cmd()
+            .try_get_matches_from(["ubi", "--self-upgrade"].iter().chain(args))
+            .unwrap_err();
+        assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
+    }
+
+    // A setting in the environment counts too. Ignoring it would install something other than
+    // what the user's settings ask for, so we fail the same way we do for a flag.
+    #[test]
+    #[serial]
+    fn self_upgrade_conflicts_with_env_var() {
+        let _guard = EnvGuard::new(&[("UBI_MATCHING", "musl")]);
+        let err = cmd()
+            .try_get_matches_from(["ubi", "--self-upgrade"])
+            .unwrap_err();
+        assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
+    }
+
+    #[rstest::rstest]
+    #[case::flag(&[], &["--min-age-days", "7"])]
+    #[case::env(&[("UBI_MIN_AGE_DAYS", "7")], &[])]
+    #[serial]
+    fn self_upgrade_uses_min_age_days(#[case] env: &[(&str, &str)], #[case] args: &[&str]) {
+        let _guard = EnvGuard::new(env);
+        let matches = cmd()
+            .try_get_matches_from(["ubi", "--self-upgrade"].iter().chain(args))
+            .unwrap();
+        let td = tempfile::tempdir().unwrap();
+        let exe_path = td.path().join("ubi");
+        let (ubi, _) = make_ubi(&matches, &exe_path).unwrap();
+        // `Ubi` has no getter for this, so we look at its debug output. We don't print that output
+        // on failure, because it includes the forge token.
+        assert!(
+            format!("{ubi:?}").contains("min_age_days: Some(7)"),
+            "the Ubi was built without min_age_days set to 7",
+        );
     }
 
     #[test]

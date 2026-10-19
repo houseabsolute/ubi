@@ -2,6 +2,10 @@
 
 ## NEXT - TBD
 
+- Fixed a bug where `--self-upgrade` ignored `--min-age-days` and `UBI_MIN_AGE_DAYS`, so a
+  self-upgrade skipped the minimum age check. It also quietly ignored `--matching`,
+  `--matching-regex`, `--rename-exe` and `--api-base-url`. These four flags, and their env vars, are
+  now an error with `--self-upgrade`.
 - Fixed a bug where `--forge` and `UBI_FORGE` were ignored when `--project` was a full URL or when
   `--url` was used. `ubi` then treated a self-hosted GitLab or Forgejo as GitHub, so it read the
   wrong token and, for GitLab, used the wrong API path.
