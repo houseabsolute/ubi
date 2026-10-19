@@ -1020,6 +1020,14 @@ mod test {
         None,
         "could not find a release asset after filtering for valid extensions"
     )]
+    #[case::x86_64_unknown_linux_gnu_does_not_pick_riscv64gc(
+        "x86_64-unknown-linux-gnu",
+        false,
+        &["tool-riscv64gc-unknown-linux-gnu.tar.gz", "tool-aarch64-unknown-linux-gnu.tar.gz"],
+        None,
+        None,
+        "could not find a release asset for this OS (linux) and architecture (x86_64)"
+    )]
     #[case::x86_64_pc_windows_msvc_does_not_pick_AppImage_files(
         "x86_64-pc-windows-msvc",
         false,
