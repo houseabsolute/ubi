@@ -2,6 +2,9 @@
 
 ## NEXT - TBD
 
+- Fixed a bug where `--extract-all` on a `.7z` archive on Unix ignored the file modes stored in the
+  archive, so executables lost their executable bit. Tarballs and zip files already kept these
+  modes.
 - Fixed a bug where an install name with a dot in it lost part of its name when `ubi` kept the
   extension of the installed file. For example, `--exe lua5.4` with an archive member named
   `lua5.4.exe` installed `lua5.exe`. Now it installs `lua5.4.exe`.

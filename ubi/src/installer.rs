@@ -804,8 +804,21 @@ impl ArchiveInstaller {
             into.display()
         );
 
-        sevenz_rust2::decompress_file(downloaded_file, into)
-            .with_context(|| format!("failed to decompress 7z file to {}", into.display()))?;
+        // `decompress_file` ignores the Unix modes stored in the archive, so executables would lose
+        // their executable bit. We use the library's own extraction and then apply the mode.
+        sevenz_rust2::decompress_with_extract_fn(
+            open_file(downloaded_file)?,
+            into,
+            |entry, reader, dest| {
+                let extracted = sevenz_rust2::default_entry_extract_fn(entry, reader, dest)?;
+                #[cfg(target_family = "unix")]
+                if let Some(mode) = unix_mode_from_7z_entry(entry) {
+                    set_permissions(dest, Permissions::from_mode(mode))?;
+                }
+                Ok(extracted)
+            },
+        )
+        .with_context(|| format!("failed to decompress 7z file to {}", into.display()))?;
         Ok(())
     }
 
@@ -963,6 +976,37 @@ impl ArchiveInstaller {
 
         Ok(None)
     }
+}
+
+// 7-Zip marks an entry that stores a Unix mode by setting this bit in its Windows attributes. The
+// mode itself goes in the high 16 bits.
+#[cfg(target_family = "unix")]
+const SEVEN_ZIP_UNIX_EXTENSION: u32 = 0x8000;
+
+#[cfg(target_family = "unix")]
+const S_IFMT: u32 = 0o170_000;
+#[cfg(target_family = "unix")]
+const S_IFREG: u32 = 0o100_000;
+
+// We only apply modes to regular files. Directory entries come before their children, so a
+// read-only directory mode would make writing the children fail. The library writes symlink
+// entries as plain files, and their stored 0o777 mode would make those files world-writable. We
+// also drop the setuid, setgid, and sticky bits, since this is an untrusted download, and we skip a
+// mode of 0, which would leave a file the user can't read.
+#[cfg(target_family = "unix")]
+fn unix_mode_from_7z_entry(entry: &sevenz_rust2::ArchiveEntry) -> Option<u32> {
+    if !entry.has_windows_attributes || entry.windows_attributes & SEVEN_ZIP_UNIX_EXTENSION == 0 {
+        return None;
+    }
+    let st_mode = entry.windows_attributes >> 16;
+    if st_mode & S_IFMT != S_IFREG {
+        return None;
+    }
+    let mode = st_mode & 0o777;
+    if mode == 0 {
+        return None;
+    }
+    Some(mode)
 }
 
 // A symlink that is already in the install root, maybe from an earlier install, could point
@@ -1627,6 +1671,31 @@ mod tests {
             assert!(exe.exists());
             assert!(exe.is_file());
         }
+
+        Ok(())
+    }
+
+    // This archive was made with the `7z` CLI from a directory where `bin/project` has mode 755.
+    #[cfg(target_family = "unix")]
+    #[test]
+    fn archive_installer_keeps_file_modes_from_7z() -> Result<()> {
+        crate::test_log::init_logging();
+
+        let td = tempdir()?;
+        let install_root = td.path().join("project");
+        let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
+        installer.install(&Download {
+            _temp_dir: tempdir()?,
+            archive_path: PathBuf::from("test-data/project-exec.7z"),
+        })?;
+
+        let mode = install_root
+            .join("bin")
+            .join("project")
+            .metadata()?
+            .permissions()
+            .mode();
+        assert_eq!(mode & 0o777, 0o755);
 
         Ok(())
     }
