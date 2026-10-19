@@ -284,7 +284,8 @@ impl Extension {
         let Some(ext_str_from_path) = path.extension() else {
             return Ok(None);
         };
-        let path_str = path.to_string_lossy();
+        // Extensions are not case sensitive, so `foo.EXE` and `foo.TAR.GZ` should match too.
+        let path_str = path.to_string_lossy().to_lowercase();
 
         // We need to try the longest extensions first so that ".tar.gz" matches before ".gz" and so
         // on for other compression formats.
@@ -294,7 +295,7 @@ impl Extension {
             // This is intentionally using a string comparison instead of looking at
             // path.extension(). That's because the `.extension()` method returns `"bz"` for paths
             // like "foo.tar.bz", instead of "tar.bz".
-            .find(|e| path_str.ends_with(e.extension()))
+            .find(|e| path_str.ends_with(&e.extension().to_lowercase()))
         {
             return Ok(Some(ext));
         }
@@ -368,6 +369,9 @@ mod test {
 
     #[rstest]
     #[case::AppImage("foo.AppImage", Ok(Some(Extension::AppImage)))]
+    #[case::upper_case_exe("foo.EXE", Ok(Some(Extension::Exe)))]
+    #[case::lower_case_app_image("foo.appimage", Ok(Some(Extension::AppImage)))]
+    #[case::upper_case_tar_gz("foo.TAR.GZ", Ok(Some(Extension::TarGz)))]
     #[case::Bz("foo.bz", Ok(Some(Extension::Bz)))]
     #[case::Bash("foo.bash", Ok(Some(Extension::Bash)))]
     #[case::Cjs("foo.cjs", Ok(Some(Extension::Cjs)))]

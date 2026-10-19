@@ -463,6 +463,8 @@ impl ExeInstaller {
             return file_name == self.exe_file_stem;
         }
 
+        // We only have extensions on Windows, where file names are not case sensitive.
+        let file_name = file_name.to_lowercase();
         self.extensions
             .iter()
             .map(|&ext| format!("{}{}", self.exe_file_stem.to_lowercase(), ext))
@@ -470,15 +472,14 @@ impl ExeInstaller {
     }
 
     fn archive_member_is_partial_match(&self, file_name: &str) -> bool {
-        if !file_name.starts_with(&self.exe_file_stem) {
-            return false;
-        }
         if self.extensions.is_empty() {
-            return true;
+            return file_name.starts_with(&self.exe_file_stem);
         }
-        self.extensions
-            .iter()
-            .any(|&ext| file_name.to_lowercase().ends_with(ext))
+
+        // We only have extensions on Windows, where file names are not case sensitive.
+        let file_name = file_name.to_lowercase();
+        file_name.starts_with(&self.exe_file_stem.to_lowercase())
+            && self.extensions.iter().any(|&ext| file_name.ends_with(ext))
     }
 
     fn could_not_find_archive_matches_error(&self) -> Result<PathBuf> {
@@ -1541,6 +1542,50 @@ mod tests {
             installer.maybe_add_windows_exe_extension(PathBuf::from(name)),
             PathBuf::from(expect),
         );
+    }
+
+    // Windows file names are not case sensitive, so matching an archive member to the `--exe` name
+    // should ignore case everywhere.
+    #[rstest]
+    #[case::exact_match_beats_earlier_partial_match(
+        &["Foo-cli.exe", "Foo.exe"],
+        "Foo",
+        "Foo.exe",
+        "Foo.exe"
+    )]
+    #[case::upper_case_extension(&["tool.EXE"], "tool", "tool.EXE", "tool.exe")]
+    #[case::partial_match_ignores_case(&["foo-cli.exe"], "Foo", "foo-cli.exe", "Foo.exe")]
+    fn exe_installer_on_windows_ignores_case(
+        #[case] members: &[&str],
+        #[case] exe: &str,
+        #[case] expect_member: &str,
+        #[case] expect_installed: &str,
+    ) -> Result<()> {
+        crate::test_log::init_logging();
+
+        let td = tempdir()?;
+        let archive_path = td.path().join("archive.zip");
+        let mut zip = zip::ZipWriter::new(File::create(&archive_path)?);
+        for name in members {
+            zip.start_file(*name, zip::write::SimpleFileOptions::default())?;
+            zip.write_all(name.as_bytes())?;
+        }
+        zip.finish()?;
+
+        let install_dir = td.path().join("bin");
+        let installer =
+            ExeInstaller::new(install_dir.join(exe), false, true, exe.to_string(), true);
+        installer.install(&Download {
+            _temp_dir: tempdir()?,
+            archive_path,
+        })?;
+
+        assert_eq!(
+            fs::read_to_string(install_dir.join(expect_installed))?,
+            expect_member,
+        );
+
+        Ok(())
     }
 
     fn test_exe_installer(

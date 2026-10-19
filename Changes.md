@@ -2,6 +2,12 @@
 
 ## NEXT - TBD
 
+- Fixed some case-sensitive name matching. On Windows, with `--exe Foo` and an archive that held
+  `Foo-cli.exe` before `Foo.exe`, `ubi` installed `Foo-cli.exe`. Matching the `--exe` name to an
+  archive member on Windows now ignores case everywhere. Also, file extensions are now matched
+  without regard to case on every platform, so names like `tool.EXE` and `tool.TAR.GZ` are
+  recognized. When `ubi` keeps the extension of an installed file, it now uses the lower case form,
+  so `tool.EXE` is installed as `tool.exe`.
 - Fixed a bug where `--extract-all` on a `.7z` archive on Unix ignored the file modes stored in the
   archive, so executables lost their executable bit. Tarballs and zip files already kept these
   modes.
