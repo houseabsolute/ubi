@@ -330,10 +330,7 @@ impl<'a> UbiBuilder<'a> {
                 install_path(self.install_dir.as_deref(), None).with_context(|| {
                     format!("failed to determine install path for project {project_name}")
                 })?;
-            Ok(Box::new(ArchiveInstaller::new(
-                project_name.to_string(),
-                install_path,
-            )))
+            Ok(Box::new(ArchiveInstaller::new(install_path)))
         } else {
             let expect_exe_stem_name = expect_exe_stem_name(self.exe, project_name);
             let install_path = install_path(

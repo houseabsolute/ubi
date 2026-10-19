@@ -49,7 +49,6 @@ pub(crate) struct ExeInstaller {
 
 #[derive(Debug)]
 pub(crate) struct ArchiveInstaller {
-    project_name: String,
     install_root: PathBuf,
 }
 
@@ -720,9 +719,8 @@ impl Installer for ExeInstaller {
 }
 
 impl ArchiveInstaller {
-    pub(crate) fn new(project_name: String, install_path: PathBuf) -> Self {
+    pub(crate) fn new(install_path: PathBuf) -> Self {
         ArchiveInstaller {
-            project_name,
             install_root: install_path,
         }
     }
@@ -844,7 +842,7 @@ impl ArchiveInstaller {
     }
 
     fn copy_extracted_contents(&self, td: &TempDir) -> Result<()> {
-        let copy_from = match self.extracted_contents_top_level_dir(td.path())? {
+        let copy_from = match Self::extracted_contents_top_level_dir(td.path())? {
             Some(dir) => dir,
             None => td.path().to_path_buf(),
         };
@@ -908,20 +906,20 @@ impl ArchiveInstaller {
         Ok(())
     }
 
-    // We check for this because some projects use a top-level dir like `project-x86-64-Linux`,
-    // which is pretty annoying to work with. In this case, it's a lot friendlier to install this
-    // into `~/bin/project`, so the directory tree ends up with the same structure on all platforms.
-    fn extracted_contents_top_level_dir(&self, contents_dir: &Path) -> Result<Option<PathBuf>> {
+    // We check whether everything in the archive is under one top-level dir because some projects
+    // use a top-level dir like `project-x86-64-Linux`, which is pretty annoying to work with. In
+    // this case, it's a lot friendlier to install this into `~/bin/project`, so the directory tree
+    // ends up with the same structure on all platforms.
+    fn extracted_contents_top_level_dir(contents_dir: &Path) -> Result<Option<PathBuf>> {
         let mut prefixes: HashMap<PathBuf, OsString> = HashMap::new();
         debug!(
-            "checking whether extracted contents at {} share a single-top level dir with the project name `{}`",
+            "checking whether extracted contents at {} share a single top-level dir",
             contents_dir.display(),
-            self.project_name,
         );
         for entry in fs::read_dir(contents_dir).with_context(|| {
             format!(
-                "could not read {} after unpacking the tarball into this directory",
-                self.install_root.display(),
+                "could not read {} after unpacking the archive into it",
+                contents_dir.display(),
             )
         })? {
             let full_path = entry
@@ -1415,8 +1413,7 @@ mod tests {
     fn archive_installer_rejects_a_file_at_the_install_root() -> Result<()> {
         let td = tempdir()?;
 
-        let installer =
-            |path: &Path| ArchiveInstaller::new("some-project".to_string(), path.to_path_buf());
+        let installer = |path: &Path| ArchiveInstaller::new(path.to_path_buf());
 
         let dir = td.path().join("some-dir");
         create_dir_all(&dir)?;
@@ -1739,7 +1736,7 @@ mod tests {
         path_with_subdir.extend(&["subdir", "project"]);
 
         for install_root in [path_without_subdir, path_with_subdir] {
-            let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
+            let installer = ArchiveInstaller::new(install_root.clone());
             installer.install(&Download {
                 // It doesn't matter what we use here. We're not actually going to
                 // put anything in this temp dir.
@@ -1770,7 +1767,7 @@ mod tests {
 
         let td = tempdir()?;
         let install_root = td.path().join("project");
-        let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
+        let installer = ArchiveInstaller::new(install_root.clone());
         installer.install(&Download {
             _temp_dir: tempdir()?,
             archive_path: PathBuf::from("test-data/project-exec.7z"),
@@ -1807,7 +1804,7 @@ mod tests {
         )?;
 
         let install_root = td.path().join("installed");
-        let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
+        let installer = ArchiveInstaller::new(install_root.clone());
         installer.install(&Download {
             _temp_dir: tempdir()?,
             archive_path,
@@ -1864,7 +1861,7 @@ mod tests {
         )?;
 
         let install_root = td.path().join("installed");
-        let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
+        let installer = ArchiveInstaller::new(install_root.clone());
         let err = installer
             .install(&Download {
                 _temp_dir: tempdir()?,
@@ -1902,7 +1899,7 @@ mod tests {
         write_archive(&archive_path, links)?;
 
         let install_root = td.path().join("installed");
-        let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
+        let installer = ArchiveInstaller::new(install_root.clone());
         let err = installer
             .install(&Download {
                 _temp_dir: tempdir()?,
@@ -2167,7 +2164,7 @@ mod tests {
         write_archive(&archive_path, &[("project/bin/tool-alias", "tool")])?;
 
         let install_root = td.path().join("installed");
-        let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
+        let installer = ArchiveInstaller::new(install_root.clone());
         for _ in 0..2 {
             installer.install(&Download {
                 _temp_dir: tempdir()?,
@@ -2198,7 +2195,7 @@ mod tests {
         create_dir_all(&install_root)?;
         symlink(&outside, install_root.join("lib"))?;
 
-        let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
+        let installer = ArchiveInstaller::new(install_root.clone());
         let err = installer
             .install(&Download {
                 _temp_dir: tempdir()?,
@@ -2242,7 +2239,7 @@ mod tests {
         write_archive_with_files(&archive_path, &[], &[("project", outside_str.as_ref())])?;
 
         let install_root = td.path().join("installed");
-        let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
+        let installer = ArchiveInstaller::new(install_root.clone());
         let res = installer.install(&Download {
             _temp_dir: tempdir()?,
             archive_path,
@@ -2322,6 +2319,27 @@ mod tests {
         Ok(())
     }
 
+    // The contents are unpacked into a temp dir for every archive type, so an error reading it
+    // should name that dir and should not say it was a tarball.
+    #[test_log::test]
+    fn archive_installer_read_error_names_the_temp_dir() -> Result<()> {
+        let td = tempdir()?;
+        let contents_dir = td.path().join("does-not-exist");
+
+        let err = ArchiveInstaller::extracted_contents_top_level_dir(&contents_dir)
+            .unwrap_err()
+            .to_string();
+        assert_eq!(
+            err,
+            format!(
+                "could not read {} after unpacking the archive into it",
+                contents_dir.display(),
+            ),
+        );
+
+        Ok(())
+    }
+
     // This tests a bug in the initial implementation where a tarball that just contained files
     // caused us to try to move its contents up to a directory that didn't exist.
     #[test_log::test]
@@ -2333,7 +2351,7 @@ mod tests {
         path_with_subdir.extend(&["subdir", "project"]);
 
         for install_root in [path_without_subdir, path_with_subdir] {
-            let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
+            let installer = ArchiveInstaller::new(install_root.clone());
             installer.install(&Download {
                 // It doesn't matter what we use here. We're not actually going to
                 // put anything in this temp dir.
@@ -2361,7 +2379,7 @@ mod tests {
         path_with_subdir.extend(&["subdir", "project"]);
 
         for install_root in [path_without_subdir, path_with_subdir] {
-            let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
+            let installer = ArchiveInstaller::new(install_root.clone());
             installer.install(&Download {
                 // It doesn't matter what we use here. We're not actually going to
                 // put anything in this temp dir.
@@ -2405,7 +2423,7 @@ mod tests {
             let share_dir = install_root.join("share");
             create_dir_all(&share_dir)?;
 
-            let installer = ArchiveInstaller::new(String::from("project"), install_root.clone());
+            let installer = ArchiveInstaller::new(install_root.clone());
             installer.install(&Download {
                 // It doesn't matter what we use here. We're not actually going to
                 // put anything in this temp dir.

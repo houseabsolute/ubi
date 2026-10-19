@@ -2,6 +2,9 @@
 
 ## NEXT - TBD
 
+- Fixed an error message for `--extract-all` that named the install directory and said "the tarball"
+  when `ubi` failed to read the temp directory it had unpacked the archive into. It now names the
+  temp directory and says "the archive".
 - Fixed a bug where installing a single executable from anything other than a tarball wrote into the
   old file instead of replacing it. On Linux this failed with `Text file busy` when the old
   executable was running, and if the install path was a symlink, it overwrote the file the link
