@@ -126,6 +126,13 @@ impl<'a> AssetPicker<'a> {
                         debug!("skipping asset with invalid extension: {e}");
                         false
                     }
+                    Ok(Some(ext)) if !ext.can_be_release_asset() => {
+                        debug!(
+                            "skipping asset because `{}` files are not release assets",
+                            ext.extension()
+                        );
+                        false
+                    }
                     Ok(Some(ext)) => {
                         debug!("found valid extension, `{}`", ext.extension());
                         if self.archive_only {
@@ -669,6 +676,20 @@ mod test {
         None,
         None,
         1
+    )]
+    #[case::x86_64_unknown_linux_gnu_ignore_helper_scripts(
+        "x86_64-unknown-linux-gnu",
+        &["install.ps1", "tool", "install.js"],
+        None,
+        None,
+        1
+    )]
+    #[case::x86_64_pc_windows_msvc_ignore_helper_scripts(
+        "x86_64-pc-windows-msvc",
+        &["tool.exe", "install.cmd", "install.ps1"],
+        None,
+        None,
+        0
     )]
     #[case::i686_unknown_linux_gnu_pick_i386_over_amd64(
         "i686-unknown-linux-gnu",

@@ -23,15 +23,27 @@ pub(crate) enum ExtensionError {
 #[derive(Debug, EnumIter, PartialEq, Eq)]
 pub(crate) enum Extension {
     AppImage,
+    Bash,
     Bat,
     Bz,
     Bz2,
+    Cjs,
+    Cmd,
     Exe,
+    Fish,
     Gz,
     Jar,
+    Js,
+    Ksh,
+    Lua,
+    Mjs,
     Phar,
+    Php,
+    Pl,
+    Ps1,
     Py,
     Pyz,
+    Rb,
     SevenZip,
     Sh,
     Tar,
@@ -41,11 +53,14 @@ pub(crate) enum Extension {
     TarXz,
     TarZst,
     Tbz,
+    Tcl,
     Tgz,
     Txz,
     Tzst,
+    Vbs,
     Xz,
     Zip,
+    Zsh,
     Zst,
 }
 
@@ -54,6 +69,21 @@ impl Extension {
         match self {
             Extension::AppImage => ".AppImage",
             Extension::Bat => ".bat",
+            Extension::Bash => ".bash",
+            Extension::Cjs => ".cjs",
+            Extension::Cmd => ".cmd",
+            Extension::Fish => ".fish",
+            Extension::Js => ".js",
+            Extension::Ksh => ".ksh",
+            Extension::Lua => ".lua",
+            Extension::Mjs => ".mjs",
+            Extension::Php => ".php",
+            Extension::Pl => ".pl",
+            Extension::Ps1 => ".ps1",
+            Extension::Rb => ".rb",
+            Extension::Tcl => ".tcl",
+            Extension::Vbs => ".vbs",
+            Extension::Zsh => ".zsh",
             Extension::Bz => ".bz",
             Extension::Bz2 => ".bz2",
             Extension::Exe => ".exe",
@@ -88,6 +118,21 @@ impl Extension {
         match self {
             Extension::AppImage
             | Extension::Bat
+            | Extension::Bash
+            | Extension::Cjs
+            | Extension::Cmd
+            | Extension::Fish
+            | Extension::Js
+            | Extension::Ksh
+            | Extension::Lua
+            | Extension::Mjs
+            | Extension::Php
+            | Extension::Pl
+            | Extension::Ps1
+            | Extension::Rb
+            | Extension::Tcl
+            | Extension::Vbs
+            | Extension::Zsh
             | Extension::Bz
             | Extension::Bz2
             | Extension::Exe
@@ -118,6 +163,21 @@ impl Extension {
         match self {
             Extension::AppImage
             | Extension::Bat
+            | Extension::Bash
+            | Extension::Cjs
+            | Extension::Cmd
+            | Extension::Fish
+            | Extension::Js
+            | Extension::Ksh
+            | Extension::Lua
+            | Extension::Mjs
+            | Extension::Php
+            | Extension::Pl
+            | Extension::Ps1
+            | Extension::Rb
+            | Extension::Tcl
+            | Extension::Vbs
+            | Extension::Zsh
             | Extension::Exe
             | Extension::Jar
             | Extension::Phar
@@ -147,11 +207,26 @@ impl Extension {
     pub(crate) fn matches_platform(&self, platform: &Platform) -> bool {
         match self {
             Extension::AppImage => platform.target_os == Os::Linux,
-            Extension::Bat | Extension::Exe => platform.target_os == Os::Windows,
+            Extension::Bat | Extension::Cmd | Extension::Exe | Extension::Vbs => {
+                platform.target_os == Os::Windows
+            }
             Extension::Bz
             | Extension::Bz2
             | Extension::Gz
             | Extension::Jar
+            | Extension::Bash
+            | Extension::Cjs
+            | Extension::Fish
+            | Extension::Js
+            | Extension::Ksh
+            | Extension::Lua
+            | Extension::Mjs
+            | Extension::Php
+            | Extension::Pl
+            | Extension::Ps1
+            | Extension::Rb
+            | Extension::Tcl
+            | Extension::Zsh
             | Extension::Phar
             | Extension::Py
             | Extension::Pyz
@@ -173,8 +248,36 @@ impl Extension {
         }
     }
 
+    // We know these script extensions so that we keep them when we install a file from an archive.
+    // But releases often include helper scripts like `install.ps1` next to the real binaries, so we
+    // don't treat them as release assets. Otherwise a helper script could break picking between
+    // assets that would work fine without it.
+    pub(crate) fn can_be_release_asset(&self) -> bool {
+        !matches!(
+            self,
+            Extension::Bash
+                | Extension::Cjs
+                | Extension::Cmd
+                | Extension::Fish
+                | Extension::Js
+                | Extension::Ksh
+                | Extension::Lua
+                | Extension::Mjs
+                | Extension::Php
+                | Extension::Pl
+                | Extension::Ps1
+                | Extension::Rb
+                | Extension::Tcl
+                | Extension::Vbs
+                | Extension::Zsh
+        )
+    }
+
     pub(crate) fn is_windows_only(&self) -> bool {
-        matches!(self, Extension::Bat | Extension::Exe)
+        matches!(
+            self,
+            Extension::Bat | Extension::Cmd | Extension::Exe | Extension::Vbs
+        )
     }
 
     pub(crate) fn from_path(path: &Path) -> Result<Option<Extension>> {
@@ -266,6 +369,21 @@ mod test {
     #[rstest]
     #[case::AppImage("foo.AppImage", Ok(Some(Extension::AppImage)))]
     #[case::Bz("foo.bz", Ok(Some(Extension::Bz)))]
+    #[case::Bash("foo.bash", Ok(Some(Extension::Bash)))]
+    #[case::Cjs("foo.cjs", Ok(Some(Extension::Cjs)))]
+    #[case::Cmd("foo.cmd", Ok(Some(Extension::Cmd)))]
+    #[case::Fish("foo.fish", Ok(Some(Extension::Fish)))]
+    #[case::Js("foo.js", Ok(Some(Extension::Js)))]
+    #[case::Ksh("foo.ksh", Ok(Some(Extension::Ksh)))]
+    #[case::Lua("foo.lua", Ok(Some(Extension::Lua)))]
+    #[case::Mjs("foo.mjs", Ok(Some(Extension::Mjs)))]
+    #[case::Php("foo.php", Ok(Some(Extension::Php)))]
+    #[case::Pl("foo.pl", Ok(Some(Extension::Pl)))]
+    #[case::Ps1("foo.ps1", Ok(Some(Extension::Ps1)))]
+    #[case::Rb("foo.rb", Ok(Some(Extension::Rb)))]
+    #[case::Tcl("foo.tcl", Ok(Some(Extension::Tcl)))]
+    #[case::Vbs("foo.vbs", Ok(Some(Extension::Vbs)))]
+    #[case::Zsh("foo.zsh", Ok(Some(Extension::Zsh)))]
     #[case::Bz1("foo.bz2", Ok(Some(Extension::Bz2)))]
     #[case::Exe("foo.exe", Ok(Some(Extension::Exe)))]
     #[case::Gz("foo.gz", Ok(Some(Extension::Gz)))]

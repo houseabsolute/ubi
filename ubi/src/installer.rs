@@ -1,12 +1,13 @@
 use crate::{
     archive::{ArchiveEntry, SevenZipEntriesIterator, TarEntriesIterator, ZipEntriesIterator},
-    extension::Extension,
+    extension::{Extension, ExtensionError},
     ubi::Download,
 };
 use anyhow::{anyhow, Context, Result};
 use binstall_tar::Archive as TarArchive;
 use bzip2::read::BzDecoder;
 use flate2::read::GzDecoder;
+use itertools::Itertools;
 use log::{debug, info};
 use std::{
     collections::HashMap,
@@ -87,9 +88,13 @@ impl ExeInstaller {
         exe: String,
         is_windows: bool,
     ) -> Self {
+        // The order of this list sets which file we pick when an archive has more than one match.
+        // We put `.exe` first because a `.bat`, `.cmd`, or `.vbs` file next to it is usually a
+        // launcher for the `.exe`, and the `.exe` is the real program.
         let extensions = if is_windows {
             Extension::iter()
                 .filter(super::extension::Extension::is_windows_only)
+                .sorted_by_key(|e| *e != Extension::Exe)
                 .map(|e| e.extension())
                 .collect()
         } else {
@@ -129,6 +134,21 @@ impl ExeInstaller {
             Some(
                 Extension::AppImage
                 | Extension::Bat
+                | Extension::Bash
+                | Extension::Cjs
+                | Extension::Cmd
+                | Extension::Fish
+                | Extension::Js
+                | Extension::Ksh
+                | Extension::Lua
+                | Extension::Mjs
+                | Extension::Php
+                | Extension::Pl
+                | Extension::Ps1
+                | Extension::Rb
+                | Extension::Tcl
+                | Extension::Vbs
+                | Extension::Zsh
                 | Extension::Exe
                 | Extension::Jar
                 | Extension::Phar
@@ -374,7 +394,8 @@ impl ExeInstaller {
         archive: impl Iterator<Item = Result<Box<dyn ArchiveEntry + 'a>>>,
         archive_type: &'static str,
     ) -> Result<Option<usize>> {
-        let mut possible_matches: Vec<usize> = vec![];
+        let mut exact_matches: Vec<(usize, usize)> = vec![];
+        let mut possible_matches: Vec<(usize, usize)> = vec![];
 
         for (i, entry) in archive.enumerate() {
             let entry = entry
@@ -392,7 +413,7 @@ impl ExeInstaller {
                 if let Some(file_name) = file_name.to_str() {
                     if self.archive_member_is_exact_match(file_name) {
                         debug!("found {archive_type} file entry with exact match: `{file_name}`");
-                        return Ok(Some(i));
+                        exact_matches.push((self.extension_rank(file_name), i));
                     } else if self.archive_member_is_partial_match(file_name) {
                         // On Windows, we assume that the file is executable if it matches the
                         // expected name, because Windows doesn't have executable bits. We treat
@@ -411,14 +432,30 @@ impl ExeInstaller {
                             debug!(
                                 "found {archive_type} file entry with partial match: `{file_name}`"
                             );
-                            possible_matches.push(i);
+                            possible_matches.push((self.extension_rank(file_name), i));
                         }
                     }
                 }
             }
         }
 
-        Ok(possible_matches.into_iter().next())
+        // `min_by_key` returns the first of several equal items, so with no extension preference
+        // we keep the archive order.
+        Ok(exact_matches
+            .into_iter()
+            .min_by_key(|(rank, _)| *rank)
+            .or_else(|| possible_matches.into_iter().min_by_key(|(rank, _)| *rank))
+            .map(|(_, i)| i))
+    }
+
+    // A lower rank is a better match. See `new` for why the extensions are in the order they are.
+    fn extension_rank(&self, file_name: &str) -> usize {
+        let file_name = file_name.to_lowercase();
+        self.extensions
+            .iter()
+            .position(|ext| file_name.ends_with(ext))
+            // With no extensions to prefer, every match ranks the same, so we keep archive order.
+            .unwrap_or(0)
     }
 
     fn archive_member_is_exact_match(&self, file_name: &str) -> bool {
@@ -579,7 +616,17 @@ impl ExeInstaller {
             return Ok(install_path);
         }
 
-        if let Some(ext) = Extension::from_path(path.as_ref())? {
+        // We only look at the extension to see if it's one we keep on the installed file. One we
+        // don't know isn't one we keep, so we install the file without it instead of failing.
+        let ext = match Extension::from_path(path.as_ref()) {
+            Ok(ext) => ext,
+            Err(e) if e.downcast_ref::<ExtensionError>().is_some() => {
+                debug!("{e}, so we will not keep it on install");
+                None
+            }
+            Err(e) => return Err(e),
+        };
+        if let Some(ext) = ext {
             if ext.should_preserve_extension_on_install() {
                 debug!("preserving the {} extension on install", ext.extension());
                 install_path.set_extension(ext.extension_without_dot());
@@ -1691,6 +1738,110 @@ mod tests {
         let err = format!("{err:#}");
         assert!(err.contains(expect_err), "got error: {err}");
         assert!(!install_root.exists());
+
+        Ok(())
+    }
+
+    // A script needs its extension to run on Windows, and on other platforms the extension tells
+    // the user what kind of file it is, so we keep it.
+    #[rstest]
+    #[case::bash("project.bash", false, "project.bash")]
+    #[case::cjs("project.cjs", false, "project.cjs")]
+    #[case::fish("project.fish", false, "project.fish")]
+    #[case::js("project.js", false, "project.js")]
+    #[case::ksh("project.ksh", false, "project.ksh")]
+    #[case::lua("project.lua", false, "project.lua")]
+    #[case::mjs("project.mjs", false, "project.mjs")]
+    #[case::php("project.php", false, "project.php")]
+    #[case::pl("project.pl", false, "project.pl")]
+    #[case::ps1("project.ps1", false, "project.ps1")]
+    #[case::rb("project.rb", false, "project.rb")]
+    #[case::tcl("project.tcl", false, "project.tcl")]
+    #[case::zsh("project.zsh", false, "project.zsh")]
+    #[case::cmd_on_windows("project.cmd", true, "project.cmd")]
+    #[case::vbs_on_windows("project.vbs", true, "project.vbs")]
+    #[case::ps1_on_windows("project.ps1", true, "project.ps1")]
+    #[case::unknown("project.bin", false, "project")]
+    #[case::unknown_on_windows("project.bin", true, "project.exe")]
+    fn exe_installer_install_path_extension(
+        #[case] member: &str,
+        #[case] is_windows: bool,
+        #[case] expect: &str,
+    ) -> Result<()> {
+        let td = tempdir()?;
+        let installer = ExeInstaller::new(
+            td.path().join("project"),
+            false,
+            false,
+            "project".to_string(),
+            is_windows,
+        );
+        assert_eq!(
+            installer.maybe_munged_install_path(member)?,
+            td.path().join(expect),
+        );
+
+        Ok(())
+    }
+
+    #[cfg(target_family = "unix")]
+    #[rstest]
+    #[case::exact_exe_first(&["pkg/project.exe", "pkg/project.cmd"], "project.exe")]
+    #[case::exact_exe_last(&["pkg/project.cmd", "pkg/project.vbs", "pkg/project.exe"], "project.exe")]
+    #[case::partial_exe_last(&["pkg/project-v1.bat", "pkg/project-v1.exe"], "project.exe")]
+    #[case::bat_over_cmd_and_vbs(&["pkg/project.vbs", "pkg/project.cmd", "pkg/project.bat"], "project.bat")]
+    fn exe_installer_prefers_extensions_in_order_on_windows(
+        #[case] members: &[&str],
+        #[case] expect: &str,
+    ) -> Result<()> {
+        crate::test_log::init_logging();
+
+        let td = tempdir()?;
+        let archive_path = td.path().join("project.tar.gz");
+        write_tarball(&archive_path, members, &[])?;
+
+        let install_path = td.path().join("bin").join("project");
+        let installer = ExeInstaller::new(
+            install_path.clone(),
+            false,
+            false,
+            "project".to_string(),
+            true,
+        );
+        installer.install(&Download {
+            _temp_dir: tempdir()?,
+            archive_path,
+        })?;
+        assert!(td.path().join("bin").join(expect).is_file());
+        assert_eq!(fs::read_dir(td.path().join("bin"))?.count(), 1);
+
+        Ok(())
+    }
+
+    // We only look at a member's extension to decide whether to keep it on the installed file. An
+    // extension we don't know, like `.bin`, isn't one we keep, so it must not stop the install.
+    #[cfg(target_family = "unix")]
+    #[test]
+    fn exe_installer_installs_a_member_with_an_unknown_extension() -> Result<()> {
+        crate::test_log::init_logging();
+
+        let td = tempdir()?;
+        let archive_path = td.path().join("project.tar.gz");
+        write_tarball(&archive_path, &["pkg/project.bin"], &[])?;
+
+        let install_path = td.path().join("bin").join("project");
+        let installer = ExeInstaller::new(
+            install_path.clone(),
+            false,
+            false,
+            "project".to_string(),
+            false,
+        );
+        installer.install(&Download {
+            _temp_dir: tempdir()?,
+            archive_path,
+        })?;
+        assert!(install_path.is_file());
 
         Ok(())
     }

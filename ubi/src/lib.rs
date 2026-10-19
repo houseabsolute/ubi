@@ -132,8 +132,9 @@
 //! It first tries to find a file matching the exact name of the project (plus an extension on
 //! Windows). So for example, if you're installing
 //! [`houseabsolute/precious`](https://github.com/houseabsolute/precious), it will look in the
-//! archive for a file named `precious` on Unix-like systems and `precious.bat` or `precious.exe` on
-//! Windows. Note that if it finds an exact match, it does not check the file's mode.
+//! archive for a file named `precious` on Unix-like systems and `precious.bat`, `precious.cmd`,
+//! `precious.exe`, or `precious.vbs` on Windows. Note that if it finds an exact match, it does not
+//! check the file's mode.
 //!
 //! If it can't find an exact match it will look for a file that _starts with_ the project
 //! name. This is mostly to account for projects that include things like platforms or release names
@@ -142,8 +143,11 @@
 //! will match a file named `precious-linux-amd64` or `precious-v1.2.3`. In this case, it will
 //! _rename_ the extracted file to `precious`. On Unix-like systems, these partial matches will only
 //! be considered if the file's mode includes an executable bit. On Windows, it looks for a partial
-//! match that is a `.bat` or `.exe` file, and the extracted file will be renamed to `precious.bat`
-//! or `precious.exe`.
+//! match that is a `.bat`, `.cmd`, `.exe`, or `.vbs` file, and the extracted file will be renamed
+//! to `precious` plus that extension, like `precious.exe`.
+//!
+//! On Windows, if more than one file matches, it picks the `.exe` file first, then `.bat`, `.cmd`,
+//! and `.vbs`, in that order. That's because the other files are often launchers for the `.exe`.
 //!
 //! ## Features
 //!

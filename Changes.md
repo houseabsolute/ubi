@@ -2,6 +2,16 @@
 
 ## NEXT - TBD
 
+- Fixed a bug where installing a file from an archive failed if the file had an extension `ubi`
+  didn't know, like `pkg/project.bin`. The error was `pkg/project.bin has unknown extension bin`.
+  Now `ubi` installs the file without that extension.
+- When `ubi` installs a file from an archive, it now keeps more script extensions on the installed
+  file: `.bash`, `.cjs`, `.cmd`, `.fish`, `.js`, `.ksh`, `.lua`, `.mjs`, `.php`, `.pl`, `.ps1`,
+  `.rb`, `.tcl`, `.vbs`, and `.zsh`. On Windows, it also looks for `.cmd` and `.vbs` files in an
+  archive, as it does for `.bat` and `.exe`. It still doesn't pick release assets with these
+  extensions, since those are often helper scripts like `install.ps1`.
+- On Windows, when an archive has more than one matching file, like `tool.exe` and `tool.bat`, `ubi`
+  now picks the `.exe`. Before, it picked whichever came first in the archive.
 - On macOS ARM, when more than one ARM asset matched, `ubi` picked the first one the forge listed.
   It skipped the 64-bit filter and the sort by name that the README describes. Now it runs both, so
   it picks `arm64` over plain `arm` and picks the same asset every time.
