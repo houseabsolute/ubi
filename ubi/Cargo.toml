@@ -20,6 +20,7 @@ flate2.workspace = true
 itertools.workspace = true
 lazy-regex.workspace = true
 log.workspace = true
+percent-encoding.workspace = true
 platforms.workspace = true
 regex.workspace = true
 reqwest.workspace = true

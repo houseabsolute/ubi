@@ -2,6 +2,11 @@
 
 ## NEXT - TBD
 
+- A `--url` that points at a GitHub API asset URL, like
+  `https://api.github.com/repos/owner/repo/releases/assets/12345`, now works. Before, `ubi` saved
+  the download with the asset ID as its name, so it could not tell the file was an archive. It
+  copied the archive as the executable and installed it under the owner's name. Now `ubi` uses the
+  file name the server sends, and it finds the owner and repo after `repos` in the path.
 - A `--url` with fewer than two path segments, like `https://example.com/tool.tar.gz`, now works
   when you also pass `--exe` or `--extract-all`. Before, `ubi` always failed because it could not
   find a project name in the URL. Without either flag, the error now says to pass one of them.

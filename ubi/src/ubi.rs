@@ -1,8 +1,8 @@
-use crate::{forge::Forge, installer::Installer, picker::AssetPicker};
+use crate::{extension::Extension, forge::Forge, installer::Installer, picker::AssetPicker};
 use anyhow::{anyhow, Context, Result};
 use log::debug;
 use reqwest::{
-    header::{HeaderValue, ACCEPT},
+    header::{HeaderValue, ACCEPT, CONTENT_DISPOSITION},
     Client, StatusCode,
 };
 use serde::{Deserialize, Serialize};
@@ -177,6 +177,30 @@ impl<'a> Ubi<'a> {
             return Err(anyhow!(msg));
         }
 
+        // In URL mode the asset name is just the last part of the URL. For an API asset URL that's
+        // an ID with no extension, and we need the extension to know how to unpack the file. The
+        // server usually sends the real name, so we use that. We only do this when the URL's name
+        // has no extension we know, so a server can't swap the type of a file the user named. In
+        // project mode the asset name comes from the release, and it's what the picker matched.
+        let server_file_name = if self.asset_url.is_some()
+            && !matches!(Extension::from_path(Path::new(file_name)), Ok(Some(_)))
+        {
+            resp.headers()
+                .get(CONTENT_DISPOSITION)
+                // Some servers send a raw UTF-8 name, which `to_str` rejects.
+                .and_then(|h| std::str::from_utf8(h.as_bytes()).ok())
+                .and_then(content_disposition_file_name)
+        } else {
+            None
+        };
+        let file_name = match &server_file_name {
+            Some(n) => {
+                debug!("using the file name `{n}` from the Content-Disposition header");
+                std::ffi::OsStr::new(n)
+            }
+            None => file_name,
+        };
+
         let td = tempdir().context("failed to create temporary directory for download")?;
         let archive_path = td.path().join(file_name);
         debug!("archive path is {}", archive_path.to_string_lossy());
@@ -205,6 +229,87 @@ impl<'a> Ubi<'a> {
             archive_path,
         })
     }
+}
+
+// Returns the last part of the file name in a `Content-Disposition` header, if there is one. We
+// prefer `filename*`, which can hold any UTF-8 name, over the plain `filename`.
+fn content_disposition_file_name(header: &str) -> Option<String> {
+    let mut plain = None;
+    let mut extended = None;
+    for param in split_header_params(header).into_iter().skip(1) {
+        let Some((key, value)) = param.split_once('=') else {
+            continue;
+        };
+        match key.trim().to_ascii_lowercase().as_str() {
+            "filename" => plain = unquote(value.trim()).and_then(|v| last_path_part(&v)),
+            "filename*" => {
+                // The value looks like `UTF-8''name%20here`. The part before the `''` is the
+                // charset and language.
+                extended = value
+                    .trim()
+                    .split_once("''")
+                    .and_then(|(_, encoded)| {
+                        percent_encoding::percent_decode_str(encoded)
+                            .decode_utf8()
+                            .ok()
+                    })
+                    .and_then(|v| last_path_part(&v));
+            }
+            _ => (),
+        }
+    }
+    extended.or(plain)
+}
+
+// Splits a header on `;`, but not on a `;` inside a quoted string, since a quoted file name can
+// contain one.
+fn split_header_params(header: &str) -> Vec<&str> {
+    let mut params = vec![];
+    let mut start = 0;
+    let mut in_quotes = false;
+    let mut escaped = false;
+    for (i, c) in header.char_indices() {
+        if escaped {
+            escaped = false;
+        } else if in_quotes && c == '\\' {
+            escaped = true;
+        } else if c == '"' {
+            in_quotes = !in_quotes;
+        } else if c == ';' && !in_quotes {
+            params.push(&header[start..i]);
+            start = i + 1;
+        }
+    }
+    params.push(&header[start..]);
+    params
+}
+
+// Returns the value without its quotes and with any `\` escapes removed. A value with an opening
+// quote but no closing quote is broken, so we return `None` rather than guess.
+fn unquote(value: &str) -> Option<String> {
+    let Some(inner) = value.strip_prefix('"') else {
+        return Some(value.to_string());
+    };
+    let inner = inner.strip_suffix('"')?;
+    let mut out = String::with_capacity(inner.len());
+    let mut chars = inner.chars();
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            out.extend(chars.next());
+        } else {
+            out.push(c);
+        }
+    }
+    Some(out)
+}
+
+// The name comes from the server, so it could have a path in it. We only use the last part so the
+// download always goes in the temp dir. This also rejects names like `` and `..`.
+fn last_path_part(name: &str) -> Option<String> {
+    Path::new(name)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(String::from)
 }
 
 #[cfg(test)]
@@ -398,6 +503,79 @@ mod tests {
             Some(std::ffi::OsStr::new(expect_file_name)),
         );
         assert!(!outside.path().join("x-linux-amd64").exists());
+
+        Ok(())
+    }
+
+    #[rstest]
+    #[case::plain("attachment; filename=tool.tar.gz", Some("tool.tar.gz"))]
+    #[case::quoted(r#"attachment; filename="tool.tar.gz""#, Some("tool.tar.gz"))]
+    #[case::extended("attachment; filename*=UTF-8''t%C3%B6ol.tar.gz", Some("töol.tar.gz"))]
+    #[case::extended_wins(
+        "attachment; filename=plain.zip; filename*=UTF-8''ext.zip",
+        Some("ext.zip")
+    )]
+    #[case::key_case("attachment; FileName=tool.zip", Some("tool.zip"))]
+    #[case::has_a_path(r#"attachment; filename="../../etc/tool.zip""#, Some("tool.zip"))]
+    #[case::semicolon_in_quotes(r#"attachment; filename="a;b.tar.gz""#, Some("a;b.tar.gz"))]
+    #[case::escaped_quote(r#"attachment; filename="a\"b.zip""#, Some("a\"b.zip"))]
+    #[case::no_closing_quote(r#"attachment; filename="tool.zip"#, None)]
+    #[case::bad_extended_falls_back(
+        "attachment; filename=tool.zip; filename*=UTF-8''..",
+        Some("tool.zip")
+    )]
+    #[case::empty(r#"attachment; filename="""#, None)]
+    #[case::dot_dot("attachment; filename=..", None)]
+    #[case::no_file_name("attachment", None)]
+    #[case::inline_no_file_name("inline", None)]
+    fn content_disposition_file_name(#[case] header: &str, #[case] expect: Option<&str>) {
+        assert_eq!(
+            super::content_disposition_file_name(header).as_deref(),
+            expect
+        );
+    }
+
+    // An API asset URL ends in an ID, not a file name. The server tells us the real file name, and
+    // we need it to know the file's type. When the URL's name already has a type we know, we keep
+    // it.
+    #[rstest]
+    #[case::api_asset_url(
+        "/repos/owner/repo/releases/assets/12345",
+        "project-linux-amd64.tar.gz"
+    )]
+    #[case::url_has_an_extension("/files/project-linux-amd64.zip", "project-linux-amd64.zip")]
+    #[test_log::test(tokio::test)]
+    async fn url_mode_download_uses_the_content_disposition_file_name(
+        #[case] path: &str,
+        #[case] expect_file_name: &str,
+    ) -> Result<()> {
+        let mut server = Server::new_async().await;
+        let mock = server
+            .mock("GET", path)
+            .with_status(200)
+            .with_header(
+                "content-disposition",
+                "attachment; filename=project-linux-amd64.tar.gz",
+            )
+            .with_body("asset")
+            .create_async()
+            .await;
+
+        let server_url = server.url();
+        let url_str = Url::parse(&server_url)?.join(path)?.to_string();
+        let mut ubi = UbiBuilder::new()
+            .url(&url_str)
+            .api_base_url(&server_url)
+            .platform(linux_platform())
+            .build()?;
+        let asset = ubi.asset().await?;
+        let download = ubi.download_asset(&ubi.reqwest_client, asset).await?;
+
+        mock.assert_async().await;
+        assert_eq!(
+            download.archive_path.file_name(),
+            Some(std::ffi::OsStr::new(expect_file_name)),
+        );
 
         Ok(())
     }

@@ -2236,6 +2236,7 @@ dependencies = [
  "lazy-regex",
  "log",
  "mockito",
+ "percent-encoding",
  "platforms",
  "regex",
  "reqwest",

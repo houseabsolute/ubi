@@ -103,7 +103,9 @@ impl<'a> UbiBuilder<'a> {
     ///
     /// By default the executable name is taken from the second path segment of the URL, like
     /// `repo` in `https://github.com/owner/repo/releases/download/v1.0.0/repo.tar.gz`. If the URL
-    /// has fewer than two path segments, you must also set `exe` or `extract_all`.
+    /// has fewer than two path segments, you must also set `exe` or `extract_all`. This can also be
+    /// a GitHub API asset URL, like `https://api.github.com/repos/owner/repo/releases/assets/12345`.
+    /// For GitHub Enterprise, also set `api_base_url` so the project name can be found in it.
     ///
     /// You must set this or set `project`, but not both. You cannot set this with the `tag` or
     /// `min_age_days` options.
@@ -301,26 +303,30 @@ impl<'a> UbiBuilder<'a> {
             }
             None => None,
         };
-        let (project_name, forge_type) =
-            match parse_project_name(self.project, asset_url.as_ref(), self.forge.clone()) {
-                Ok(r) => r,
-                // With a URL, the project name is only used to guess the exe name, since we never
-                // call the forge API. So a URL with no project in its path is fine as long as we
-                // don't need that guess.
-                Err(e) => {
-                    match &asset_url {
-                        Some(u) if self.exe.is_some() || self.extract_all => (
-                            String::new(),
-                            self.forge.clone().unwrap_or_else(|| ForgeType::from_url(u)),
-                        ),
-                        Some(_) => return Err(e.context(
-                            "could not guess the executable name from the URL, so set exe (--exe) \
+        let (project_name, forge_type) = match parse_project_name(
+            self.project,
+            asset_url.as_ref(),
+            self.forge.clone(),
+            self.api_base_url,
+        ) {
+            Ok(r) => r,
+            // With a URL, the project name is only used to guess the exe name, since we never
+            // call the forge API. So a URL with no project in its path is fine as long as we
+            // don't need that guess.
+            Err(e) => match &asset_url {
+                Some(u) if self.exe.is_some() || self.extract_all => (
+                    String::new(),
+                    self.forge.clone().unwrap_or_else(|| ForgeType::from_url(u)),
+                ),
+                Some(_) => {
+                    return Err(e.context(
+                        "could not guess the executable name from the URL, so set exe (--exe) \
                              to the name of the executable, or set extract_all (--extract-all)",
-                        )),
-                        None => return Err(e),
-                    }
+                    ))
                 }
-            };
+                None => return Err(e),
+            },
+        };
         let installer = self.new_installer(&project_name, &platform)?;
         let forge = forge_type.new_forge(
             project_name,
@@ -404,6 +410,7 @@ fn parse_project_name(
     project: Option<&str>,
     url: Option<&Url>,
     forge: Option<ForgeType>,
+    api_base: Option<&str>,
 ) -> Result<(String, ForgeType)> {
     let (parsed, from) = if let Some(project) = project {
         // We check for the whole scheme because an owner name like `httpie` also starts with
@@ -435,11 +442,55 @@ fn parse_project_name(
     // We can only guess the forge from the host for the big public forges, so a forge the caller
     // gave us must win. Otherwise a self-hosted GitLab or Forgejo would be treated as GitHub.
     let forge_type = forge.unwrap_or_else(|| ForgeType::from_url(&parsed));
+    if project.is_none() {
+        if let Some(project_name) = project_name_from_api_url(&parsed, &forge_type, api_base) {
+            return Ok((project_name, forge_type));
+        }
+    }
     let project_name = forge_type
         .parse_project_name_from_url(&parsed, &from)
         .with_context(|| format!("failed to parse project name from URL {parsed}"))?;
 
     Ok((project_name, forge_type))
+}
+
+// A `--url` can be a release asset URL from the forge's API, like
+// `https://api.github.com/repos/owner/repo/releases/assets/12345`. The path of a project URL starts
+// with the owner and repo, but this one has the API base path and `repos` first.
+fn project_name_from_api_url(
+    url: &Url,
+    forge_type: &ForgeType,
+    api_base: Option<&str>,
+) -> Option<String> {
+    // Only GitHub serves the asset file itself from an API asset URL. Forgejo returns JSON
+    // metadata there, and GitLab API paths use a project ID or an encoded path instead.
+    if *forge_type != ForgeType::GitHub {
+        return None;
+    }
+    // A bad API base URL is reported when we make the forge, so here we just treat it as no match.
+    let base = match api_base {
+        Some(b) => Url::parse(b).ok()?,
+        None => forge_type.api_base_url(),
+    };
+    if url.origin() != base.origin() {
+        return None;
+    }
+
+    let base_parts = base.path().split('/').filter(|s| !s.is_empty());
+    let mut parts = url.path().split('/').filter(|s| !s.is_empty());
+    for b in base_parts {
+        if parts.next() != Some(b) {
+            return None;
+        }
+    }
+    if parts.next() != Some("repos") {
+        return None;
+    }
+    let (Some(owner), Some(repo)) = (parts.next(), parts.next()) else {
+        return None;
+    };
+    debug!("Parsed API URL {url} = {owner} / {repo}");
+    Some(format!("{owner}/{repo}"))
 }
 
 fn install_path(install_dir: Option<&Path>, exe: Option<&str>) -> Result<PathBuf> {
@@ -552,7 +603,7 @@ mod test {
             format!("https://github.com/{org_and_repo}/actions/runs/4275745616"),
         ];
         for p in projects {
-            let (project_name, forge_type) = super::parse_project_name(Some(p), None, None)?;
+            let (project_name, forge_type) = super::parse_project_name(Some(p), None, None, None)?;
             assert_eq!(
                 project_name, org_and_repo,
                 "got the right project from --project {p}",
@@ -560,7 +611,7 @@ mod test {
             assert_eq!(forge_type, ForgeType::GitHub);
 
             let (project_name, forge_type) =
-                super::parse_project_name(Some(p), None, Some(ForgeType::GitHub))?;
+                super::parse_project_name(Some(p), None, Some(ForgeType::GitHub), None)?;
             assert_eq!(
                 project_name, org_and_repo,
                 "got the right project from --project {p}",
@@ -570,7 +621,8 @@ mod test {
 
         {
             let url = Url::parse("https://github.com/houseabsolute/precious/releases/download/v0.1.7/precious-Linux-x86_64-musl.tar.gz")?;
-            let (project_name, forge_type) = super::parse_project_name(None, Some(&url), None)?;
+            let (project_name, forge_type) =
+                super::parse_project_name(None, Some(&url), None, None)?;
             assert_eq!(
                 project_name, "houseabsolute/precious",
                 "got the right project from the --url",
@@ -578,13 +630,50 @@ mod test {
             assert_eq!(forge_type, ForgeType::GitHub);
 
             let (project_name, forge_type) =
-                super::parse_project_name(None, Some(&url), Some(ForgeType::GitHub))?;
+                super::parse_project_name(None, Some(&url), Some(ForgeType::GitHub), None)?;
             assert_eq!(
                 project_name, "houseabsolute/precious",
                 "got the right project from the --url",
             );
             assert_eq!(forge_type, ForgeType::GitHub);
         }
+
+        Ok(())
+    }
+
+    // A `--url` can point at a release asset through the forge's API, and its path has an API
+    // prefix and a `repos` segment before the owner and repo.
+    #[rstest]
+    #[case::github(
+        "https://api.github.com/repos/owner/repo/releases/assets/12345",
+        None,
+        "owner/repo",
+        ForgeType::GitHub
+    )]
+    #[case::github_enterprise(
+        "https://ghe.example.com/api/v3/repos/owner/repo/releases/assets/12345",
+        Some("https://ghe.example.com/api/v3"),
+        "owner/repo",
+        ForgeType::GitHub
+    )]
+    // Without the API base URL, this looks like a normal project URL for the `api/v3` project.
+    #[case::github_enterprise_without_api_base(
+        "https://ghe.example.com/api/v3/repos/owner/repo/releases/assets/12345",
+        None,
+        "api/v3",
+        ForgeType::GitHub
+    )]
+    fn parse_project_name_from_an_api_url(
+        #[case] url: &str,
+        #[case] api_base: Option<&str>,
+        #[case] expect: &str,
+        #[case] expect_forge: ForgeType,
+    ) -> Result<()> {
+        let url = Url::parse(url)?;
+        let (project_name, forge_type) =
+            super::parse_project_name(None, Some(&url), None, api_base)?;
+        assert_eq!(project_name, expect);
+        assert_eq!(forge_type, expect_forge);
 
         Ok(())
     }
@@ -598,7 +687,8 @@ mod test {
         #[case] project: &str,
         #[case] expect: &str,
     ) -> Result<()> {
-        let (project_name, forge_type) = super::parse_project_name(Some(project), None, None)?;
+        let (project_name, forge_type) =
+            super::parse_project_name(Some(project), None, None, None)?;
         assert_eq!(project_name, expect);
         assert_eq!(forge_type, ForgeType::GitHub);
 
@@ -636,7 +726,7 @@ mod test {
     ) -> Result<()> {
         let url = url.map(Url::parse).transpose()?;
         let (project_name, forge_type) =
-            super::parse_project_name(project, url.as_ref(), Some(forge.clone()))?;
+            super::parse_project_name(project, url.as_ref(), Some(forge.clone()), None)?;
         assert_eq!(project_name, "owner/repo");
         assert_eq!(forge_type, forge);
 
