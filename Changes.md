@@ -2,6 +2,10 @@
 
 ## NEXT - TBD
 
+- Fixed a bug where an asset name with a `/` in it, which GitLab release links allow, broke the
+  download. An absolute asset name made `ubi` write the download to that path. Now `ubi` only uses
+  the last part of the name, so the download always goes in its temp directory. A name with no last
+  part, like `..`, is now an error.
 - Fixed an error message for `--extract-all` that named the install directory and said "the tarball"
   when `ubi` failed to read the temp directory it had unpacked the archive into. It now names the
   temp directory and says "the archive".

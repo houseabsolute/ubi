@@ -6,7 +6,11 @@ use reqwest::{
     Client, StatusCode,
 };
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io::Write, path::PathBuf};
+use std::{
+    fs::File,
+    io::Write,
+    path::{Path, PathBuf},
+};
 use tempfile::{tempdir, TempDir};
 use url::Url;
 
@@ -135,6 +139,15 @@ impl<'a> Ubi<'a> {
     }
 
     async fn download_asset(&self, client: &Client, asset: Asset) -> Result<Download> {
+        // Some forges, like GitLab, let the asset name be any text, so it can contain `/` or be an
+        // absolute path. We only use the last part so the download always goes in the temp dir.
+        let Some(file_name) = Path::new(&asset.name).file_name() else {
+            return Err(anyhow!(
+                "the asset name `{}` does not end with a file name",
+                asset.name
+            ));
+        };
+
         debug!("downloading asset from {}", asset.url);
 
         let mut req_builder = client.get(asset.url.clone()).header(
@@ -165,8 +178,7 @@ impl<'a> Ubi<'a> {
         }
 
         let td = tempdir().context("failed to create temporary directory for download")?;
-        let mut archive_path = td.path().to_path_buf();
-        archive_path.push(&asset.name);
+        let archive_path = td.path().join(file_name);
         debug!("archive path is {}", archive_path.to_string_lossy());
 
         {
@@ -340,6 +352,83 @@ mod tests {
 
         with_token.assert_async().await;
         without_token.assert_async().await;
+
+        Ok(())
+    }
+
+    // GitLab release link names are free text, so an asset name can have a `/` in it or be an
+    // absolute path. The download must still go into the temp dir.
+    #[rstest]
+    #[case::has_a_slash("linux/amd64", "amd64")]
+    #[case::is_absolute("{outside}/x-linux-amd64", "x-linux-amd64")]
+    #[test_log::test(tokio::test)]
+    async fn download_stays_in_the_temp_dir(
+        #[case] name: &str,
+        #[case] expect_file_name: &str,
+    ) -> Result<()> {
+        let outside = tempfile::tempdir()?;
+        let name = name.replace("{outside}", &outside.path().to_string_lossy());
+
+        let mut server = Server::new_async().await;
+        let path = "/files/project-linux-amd64";
+        let url = Url::parse(&server.url())?.join(path)?;
+        let mock = server
+            .mock("GET", path)
+            .with_status(200)
+            .with_body("asset")
+            .create_async()
+            .await;
+
+        let url_str = url.to_string();
+        let ubi = UbiBuilder::new()
+            .url(&url_str)
+            .platform(linux_platform())
+            .build()?;
+        let download = ubi
+            .download_asset(&ubi.reqwest_client, Asset { name, url })
+            .await?;
+
+        mock.assert_async().await;
+        // `tempdir` makes the download dir directly under the system temp dir.
+        let download_dir = download.archive_path.parent().unwrap();
+        assert_eq!(download_dir.parent(), Some(std::env::temp_dir().as_path()));
+        assert!(download.archive_path.exists());
+        assert_eq!(
+            download.archive_path.file_name(),
+            Some(std::ffi::OsStr::new(expect_file_name)),
+        );
+        assert!(!outside.path().join("x-linux-amd64").exists());
+
+        Ok(())
+    }
+
+    #[rstest]
+    #[case::dot_dot("foo/..")]
+    #[case::dot(".")]
+    #[case::root("/")]
+    #[test_log::test(tokio::test)]
+    async fn download_fails_for_a_name_with_no_file_name(#[case] name: &str) -> Result<()> {
+        // The name is checked before any request is made, so this URL is never fetched.
+        let url_str = "http://127.0.0.1:1/files/project-linux-amd64";
+        let url = Url::parse(url_str)?;
+        let ubi = UbiBuilder::new()
+            .url(url_str)
+            .platform(linux_platform())
+            .build()?;
+        let err = ubi
+            .download_asset(
+                &ubi.reqwest_client,
+                Asset {
+                    name: name.to_string(),
+                    url,
+                },
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            format!("the asset name `{name}` does not end with a file name"),
+        );
 
         Ok(())
     }
