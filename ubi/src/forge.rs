@@ -124,7 +124,11 @@ impl Forge {
             self.project_name
         );
 
-        let min_date = chrono::Utc::now() - chrono::Duration::days(i64::from(min_age_days));
+        // The CLI accepts any `u32`, and a big enough value goes past the earliest date chrono can
+        // represent. Subtracting would panic, so we return an error instead.
+        let min_date = chrono::Utc::now()
+            .checked_sub_signed(chrono::Duration::days(i64::from(min_age_days)))
+            .ok_or_else(|| anyhow!("{min_age_days} days is too far in the past"))?;
         let mut url = Some(
             self.forge_type
                 .releases_list_url(&self.project_name, self.api_base_url.clone()),

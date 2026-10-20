@@ -1164,6 +1164,31 @@ async fn min_age_days_picks_old_release() -> Result<()> {
 }
 
 #[test(tokio::test)]
+async fn min_age_days_too_large_is_an_error() -> Result<()> {
+    // The cutoff date is computed before any request is made, so the server needs no mocks.
+    let server = Server::new_async().await;
+    let url = server.url();
+
+    let mut ubi = UbiBuilder::new()
+        .project("test/project")
+        .platform(platforms::Platform::find("x86_64-unknown-linux-musl").unwrap())
+        .api_base_url(&url)
+        .min_age_days(u32::MAX)
+        .build()?;
+
+    match ubi.asset().await {
+        Ok(_) => panic!("expected an error for a huge min_age_days"),
+        Err(e) => assert!(
+            e.to_string()
+                .contains(&format!("{} days is too far in the past", u32::MAX)),
+            "got error: {e}"
+        ),
+    }
+
+    Ok(())
+}
+
+#[test(tokio::test)]
 async fn min_age_days_no_old_enough_release() -> Result<()> {
     // Test that min_age_days returns an error when no releases are old enough
     let mut server = Server::new_async().await;

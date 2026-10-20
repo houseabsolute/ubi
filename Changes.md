@@ -2,6 +2,8 @@
 
 ## NEXT - TBD
 
+- A very large `--min-age-days` value, more than about 96 million days, now gives an error instead
+  of making `ubi` panic.
 - An `--api-base-url` value that is not an `http` or `https` URL, such as `localhost:8080`, is now
   rejected with a clear error. Before, `ubi` accepted it and then panicked. A trailing `/` on the
   API base URL no longer puts `//` in the API request paths.
