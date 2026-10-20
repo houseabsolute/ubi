@@ -101,6 +101,10 @@ impl<'a> UbiBuilder<'a> {
     /// The token is only sent if this URL is on the forge's API or project site. For a private
     /// repo on GitHub Enterprise or a self-hosted forge, also set `api_base_url` for that server.
     ///
+    /// By default the executable name is taken from the second path segment of the URL, like
+    /// `repo` in `https://github.com/owner/repo/releases/download/v1.0.0/repo.tar.gz`. If the URL
+    /// has fewer than two path segments, you must also set `exe` or `extract_all`.
+    ///
     /// You must set this or set `project`, but not both. You cannot set this with the `tag` or
     /// `min_age_days` options.
     #[must_use]
@@ -298,7 +302,25 @@ impl<'a> UbiBuilder<'a> {
             None => None,
         };
         let (project_name, forge_type) =
-            parse_project_name(self.project, asset_url.as_ref(), self.forge.clone())?;
+            match parse_project_name(self.project, asset_url.as_ref(), self.forge.clone()) {
+                Ok(r) => r,
+                // With a URL, the project name is only used to guess the exe name, since we never
+                // call the forge API. So a URL with no project in its path is fine as long as we
+                // don't need that guess.
+                Err(e) => {
+                    match &asset_url {
+                        Some(u) if self.exe.is_some() || self.extract_all => (
+                            String::new(),
+                            self.forge.clone().unwrap_or_else(|| ForgeType::from_url(u)),
+                        ),
+                        Some(_) => return Err(e.context(
+                            "could not guess the executable name from the URL, so set exe (--exe) \
+                             to the name of the executable, or set extract_all (--extract-all)",
+                        )),
+                        None => return Err(e),
+                    }
+                }
+            };
         let installer = self.new_installer(&project_name, &platform)?;
         let forge = forge_type.new_forge(
             project_name,
@@ -440,7 +462,8 @@ fn expect_exe_stem_name<'a>(exe: Option<&'a str>, project_name: &'a str) -> &'a 
         exe
     } else {
         // We know that this contains a slash because it already went through `parse_project_name`
-        // successfully.
+        // successfully. The project name is only empty for a URL with no project in it, and then
+        // `exe` must be set.
         project_name.split('/').next_back().unwrap()
     };
 
@@ -634,6 +657,38 @@ mod test {
         #[case] expect: &'static str,
     ) {
         assert_eq!(super::expect_exe_stem_name(exe, project_name), expect);
+    }
+
+    // With `--exe` or `--extract-all`, ubi doesn't need a project name to know what to install, so
+    // a download URL with only one path segment should work.
+    #[rstest]
+    #[case::exe(Some("tool"), false)]
+    #[case::extract_all(None, true)]
+    fn url_with_one_path_segment_works_with_exe_or_extract_all(
+        #[case] exe: Option<&str>,
+        #[case] extract_all: bool,
+    ) {
+        let mut builder = UbiBuilder::new().url("https://example.com/tool-linux-x86_64.tar.gz");
+        if let Some(exe) = exe {
+            builder = builder.exe(exe);
+        }
+        if extract_all {
+            builder = builder.extract_all();
+        }
+        if let Err(e) = builder.build() {
+            panic!("expected build to succeed, got error: {e:#}");
+        }
+    }
+
+    #[test]
+    fn url_with_one_path_segment_and_no_exe_suggests_exe() {
+        let res = UbiBuilder::new()
+            .url("https://example.com/tool-linux-x86_64.tar.gz")
+            .build();
+        match res {
+            Ok(_) => panic!("expected build to fail"),
+            Err(e) => assert!(format!("{e:#}").contains("--exe"), "got error: {e:#}"),
+        }
     }
 
     #[test]

@@ -2,6 +2,9 @@
 
 ## NEXT - TBD
 
+- A `--url` with fewer than two path segments, like `https://example.com/tool.tar.gz`, now works
+  when you also pass `--exe` or `--extract-all`. Before, `ubi` always failed because it could not
+  find a project name in the URL. Without either flag, the error now says to pass one of them.
 - A very large `--min-age-days` value, more than about 96 million days, now gives an error instead
   of making `ubi` panic.
 - An `--api-base-url` value that is not an `http` or `https` URL, such as `localhost:8080`, is now

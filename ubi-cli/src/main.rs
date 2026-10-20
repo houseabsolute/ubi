@@ -82,7 +82,8 @@ fn cmd() -> Command {
                     " tag. This will not use the forge site's API, so you will never hit its API",
                     " limits. With this parameter, you do not need to set a token env var except for",
                     " private repos. You cannot pass this when `--project`, `--tag`, or `--min-age-days`",
-                    " are passed."
+                    " are passed. If the URL has fewer than two path segments, you must also pass",
+                    " `--exe` or `--extract-all`, since ubi can't guess the executable name from it."
                 )),
             "UBI_URL",
         ))
