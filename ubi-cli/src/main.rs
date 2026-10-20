@@ -849,9 +849,13 @@ mod tests {
         // exist.
         std::fs::write(&exe_path, "").unwrap();
         let (ubi, _) = make_ubi(&matches, || Ok(exe_path.clone())).unwrap();
-        // `Ubi` has no getter for this, so we look at its debug output.
+        // `Ubi` has no getter for this, so we look at its debug output. The debug output is not in
+        // the failure message, so a failed test can't print anything else from the `Ubi`.
         let debug = format!("{ubi:?}");
-        assert!(debug.contains("min_age_days: Some(7)"), "got {debug}");
+        assert!(
+            debug.contains("min_age_days: Some(7)"),
+            "min_age_days was not set to 7",
+        );
     }
 
     // `env::current_exe` can fail, for example on Linux when `/proc` is not mounted. Only

@@ -592,6 +592,23 @@ mod test {
         assert!(debug.contains("owner/repo"));
     }
 
+    // A `Ubi` holds the forge, which holds the token, and callers like the CLI's tests format a
+    // `Ubi` with `{:?}` to check its settings. So its Debug output must not show the token either.
+    #[test]
+    fn ubi_debug_hides_the_token() {
+        let ubi = match UbiBuilder::new()
+            .project("owner/repo")
+            .token("secret-token")
+            .build()
+        {
+            Ok(ubi) => ubi,
+            Err(e) => panic!("expected build to succeed, got error: {e:#}"),
+        };
+        let debug = format!("{ubi:?}");
+        assert!(!debug.contains("secret-token"));
+        assert!(debug.contains(r#"token: Some("<redacted>")"#));
+    }
+
     #[test]
     fn parse_project_name() -> Result<()> {
         let org_and_repo = "some-owner/some-repo";
