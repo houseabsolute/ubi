@@ -348,7 +348,7 @@ impl ForgeType {
 
     pub(crate) fn forge_name(&self) -> &'static str {
         match self {
-            ForgeType::Forgejo => "Forgjo",
+            ForgeType::Forgejo => "Forgejo",
             ForgeType::GitHub => "GitHub",
             ForgeType::GitLab => "GitLab",
         }
@@ -758,6 +758,13 @@ mod tests {
                 .release_info_url("test/project", forge.api_base_url.clone(), None);
         assert_eq!(url.as_str(), expect);
         Ok(())
+    }
+
+    #[test_case(&ForgeType::Forgejo, "Forgejo" ; "forgejo")]
+    #[test_case(&ForgeType::GitHub, "GitHub" ; "github")]
+    #[test_case(&ForgeType::GitLab, "GitLab" ; "gitlab")]
+    fn forge_name(forge_type: &ForgeType, expect: &str) {
+        assert_eq!(forge_type.forge_name(), expect);
     }
 
     #[test]
