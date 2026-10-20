@@ -358,8 +358,20 @@ impl ForgeType {
         mut token: Option<String>,
     ) -> Result<Forge> {
         let api_base_url = if let Some(api_base) = api_base {
-            Url::parse(&api_base)
-                .with_context(|| format!("failed to parse API base URL: {api_base}"))?
+            let mut url = Url::parse(&api_base)
+                .with_context(|| format!("failed to parse API base URL: {api_base}"))?;
+            // A value like `localhost:8080` parses with `localhost` as the scheme. We can't add API
+            // paths to a URL like that, so we reject it here instead of panicking later.
+            if !matches!(url.scheme(), "http" | "https") {
+                return Err(anyhow!(
+                    "API base URL {api_base} must be an http or https URL"
+                ));
+            }
+            // We add the API paths as new path segments, so a trailing `/` would end up as `//`.
+            url.path_segments_mut()
+                .expect("http and https URLs always have path segments")
+                .pop_if_empty();
+            url
         } else {
             self.api_base_url()
         };
@@ -700,6 +712,47 @@ mod tests {
             Some("not-a-real-token".to_string()),
         )?;
         assert_eq!(forge.is_forge_url(&Url::parse(url)?), expect);
+        Ok(())
+    }
+
+    #[test]
+    fn new_forge_rejects_an_api_base_url_that_is_not_http() {
+        // `host:port` parses as a URL with `host` as its scheme, and it can't take new path segments.
+        let res = ForgeType::GitHub.new_forge(
+            "test/project".to_string(),
+            None,
+            Some("localhost:8080".to_string()),
+            None,
+        );
+        match res {
+            Ok(_) => panic!("expected new_forge to fail"),
+            Err(e) => assert!(
+                e.to_string()
+                    .contains("API base URL localhost:8080 must be an http or https URL"),
+                "got error: {e}"
+            ),
+        }
+    }
+
+    #[test_case(ForgeType::GitHub, "http://host/", "http://host/repos/test/project/releases/latest" ; "github root")]
+    #[test_case(ForgeType::GitHub, "http://host/api/v3/", "http://host/api/v3/repos/test/project/releases/latest" ; "github")]
+    #[test_case(ForgeType::GitLab, "http://host/api/v4/", "http://host/api/v4/projects/test%2Fproject/releases/permalink/latest" ; "gitlab")]
+    fn new_forge_handles_an_api_base_url_with_a_trailing_slash(
+        forge_type: ForgeType,
+        api_base: &str,
+        expect: &str,
+    ) -> Result<()> {
+        let forge = forge_type.new_forge(
+            "test/project".to_string(),
+            None,
+            Some(api_base.to_string()),
+            Some("not-a-real-token".to_string()),
+        )?;
+        let url =
+            forge
+                .forge_type
+                .release_info_url("test/project", forge.api_base_url.clone(), None);
+        assert_eq!(url.as_str(), expect);
         Ok(())
     }
 

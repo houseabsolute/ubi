@@ -2,6 +2,9 @@
 
 ## NEXT - TBD
 
+- An `--api-base-url` value that is not an `http` or `https` URL, such as `localhost:8080`, is now
+  rejected with a clear error. Before, `ubi` accepted it and then panicked. A trailing `/` on the
+  API base URL no longer puts `//` in the API request paths.
 - GitLab project URLs with no project name after the owner, such as `https://gitlab.com/owner/` or
   `https://gitlab.com/owner/-/releases`, are now rejected. Before, `ubi` treated the owner as the
   project name. A URL whose path starts with `/-/` could also make `ubi` panic when debug logging
