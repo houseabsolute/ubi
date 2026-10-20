@@ -781,6 +781,16 @@ mod test {
         }
     }
 
+    // A library user can turn off every TLS feature. Then `build` must still return a `Result`,
+    // not panic because reqwest wants a rustls crypto provider that nothing installed. This only
+    // tests something when run with `--no-default-features`.
+    #[test]
+    fn build_works_with_any_tls_features() {
+        if let Err(e) = UbiBuilder::new().project("houseabsolute/precious").build() {
+            panic!("expected build to succeed, got error: {e:#}");
+        }
+    }
+
     #[test]
     fn min_age_days_zero_validation() {
         let result = UbiBuilder::new()

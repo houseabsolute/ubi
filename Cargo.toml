@@ -28,15 +28,11 @@ mockito = { version = "1.7.2", default-features = false }
 percent-encoding = { version = "2.3.2" }
 platforms = { version = "4.2.1" }
 regex = { version = "1.13.1", default-features = false }
-# reqwest 0.13's `rustls` feature pulls in the aws-lc-rs crypto provider, which needs a C/C++
-# toolchain and fails to build under `cross` for targets like NetBSD and PowerPC64. We use
-# `rustls-no-provider` instead and install the `ring` provider ourselves. See
-# `ubi::builder::install_crypto_provider`.
-reqwest = { version = "0.13.5", default-features = false, features = [
-    "gzip",
-    "json",
-    "rustls-no-provider",
-] }
+# The TLS backend is picked by the `ubi` crate's features, not here. Turning one on here would turn
+# it on for every build, so a library user couldn't turn it off. In particular,
+# `rustls-no-provider` with no provider installed makes reqwest panic when we build the client. See
+# the `rustls-tls` feature in `ubi/Cargo.toml`.
+reqwest = { version = "0.13.5", default-features = false, features = ["gzip", "json"] }
 rstest = { version = "0.27.0", default-features = false }
 rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
 serde = { version = "1.0.229", default-features = false, features = ["derive"] }

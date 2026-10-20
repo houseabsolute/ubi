@@ -217,6 +217,11 @@ jobs:
               # shellcheck disable=SC2086
               cargo build -p ubi --locked $features
           done
+      # With no TLS feature, building a `Ubi` used to panic. The other test jobs always turn a TLS
+      # feature on, so they would not catch that.
+      - name: Run the library tests with no TLS feature
+        run: |
+          cargo test -p ubi --lib --locked --no-default-features
 
   publish-release:
     name: Publish GitHub release

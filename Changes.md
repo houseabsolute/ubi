@@ -2,6 +2,11 @@
 
 ## NEXT - TBD
 
+- The `ubi` crate's TLS features now fully control which TLS backend `reqwest` uses. Before, the
+  workspace always turned on `reqwest`'s `rustls-no-provider` feature, so with
+  `default-features = false` and no TLS feature, `UbiBuilder::build` panicked because no rustls
+  crypto provider was installed. Now it returns a `Ubi`, though with no TLS backend it can only make
+  plain `http` requests, so it can't reach the GitHub, GitLab or Forgejo APIs over `https`.
 - A `--url` that points at a GitHub API asset URL, like
   `https://api.github.com/repos/owner/repo/releases/assets/12345`, now works. Before, `ubi` saved
   the download with the asset ID as its name, so it could not tell the file was an archive. It
