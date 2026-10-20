@@ -2,6 +2,9 @@
 
 ## NEXT - TBD
 
+- `ubi` no longer fails when it can't find the path to its own executable, unless you pass
+  `--self-upgrade`. Only that needs the path. Before, any install failed with "could not find path
+  for current executable", for example on Linux when `/proc` is not mounted.
 - The `ubi` crate's TLS features now fully control which TLS backend `reqwest` uses. Before, the
   workspace always turned on `reqwest`'s `rustls-no-provider` feature, so with
   `default-features = false` and no TLS feature, `UbiBuilder::build` panicked because no rustls

@@ -19,19 +19,7 @@ async fn main() {
         std::process::exit(126);
     }
 
-    // We use this when `--self-upgrade` is passed. We need to create this String here so that we
-    // can make a Ubi<'_> instance that borrows this value. It needs to have the same lifetime as
-    // `matches`. If we try to make it in `self_upgrade_ubi` we end up trying to return a reference
-    // data owned by that fn.
-    let ubi_exe_path = match env::current_exe() {
-        Ok(p) => p,
-        Err(e) => {
-            let e = anyhow!("could not find path for current executable: {e}");
-            error!("{e:?}");
-            std::process::exit(127);
-        }
-    };
-    let status = match make_ubi(&matches, &ubi_exe_path) {
+    let status = match make_ubi(&matches, env::current_exe) {
         Ok((mut u, old_exe)) => finish(u.install_binary().await, old_exe),
         Err(e) => {
             error!("{e:?}");
@@ -328,13 +316,17 @@ pub(crate) fn init_logger_from_matches(matches: &ArgMatches) -> Result<()> {
     ubi::init_logger(level, color).context("failed to initialize the logger")
 }
 
-fn make_ubi<'a>(
-    matches: &'a ArgMatches,
-    ubi_exe_path: &'a Path,
-) -> Result<(Ubi<'a>, Option<OldExe>)> {
+// Finding the current exe can fail, for example on Linux when `/proc` is not mounted. Only
+// `--self-upgrade` needs it, so we take a function and only call it then. Tests pass a function
+// that fails.
+fn make_ubi(
+    matches: &ArgMatches,
+    current_exe: impl FnOnce() -> std::io::Result<PathBuf>,
+) -> Result<(Ubi<'_>, Option<OldExe>)> {
     if matches.get_flag("self-upgrade") {
+        let ubi_exe_path = current_exe().context("could not find path for current executable")?;
         return self_upgrade_ubi(
-            ubi_exe_path,
+            &ubi_exe_path,
             matches.get_one::<u32>("min-age-days").copied(),
         );
     }
@@ -385,7 +377,7 @@ fn make_ubi<'a>(
 fn self_upgrade_ubi(
     ubi_exe_path: &Path,
     min_age_days: Option<u32>,
-) -> Result<(Ubi<'_>, Option<OldExe>)> {
+) -> Result<(Ubi<'static>, Option<OldExe>)> {
     let mut builder = UbiBuilder::new().project("houseabsolute/ubi").install_dir(
         ubi_exe_path
             .parent()
@@ -856,10 +848,44 @@ mod tests {
         // On Windows, a self-upgrade moves the current exe aside before installing, so it has to
         // exist.
         std::fs::write(&exe_path, "").unwrap();
-        let (ubi, _) = make_ubi(&matches, &exe_path).unwrap();
+        let (ubi, _) = make_ubi(&matches, || Ok(exe_path.clone())).unwrap();
         // `Ubi` has no getter for this, so we look at its debug output.
         let debug = format!("{ubi:?}");
         assert!(debug.contains("min_age_days: Some(7)"), "got {debug}");
+    }
+
+    // `env::current_exe` can fail, for example on Linux when `/proc` is not mounted. Only
+    // `--self-upgrade` needs the path, so a normal install must still work.
+    #[test]
+    #[serial]
+    fn install_works_when_current_exe_fails() {
+        let _guard = EnvGuard::new(&[]);
+        let matches = cmd()
+            .try_get_matches_from(["ubi", "--project", "houseabsolute/precious"])
+            .unwrap();
+        if let Err(e) = make_ubi(&matches, failing_current_exe) {
+            panic!("expected make_ubi to succeed, got error: {e:#}");
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn self_upgrade_fails_when_current_exe_fails() {
+        let _guard = EnvGuard::new(&[]);
+        let matches = cmd()
+            .try_get_matches_from(["ubi", "--self-upgrade"])
+            .unwrap();
+        match make_ubi(&matches, failing_current_exe) {
+            Ok(_) => panic!("expected make_ubi to fail"),
+            Err(e) => assert_eq!(
+                format!("{e:#}"),
+                "could not find path for current executable: no /proc",
+            ),
+        }
+    }
+
+    fn failing_current_exe() -> std::io::Result<PathBuf> {
+        Err(std::io::Error::other("no /proc"))
     }
 
     #[test]
