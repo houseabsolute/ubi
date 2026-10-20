@@ -2,6 +2,9 @@
 
 ## NEXT - TBD
 
+- Fixed a bug where a `--project` value whose owner name starts with "http", like `httpie/cli`, was
+  parsed as a URL and failed. Now only a value that starts with `http://` or `https://` is treated
+  as a URL.
 - Fixed a bug where an asset name with a `/` in it, which GitLab release links allow, broke the
   download. An absolute asset name made `ubi` write the download to that path. Now `ubi` only uses
   the last part of the name, so the download always goes in its temp directory. A name with no last

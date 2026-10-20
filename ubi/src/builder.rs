@@ -384,7 +384,10 @@ fn parse_project_name(
     forge: Option<ForgeType>,
 ) -> Result<(String, ForgeType)> {
     let (parsed, from) = if let Some(project) = project {
-        if project.starts_with("http") {
+        // We check for the whole scheme because an owner name like `httpie` also starts with
+        // "http".
+        let lower = project.to_ascii_lowercase();
+        if lower.starts_with("http://") || lower.starts_with("https://") {
             (
                 Url::parse(project)
                     .with_context(|| format!("failed to parse project URL: {project}"))?,
@@ -559,6 +562,22 @@ mod test {
             );
             assert_eq!(forge_type, ForgeType::GitHub);
         }
+
+        Ok(())
+    }
+
+    // Only a value with a URL scheme is a URL. An owner name can start with "http" too.
+    #[rstest]
+    #[case::owner_starts_with_http("httpie/cli", "httpie/cli")]
+    #[case::owner_is_https("https/repo", "https/repo")]
+    #[case::upper_case_scheme("HTTPS://github.com/httpie/cli", "httpie/cli")]
+    fn parse_project_name_only_treats_a_scheme_as_a_url(
+        #[case] project: &str,
+        #[case] expect: &str,
+    ) -> Result<()> {
+        let (project_name, forge_type) = super::parse_project_name(Some(project), None, None)?;
+        assert_eq!(project_name, expect);
+        assert_eq!(forge_type, ForgeType::GitHub);
 
         Ok(())
     }
