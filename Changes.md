@@ -2,6 +2,10 @@
 
 ## NEXT - TBD
 
+- GitLab project URLs with no project name after the owner, such as `https://gitlab.com/owner/` or
+  `https://gitlab.com/owner/-/releases`, are now rejected. Before, `ubi` treated the owner as the
+  project name. A URL whose path starts with `/-/` could also make `ubi` panic when debug logging
+  was on.
 - Fixed a bug where a `--project` value whose owner name starts with "http", like `httpie/cli`, was
   parsed as a URL and failed. Now only a value that starts with `http://` or `https://` is treated
   as a URL.

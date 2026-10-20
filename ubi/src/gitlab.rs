@@ -51,7 +51,9 @@ pub(crate) fn parse_project_name_from_url(url: &Url, from: &str) -> Result<Strin
         parts.truncate(dash_pos);
     }
 
-    if parts.iter().any(|s| s.is_empty()) {
+    // A URL like `https://gitlab.com/owner/` or `https://gitlab.com/-/owner/repo` has too few parts
+    // left after trimming, and there is no project name in it.
+    if parts.len() < 2 || parts.iter().any(|s| s.is_empty()) {
         return Err(anyhow!("could not parse project from {from}"));
     }
 
@@ -144,6 +146,18 @@ mod tests {
     )]
     #[case::with_empty_path_segments(
         "https://gitlab.com/owner//repo",
+        ParseTestExpect::Fail("could not parse project from test")
+    )]
+    #[case::with_org_and_trailing_slash_but_no_project(
+        "https://gitlab.com/owner/",
+        ParseTestExpect::Fail("could not parse project from test")
+    )]
+    #[case::with_org_and_dash_but_no_project(
+        "https://gitlab.com/owner/-/releases",
+        ParseTestExpect::Fail("could not parse project from test")
+    )]
+    #[case::starts_with_dash(
+        "https://gitlab.com/-/owner/repo",
         ParseTestExpect::Fail("could not parse project from test")
     )]
     fn parse_project_name(
