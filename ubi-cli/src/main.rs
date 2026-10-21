@@ -378,11 +378,27 @@ fn self_upgrade_ubi(
     ubi_exe_path: &Path,
     min_age_days: Option<u32>,
 ) -> Result<(Ubi<'static>, Option<OldExe>)> {
-    let mut builder = UbiBuilder::new().project("houseabsolute/ubi").install_dir(
-        ubi_exe_path
-            .parent()
-            .ok_or_else(|| anyhow!("executable path `{}` has no parent", ubi_exe_path.display()))?,
-    );
+    // The user may have installed ubi under another name, like `ubi-bin`, so we install the new
+    // version under the running exe's own name. Otherwise we'd write a new `ubi` next to it and
+    // leave the old version in place. `rename_exe_to` borrows the name for as long as the `Ubi`
+    // lives, and the path is only made in `make_ubi`, so we leak it. This happens once per run.
+    let exe_name = ubi_exe_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or_else(|| {
+            anyhow!(
+                "executable path `{}` has no file name",
+                ubi_exe_path.display()
+            )
+        })?;
+    let exe_name: &'static str = Box::leak(exe_name.to_string().into_boxed_str());
+    let mut builder =
+        UbiBuilder::new()
+            .project("houseabsolute/ubi")
+            .install_dir(ubi_exe_path.parent().ok_or_else(|| {
+                anyhow!("executable path `{}` has no parent", ubi_exe_path.display())
+            })?)
+            .rename_exe_to(exe_name);
     if let Some(days) = min_age_days {
         builder = builder.min_age_days(days);
     }
@@ -855,6 +871,31 @@ mod tests {
         assert!(
             debug.contains("min_age_days: Some(7)"),
             "min_age_days was not set to 7",
+        );
+    }
+
+    // A user may have installed ubi under another name, like `ubi-bin`. A self-upgrade has to
+    // replace that file, not write a new `ubi` next to it and leave the old one in place.
+    #[test]
+    #[serial]
+    fn self_upgrade_replaces_the_running_exe_under_its_own_name() {
+        let _guard = EnvGuard::new(&[]);
+        let matches = cmd()
+            .try_get_matches_from(["ubi", "--self-upgrade"])
+            .unwrap();
+        let td = tempfile::tempdir().unwrap();
+        let exe_path = td.path().join("ubi-bin");
+        // On Windows, a self-upgrade moves the current exe aside before installing, so it has to
+        // exist.
+        std::fs::write(&exe_path, "").unwrap();
+        let (ubi, _) = make_ubi(&matches, || Ok(exe_path.clone())).unwrap();
+        // `Ubi` has no getter for this, so we look at its debug output. The debug output is not in
+        // the failure message, so a failed test can't print anything else from the `Ubi`.
+        let debug = format!("{ubi:?}");
+        assert!(
+            debug.contains(&format!("install_path: {exe_path:?}")),
+            "the install path was not {}",
+            exe_path.display(),
         );
     }
 

@@ -248,12 +248,14 @@ fn ubi_self_upgrade(td: TempDir, ubi: &Path) -> Result<()> {
     }
 
     let new_ubi_dir = TempDir::new()?;
+    // We use a name other than `ubi` because a self-upgrade must replace the running exe under its
+    // own name, not write a new `ubi` next to it.
     let ubi_copy = make_exe_pathbuf(&[
         new_ubi_dir
             .path()
             .to_str()
             .ok_or_else(|| anyhow!("Could not convert path to str"))?,
-        "ubi",
+        "ubi-bin",
     ]);
     fs::copy(ubi, ubi_copy.as_path())?;
 

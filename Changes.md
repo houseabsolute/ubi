@@ -2,6 +2,10 @@
 
 ## NEXT - TBD
 
+- `--self-upgrade` now replaces the running `ubi` executable even when it has another name, like
+  `ubi-bin`. Before, it always wrote the new version to `ubi` (or `ubi.exe`) in the same directory.
+  On Unix, the running executable stayed at the old version. On Windows, it was renamed to
+  `ubi-old.exe`, so nothing was left under its original name.
 - `ubi` no longer fails when it can't find the path to its own executable, unless you pass
   `--self-upgrade`. Only that needs the path. Before, any install failed with "could not find path
   for current executable", for example on Linux when `/proc` is not mounted.
