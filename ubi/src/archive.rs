@@ -125,20 +125,23 @@ impl<R: Read + io::Seek> Iterator for ZipEntriesIterator<'_, R> {
             return None;
         }
 
-        let result = self
-            .archive
-            .by_index(self.current_index)
-            .map(|file| OwnedZipEntry {
-                name: file.name().to_string(),
-                is_file: file.is_file(),
-            });
+        let entry = match self.archive.by_index(self.current_index) {
+            Ok(e) => e,
+            Err(e) => return Some(Err(e.into())),
+        };
+        let name = match entry.name() {
+            Ok(n) => n,
+            Err(e) => return Some(Err(e.into())),
+        };
+
+        let owned = OwnedZipEntry {
+            name: name.to_string(),
+            is_file: entry.is_file(),
+        };
 
         self.current_index += 1;
 
-        match result {
-            Ok(entry) => Some(Ok(Box::new(entry))),
-            Err(e) => Some(Err(e.into())),
-        }
+        Some(Ok(Box::new(owned)))
     }
 }
 

@@ -335,25 +335,27 @@ impl ExeInstaller {
                     downloaded_file.display()
                 )
             })?;
-            let zf_path = Path::new(zf.name());
+
+            let zf_name = zf.name()?.to_string();
+            let zf_path = Path::new(&zf_name);
             let install_path = self.maybe_munged_install_path(zf_path)?;
             debug!(
                 "extracting zip file entry named {} to {}",
-                zf.name(),
+                zf_name,
                 install_path.display(),
             );
             let mut buffer: Vec<u8> =
                 Vec::with_capacity(usize::try_from(zf.size()).with_context(|| {
                     format!(
                         "failed to convert zip file size to usize for entry {} in {}",
-                        zf.name(),
+                        zf_name,
                         downloaded_file.display()
                     )
                 })?);
             zf.read_to_end(&mut buffer).with_context(|| {
                 format!(
                     "failed to read zip entry {} from {}",
-                    zf.name(),
+                    zf_name,
                     downloaded_file.display()
                 )
             })?;
