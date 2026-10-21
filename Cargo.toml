@@ -37,16 +37,16 @@ reqwest = { version = "0.13.5", default-features = false, features = [
     "rustls-no-provider",
 ] }
 rstest = { version = "0.27.0", default-features = false }
-rustls = { version = "0.23.45", default-features = false, features = ["ring", "std", "tls12"] }
+rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
 serde = { version = "1.0.229", default-features = false, features = ["derive"] }
-serde_json = { version = "1.0.151", default-features = false }
+serde_json = { version = "1.0.154", default-features = false }
 serial_test = { version = "4.0.1", default-features = false }
 sevenz-rust2 = { version = "0.23.0", default-features = false, features = ["util"] }
 strum = { version = "0.28.0", features = ["derive"] }
 tempfile = { version = "3.27.0", default-features = false }
 test-log = { version = "0.2.21", default-features = false }
 thiserror = { version = "2.0.21" }
-tokio = { version = "1.53.2", default-features = false, features = ["macros", "rt"] }
+tokio = { version = "1.53.3", default-features = false, features = ["macros", "rt"] }
 url = { version = "2.5.8", default-features = false, features = ["serde"] }
 walkdir = { version = "2.5.0", default-features = false }
 which = { version = "8.0.6" }
@@ -69,7 +69,7 @@ zip = { version = "8.6.0", default-features = false, features = [
     "xz",
     "zstd",
 ] }
-zstd = { version = "0.14.0", default-features = false }
+zstd = { version = "0.14.3", default-features = false }
 
 [workspace.lints.clippy]
 fallible_impl_from = "deny"
