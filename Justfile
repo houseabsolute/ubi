@@ -17,9 +17,12 @@ _env := if _in_container != "" { "env" } else { "--remote-env" }
 _git_common_dir := `test -f .git && realpath "$(git rev-parse --git-common-dir)" || true`
 _git_mount := if _git_common_dir != "" { "--mount 'type=bind,source=" + _git_common_dir + ",target=" + _git_common_dir + "'" } else { "" }
 # Puts the integration test tokens in the environment of the command it runs. Only the recipes
-# that need them use it, and it is what lets the devcontainer CLI resolve the ${localEnv:...}
-# entries in devcontainer.json's remoteEnv.
+# that need them use it. It runs on both sides of `devcontainer exec`. On the host it exports the
+# tokens for the devcontainer CLI to forward via devcontainer.json's remoteEnv, and in the
+# container it puts the forwarded tokens under their real names. Inside the container there is no
+# host side, so that half is empty.
 _with_tokens := ".devcontainer/with-tokens.sh"
+_forward_tokens := if _in_container != "" { "" } else { _with_tokens }
 
 _host_only recipe:
     #!/usr/bin/env bash
@@ -41,12 +44,12 @@ rebuild: (_host_only "rebuild")
     .devcontainer/up.sh --workspace-folder . {{ _git_mount }} --remove-existing-container
 
 shell: _up
-    {{ _with_tokens }} {{ _dce }} bash -i
+    {{ _forward_tokens }} {{ _dce }} {{ _with_tokens }} bash -i
 
 test rust-log="" *args: _up
-    {{ _with_tokens }} {{ _dce }} \
+    {{ _forward_tokens }} {{ _dce }} \
       {{ if rust-log != "" { _env + " RUST_LOG=" + rust-log } else { "" } }} \
-      cargo test {{ args }}
+      {{ _with_tokens }} cargo test {{ args }}
 
 lint *args: _up
     {{ _dce }} mise exec -- precious lint {{ args }}

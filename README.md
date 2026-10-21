@@ -424,9 +424,9 @@ mise exec -- just shell
 mise exec -- just rebuild
 ```
 
-The `test` recipe passes your `github.token`, `gitlab.token`, and `codeberg.token` git config values
-into the container as `GITHUB_TOKEN`, `GITLAB_TOKEN`, and `CODEBERG_TOKEN`, so that the tests which
-hit those forges' APIs aren't rate limited.
+The `test` and `shell` recipes pass your `github.ubiTestingToken`, `gitlab.ubiTestingToken`, and
+`codeberg.ubiTestingToken` git config values into the container as `GITHUB_TOKEN`, `GITLAB_TOKEN`,
+and `CODEBERG_TOKEN`, so that the tests which hit those forges' APIs aren't rate limited.
 
 ## Linting and Tidying this Code
 

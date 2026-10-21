@@ -11,9 +11,9 @@
     "UBI_DEVCONTAINER": "1"
   },
   "remoteEnv": {
-    "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}",
-    "GITLAB_TOKEN": "${localEnv:GITLAB_TOKEN}",
-    "CODEBERG_TOKEN": "${localEnv:CODEBERG_TOKEN}"
+    "UBI_FORWARDED_GITHUB_TOKEN": "${localEnv:UBI_FORWARDED_GITHUB_TOKEN}",
+    "UBI_FORWARDED_GITLAB_TOKEN": "${localEnv:UBI_FORWARDED_GITLAB_TOKEN}",
+    "UBI_FORWARDED_CODEBERG_TOKEN": "${localEnv:UBI_FORWARDED_CODEBERG_TOKEN}"
   },
   "postCreateCommand": ".devcontainer/post-create.sh"
 }
