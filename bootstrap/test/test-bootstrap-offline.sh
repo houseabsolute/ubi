@@ -10,6 +10,10 @@
 # second run `unzip` must not stop to ask whether to replace `ubi.exe`. In Git Bash, it would read
 # the rest of the script from stdin as its answers. Other shells may read the whole script before
 # running it, so `unzip` gets no answers and fails, which the test also catches.
+#
+# The script also tells the user when the install directory is not in their `PATH`. That check
+# has to work with BusyBox tools, and with a directory name that has regex characters in it, so we
+# also run the script with such a directory in `PATH`.
 
 set -e
 
@@ -22,7 +26,9 @@ SCRIPT="$(cd "$(dirname "$0")/.." && pwd)/bootstrap-ubi.sh"
 WORK=$(mktemp -d)
 trap 'rm -rf -- "$WORK"' EXIT
 
-mkdir "$WORK/fake-bin" "$WORK/release" "$WORK/target"
+# The `+` is a regex character, so this name finds a check that treats the directory as a regex.
+PATH_TARGET="$WORK/c++ bin"
+mkdir "$WORK/fake-bin" "$WORK/release" "$WORK/target" "$PATH_TARGET"
 
 echo "fake ubi" >"$WORK/release/ubi.exe"
 echo "fake readme" >"$WORK/release/README.md"
@@ -60,10 +66,20 @@ EOF
 
 chmod +x "$WORK/fake-bin/uname" "$WORK/fake-bin/curl"
 
+main() {
+    run_bootstrap 1 "$WORK/target" "$WORK/fake-bin:$PATH" yes
+    run_bootstrap 2 "$WORK/target" "$WORK/fake-bin:$PATH" yes
+    run_bootstrap 3 "$PATH_TARGET" "$WORK/fake-bin:$PATH_TARGET:$PATH" no
+
+    echo "bootstrap-ubi.sh installed only ubi.exe from a zip file and checked PATH correctly"
+}
+
+# Takes the run number, the install directory, the `PATH` to run the script with, and whether the
+# script should say the install directory is not in `PATH`.
 run_bootstrap() {
     # `timeout` stops the test from hanging if `unzip` waits for an answer.
     # `TAG` and `FILENAME` change which file the script asks for, so we make sure they're unset.
-    if ! env -u TAG -u FILENAME PATH="$WORK/fake-bin:$PATH" TARGET="$WORK/target" \
+    if ! env -u TAG -u FILENAME PATH="$3" TARGET="$2" \
         timeout 60 sh <"$SCRIPT" >"$WORK/out" 2>&1; then
         cat "$WORK/out"
         echo "Run $1 of bootstrap-ubi.sh failed"
@@ -75,15 +91,23 @@ run_bootstrap() {
         exit 1
     fi
 
-    FILES=$(ls -A "$WORK/target")
+    FILES=$(ls -A "$2")
     if [ "$FILES" != "ubi.exe" ]; then
         echo "Run $1 of bootstrap-ubi.sh left these files in the install directory:"
         echo "$FILES"
         exit 1
     fi
+
+    if grep -q "is not in your PATH" "$WORK/out"; then
+        SAID_NOT_IN_PATH=yes
+    else
+        SAID_NOT_IN_PATH=no
+    fi
+    if [ "$SAID_NOT_IN_PATH" != "$4" ]; then
+        cat "$WORK/out"
+        echo "Run $1 of bootstrap-ubi.sh got the PATH check wrong for $2"
+        exit 1
+    fi
 }
 
-run_bootstrap 1
-run_bootstrap 2
-
-echo "bootstrap-ubi.sh installed only ubi.exe from a zip file, twice"
+main

@@ -2,6 +2,10 @@
 
 ## NEXT - TBD
 
+- `bootstrap-ubi.sh` no longer says the install directory is not in your `PATH` when it is. This
+  happened on Alpine and other systems with BusyBox `grep`, and with a directory name that has regex
+  characters in it, like `+`. With regex characters like `.`, it could also skip the note when the
+  directory was not in your `PATH`.
 - On Windows, `bootstrap-ubi.sh` now only extracts `ubi.exe` from the release zip, and it replaces
   an existing `ubi.exe` without asking. Before, it put the docs from the zip into the install
   directory too. On a second run, `unzip` asked whether to replace each file, and when the script

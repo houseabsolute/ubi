@@ -72,11 +72,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install curl and sudo on Alpine
+      - name: Install curl, python3 and sudo on Alpine
         shell: sh
         run: |
           apk update
-          apk add curl sudo
+          apk add curl python3 sudo
         if: matrix.platform.container != null
       - name: Run bootstrap script
         shell: sh
@@ -97,13 +97,16 @@ jobs:
           exit 0
         if: ${{ matrix.platform.script == 'bootstrap-ubi.sh' }}
       # The zip branch of bootstrap-ubi.sh only runs on Windows, and we can't run that script on
-      # Windows in CI (see above). So we test it here with fake `uname` and `curl` commands. This
-      # needs `python3`, `timeout` and `unzip`, which the plain Ubuntu runner has.
-      - name: Test the zip branch of bootstrap-ubi.sh
+      # Windows in CI (see above). So we test it here with fake `uname` and `curl` commands. We run
+      # it on Alpine too, because the script has to work with BusyBox tools. This needs `python3`,
+      # `timeout` and `unzip`. The plain Ubuntu runner has them, and we install `python3` on Alpine.
+      - name: Test bootstrap-ubi.sh without the network
         shell: sh
         run: |
-          ./bootstrap/test/test-bootstrap-zip.sh
-        if: ${{ matrix.platform.os_name == 'Linux' && matrix.tag == '' }}
+          ./bootstrap/test/test-bootstrap-offline.sh
+        if:
+          ${{ matrix.tag == '' && (matrix.platform.os_name == 'Linux' || matrix.platform.os_name ==
+          'Alpine Linux (ash)') }}
       - name: Run bootstrap script
         shell: powershell
         env:

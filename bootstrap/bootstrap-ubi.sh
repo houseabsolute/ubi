@@ -259,10 +259,14 @@ rm -rf -- "$TEMPDIR"
 echo ""
 echo "bootstrap-ubi.sh: ubi has been installed to \`$TARGET\`."
 
-set +e
-TARGET_IS_IN_PATH=$(echo ":$PATH:" | grep --extended-regexp ":$TARGET:" 2>/dev/null)
-if [ -z "$TARGET_IS_IN_PATH" ]; then
+# We match with `case` instead of `grep` because BusyBox `grep` doesn't support all of GNU grep's
+# options, and because `grep` would treat `$TARGET` as a regex. Quoting it here makes it match as
+# plain text.
+case ":$PATH:" in
+*":$TARGET:"*) ;;
+*)
     echo "bootstrap-ubi.sh: It looks like \`$TARGET\` is not in your PATH. You may want to add it to use ubi."
-fi
+    ;;
+esac
 
 echo ""
