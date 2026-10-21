@@ -230,6 +230,23 @@ if [ -z "$FILENAME" ]; then
         ;;
     esac
 
+    # Without this, the script would ask for a file that doesn't exist and fail with a 404, which
+    # doesn't tell the user why.
+    case "$CPU" in
+    mips*)
+        # The MIPS builds were all for Linux.
+        if [ "$OS" != "Linux" ]; then
+            echo "bootstrap-ubi.sh: Cannot determine what binary to download for your CPU architecture: $ARCH"
+            exit 4
+        fi
+        if [ -z "$V0_0_PATCH" ] || [ "$V0_0_PATCH" -lt 20 ] || [ "$V0_0_PATCH" -gt 28 ]; then
+            echo "bootstrap-ubi.sh: Only ubi releases v0.0.20 to v0.0.28 have builds for your CPU architecture: $ARCH"
+            echo "bootstrap-ubi.sh: You can set TAG to one of those releases to install it."
+            exit 4
+        fi
+        ;;
+    esac
+
     if [ "$OS" = "Linux" ] && [ -n "$V0_0_PATCH" ]; then
         if [ "$V0_0_PATCH" -le 10 ]; then
             LIBC=""

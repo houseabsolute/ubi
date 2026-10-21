@@ -56,7 +56,16 @@ main() {
     check_filename v0.0.20 Linux i686 ubi-Linux-i586-musl.tar.gz
     check_filename v0.0.23 Linux i686 ubi-Linux-i586-musl.tar.gz
     check_filename v0.0.24 Linux i686 ubi-Linux-i686-musl.tar.gz
+    # MIPS was only built from v0.0.20 to v0.0.28.
     check_filename v0.0.20 Linux mips ubi-Linux-mips.tar.gz
+    check_filename v0.0.28 Linux mipsel ubi-Linux-mipsel.tar.gz
+    check_filename v0.0.28 Linux mips64 ubi-Linux-mips64.tar.gz
+    check_filename v0.0.28 Linux mips64el ubi-Linux-mips64el.tar.gz
+    check_unsupported v0.0.19 Linux mips
+    check_unsupported v0.0.29 Linux mips64
+    check_unsupported v0.2.1 Linux mipsel
+    check_unsupported "" Linux mips64el
+    check_unsupported v0.0.24 NetBSD mips
     # The old powerpc64le name has no libc, but the other gnu targets do.
     check_filename v0.0.20 Linux ppc64le ubi-Linux-powerpc64le.tar.gz
     check_filename v0.1.1 Linux ppc64le ubi-Linux-powerpc64le.tar.gz
@@ -83,14 +92,23 @@ main() {
     echo "bootstrap-ubi.sh asked for the right file name for every release and platform"
 }
 
+# Takes the tag and the fake `uname -s` and `uname -m` output for a platform with no build in that
+# release. The script should say so, not try a download that can only fail.
+check_unsupported() {
+    run_script "$@"
+    if [ "$STATUS" -ne 4 ] || [ -f "$WORK/url" ] ||
+        ! grep -q "for your CPU architecture: $3" "$WORK/out"; then
+        cat "$WORK/out"
+        echo "bootstrap-ubi.sh with TAG=$1 on $2 $3 did not say that it has no build for $3"
+        FAILED=1
+    fi
+}
+
 # Takes the tag, the fake `uname -s` and `uname -m` output, and the file name the script should
 # ask for.
 check_filename() {
-    rm -f "$WORK/url"
+    run_script "$@"
     # Exit code 6 means the download failed, which is what our fake `curl` makes happen.
-    STATUS=0
-    env -u FILENAME PATH="$WORK/fake-bin:$PATH" TARGET="$WORK/target" TAG="$1" \
-        FAKE_UNAME_S="$2" FAKE_UNAME_M="$3" sh "$SCRIPT" >"$WORK/out" 2>&1 || STATUS=$?
     if [ "$STATUS" -ne 6 ] || [ ! -f "$WORK/url" ]; then
         cat "$WORK/out"
         echo "bootstrap-ubi.sh with TAG=$1 on $2 $3 exited with $STATUS before it downloaded anything"
@@ -103,6 +121,15 @@ check_filename() {
         echo "bootstrap-ubi.sh with TAG=$1 on $2 $3 asked for $GOT, not $4"
         FAILED=1
     fi
+}
+
+# Takes the tag and the fake `uname -s` and `uname -m` output. Sets `STATUS` to the script's exit
+# code.
+run_script() {
+    rm -f "$WORK/url"
+    STATUS=0
+    env -u FILENAME PATH="$WORK/fake-bin:$PATH" TARGET="$WORK/target" TAG="$1" \
+        FAKE_UNAME_S="$2" FAKE_UNAME_M="$3" sh "$SCRIPT" >"$WORK/out" 2>&1 || STATUS=$?
 }
 
 main
