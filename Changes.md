@@ -2,6 +2,9 @@
 
 ## NEXT - TBD
 
+- When `curl` fails, for example because it can't connect, `bootstrap-ubi.sh` now says so and exits
+  with 5. Before, it exited with `curl`'s own exit code, which could be 6, the same code the script
+  uses when the server doesn't return the file.
 - On MIPS, unless `TAG` is a release from `v0.0.20` to `v0.0.28`, `bootstrap-ubi.sh` now says that
   only those releases have builds for your CPU. Before, it tried to download a file that doesn't
   exist and failed with a 404.

@@ -276,8 +276,16 @@ trap 'rm -rf -- "$TEMPDIR"' EXIT
 LOCAL_FILE="$TEMPDIR/$FILENAME"
 
 echo "downloading $URL"
-STATUS=$(curl --silent --show-error --location --output "$LOCAL_FILE" --write-out "%{http_code}" "$URL")
-if [ -z "$STATUS" ]; then
+# With `set -e`, a failing `curl` would end the script here with `curl`'s own exit code, which can
+# be the same as ours.
+CURL_EXIT=0
+STATUS=$(curl --silent --show-error --location --output "$LOCAL_FILE" --write-out "%{http_code}" "$URL") ||
+    CURL_EXIT=$?
+if [ "$CURL_EXIT" -ne 0 ]; then
+    >&2 echo "curl failed to download $URL - curl exit code = $CURL_EXIT"
+    exit 5
+# Real `curl` always prints a status code, but a wrapper or an odd build might not.
+elif [ -z "$STATUS" ]; then
     >&2 echo "curl failed to download $URL and did not print a status code"
     exit 5
 elif [ "$STATUS" != "200" ]; then

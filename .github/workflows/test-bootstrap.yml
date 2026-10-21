@@ -114,6 +114,12 @@ jobs:
         run: |
           ./bootstrap/test/test-bootstrap-filenames.sh
         if: ${{ matrix.tag == '' && matrix.platform.script == 'bootstrap-ubi.sh' }}
+      # We can't make the real `curl` fail on demand, so this test uses a fake one.
+      - name: Test bootstrap-ubi.sh download errors
+        shell: sh
+        run: |
+          ./bootstrap/test/test-bootstrap-download-errors.sh
+        if: ${{ matrix.tag == '' && matrix.platform.script == 'bootstrap-ubi.sh' }}
       - name: Run bootstrap script
         shell: powershell
         env:
