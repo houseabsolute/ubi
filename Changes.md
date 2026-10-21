@@ -2,6 +2,8 @@
 
 ## NEXT - TBD
 
+## 0.13.0 - 2026-10-21
+
 - The `ubi` crate no longer declares a minimum supported Rust version (MSRV). It was 1.88. The crate
   is now only tested with the current stable Rust release.
 - Fixed a bug where a token env var set to the empty string, like `GITHUB_TOKEN=`, was treated as a
