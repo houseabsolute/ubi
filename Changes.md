@@ -8,6 +8,8 @@
   token. This made `ubi` send an `Authorization: Bearer ` header, which the forge rejects, instead
   of simply making an unauthenticated request. An empty token is now treated as not being set at
   all, whether it comes from an env var or is passed to `UbiBuilder::token`.
+- Updated to the latest rustls-webpki crate to remove support for the compromised eMudhra
+  intermediate CA certificates.
 
 ## 0.12.0 - 2026-08-31
 
