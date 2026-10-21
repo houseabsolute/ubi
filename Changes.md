@@ -2,6 +2,9 @@
 
 ## NEXT - TBD
 
+- `bootstrap-ubi.sh` now asks for the right file when `TAG` is an old release on Linux. Before, it
+  asked for files that don't exist for `powerpc64le` from `v0.0.20` to `v0.1.1`, for every CPU from
+  `v0.0.1` to `v0.0.10`, and for 32-bit x86 from `v0.0.20` to `v0.0.23`.
 - `bootstrap-ubi.sh` no longer says the install directory is not in your `PATH` when it is. This
   happened on Alpine and other systems with BusyBox `grep`, and with a directory name that has regex
   characters in it, like `+`. With regex characters like `.`, it could also skip the note when the

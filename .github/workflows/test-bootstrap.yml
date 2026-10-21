@@ -107,6 +107,13 @@ jobs:
         if:
           ${{ matrix.tag == '' && (matrix.platform.os_name == 'Linux' || matrix.platform.os_name ==
           'Alpine Linux (ash)') }}
+      # The script picks a release file name from the OS, CPU and tag. We can't test every
+      # combination on real platforms, so this test uses fake `uname` and `curl` commands.
+      - name: Test bootstrap-ubi.sh release file names
+        shell: sh
+        run: |
+          ./bootstrap/test/test-bootstrap-filenames.sh
+        if: ${{ matrix.tag == '' && matrix.platform.script == 'bootstrap-ubi.sh' }}
       - name: Run bootstrap script
         shell: powershell
         env:

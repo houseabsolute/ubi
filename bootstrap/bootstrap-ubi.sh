@@ -69,8 +69,15 @@ fi
 #
 # v0.1.1/ubi-Windows-x86_64.zip
 # v0.2.1/ubi-Windows-msvc-x86_64.zip
+#
+# Some v0.0.x releases on Linux don't fit the old naming either:
+#
+# v0.0.10/ubi-Linux-x86_64.tar.gz (no libc before v0.0.11)
+# v0.0.10/ubi-Linux-armv7.tar.gz
+# v0.0.23/ubi-Linux-i586-musl.tar.gz (i586 from v0.0.20 to v0.0.23)
 
 OLD_FILE_NAMING=""
+V0_0_PATCH=""
 if [ -n "$TAG" ]; then
     # Note that we cannot use `read` to split the tag on dots here. With a tag like `v0.0.15`,
     # `read -r MAJOR MINOR` assigns the entire rest of the tag, `0.15`, to `$MINOR`, which is not a
@@ -86,6 +93,14 @@ if [ -n "$TAG" ]; then
         *)
             if [ "$MINOR" -lt 2 ]; then
                 OLD_FILE_NAMING="true"
+            fi
+            # With no patch number, as in `v0.0`, `${MINOR_AND_REST#*.}` would give us the minor
+            # version instead.
+            if [ "$MINOR" -eq 0 ] && [ "$MINOR_AND_REST" != "$MINOR" ]; then
+                V0_0_PATCH="${MINOR_AND_REST#*.}"
+                case "$V0_0_PATCH" in
+                '' | *[!0-9]*) V0_0_PATCH="" ;;
+                esac
             fi
             ;;
         esac
@@ -192,7 +207,8 @@ if [ -z "$FILENAME" ]; then
         ;;
     powerpc64le | ppc64le)
         CPU="powerpc64le"
-        if [ "$OS" = "Linux" ]; then
+        # The old file name for this CPU had no libc, unlike the other gnu targets.
+        if [ "$OS" = "Linux" ] && [ -z "$OLD_FILE_NAMING" ]; then
             LIBC="-gnu"
         fi
         ;;
@@ -213,6 +229,17 @@ if [ -z "$FILENAME" ]; then
         exit 4
         ;;
     esac
+
+    if [ "$OS" = "Linux" ] && [ -n "$V0_0_PATCH" ]; then
+        if [ "$V0_0_PATCH" -le 10 ]; then
+            LIBC=""
+            if [ "$CPU" = "arm" ]; then
+                CPU="armv7"
+            fi
+        elif [ "$CPU" = "i686" ] && [ "$V0_0_PATCH" -ge 20 ] && [ "$V0_0_PATCH" -le 23 ]; then
+            CPU="i586"
+        fi
+    fi
 
     if [ -n "$OLD_FILE_NAMING" ]; then
         FILENAME="ubi-$OS-$CPU$LIBC.$EXT"
