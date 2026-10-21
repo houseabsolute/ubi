@@ -2,6 +2,10 @@
 
 ## NEXT - TBD
 
+- On Windows, `bootstrap-ubi.sh` now only extracts `ubi.exe` from the release zip, and it replaces
+  an existing `ubi.exe` without asking. Before, it put the docs from the zip into the install
+  directory too. On a second run, `unzip` asked whether to replace each file, and when the script
+  was piped to `sh`, it read the rest of the script as its answers.
 - `--self-upgrade` now replaces the running `ubi` executable even when it has another name, like
   `ubi-bin`. Before, it always wrote the new version to `ubi` (or `ubi.exe`) in the same directory.
   On Unix, the running executable stayed at the old version. On Windows, it was renamed to

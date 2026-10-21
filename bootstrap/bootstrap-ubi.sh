@@ -242,12 +242,17 @@ elif [ "$STATUS" != "200" ]; then
 fi
 
 if echo "$FILENAME" | grep "\\.tar\\.gz$"; then
-    tar -xzf "$LOCAL_FILE" ubi
+    EXE="ubi"
+    tar -xzf "$LOCAL_FILE" "$EXE"
 else
-    unzip "$LOCAL_FILE"
+    EXE="ubi.exe"
+    # The zip also has docs, which don't belong in the install directory. Without `-o`, `unzip` asks
+    # before it replaces an existing `ubi.exe`, and when this script is piped to `sh`, it reads the
+    # rest of the script as its answers.
+    unzip -o "$LOCAL_FILE" "$EXE"
 fi
 
-chmod +x ubi
+chmod +x "$EXE"
 
 rm -rf -- "$TEMPDIR"
 
