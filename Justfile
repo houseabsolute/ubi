@@ -16,11 +16,11 @@ _env := if _in_container != "" { "env" } else { "--remote-env" }
 # created before this mount existed needs a `just rebuild` once.
 _git_common_dir := `test -f .git && realpath "$(git rev-parse --git-common-dir)" || true`
 _git_mount := if _git_common_dir != "" { "--mount 'type=bind,source=" + _git_common_dir + ",target=" + _git_common_dir + "'" } else { "" }
-# Puts the integration test tokens in the environment of the command it runs. Only the recipes
-# that need them use it. It runs on both sides of `devcontainer exec`. On the host it exports the
-# tokens for the devcontainer CLI to forward via devcontainer.json's remoteEnv, and in the
-# container it puts the forwarded tokens under their real names. Inside the container there is no
-# host side, so that half is empty.
+# Puts the forge tokens in the environment of the command it runs. Only the recipes that need them
+# use it. It runs on both sides of `devcontainer exec`. On the host it exports the tokens for the
+# devcontainer CLI to forward via devcontainer.json's remoteEnv, and in the container it puts the
+# forwarded tokens under their real names. Inside the container there is no host side, so that
+# half is empty.
 _with_tokens := ".devcontainer/with-tokens.sh"
 _forward_tokens := if _in_container != "" { "" } else { _with_tokens }
 
@@ -51,8 +51,9 @@ test rust-log="" *args: _up
       {{ if rust-log != "" { _env + " RUST_LOG=" + rust-log } else { "" } }} \
       {{ _with_tokens }} cargo test {{ args }}
 
+# This needs the GitHub token because zizmor, one of the linters, uses it for its online audits.
 lint *args: _up
-    {{ _dce }} mise exec -- precious lint {{ args }}
+    {{ _forward_tokens }} {{ _dce }} {{ _with_tokens }} mise exec -- precious lint {{ args }}
 
 tidy *args: _up
     {{ _dce }} mise exec -- precious tidy {{ args }}

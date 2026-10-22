@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Run a command with the integration test tokens in its environment. Without them the tests run
-# unauthenticated and hit the forges' rate limits.
+# Run a command with the forge tokens in its environment. Without them the integration tests run
+# unauthenticated and hit the forges' rate limits, and zizmor can't run its online audits.
 #
 # These are set here rather than exported from the Justfile because just's `export` is global,
 # which would hand the testing tokens to every recipe, including `release`, where cargo-release
@@ -41,8 +41,8 @@ for pair in github:GITHUB_TOKEN gitlab:GITLAB_TOKEN codeberg:CODEBERG_TOKEN; do
         # The host side is always followed by the container side, so only warn once, from the
         # place where the command actually runs.
         if [ -n "${UBI_DEVCONTAINER:-}" ]; then
-            echo "Warning: no $var - set $forge.ubiTestingToken in your git config, or the tests" \
-                "will run unauthenticated and may fail against the forge's rate limits." >&2
+            echo "Warning: no $var - set $forge.ubiTestingToken in your git config, or the" \
+                "commands that need it, like the integration tests or zizmor, may fail." >&2
         fi
         continue
     fi
