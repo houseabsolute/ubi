@@ -2,6 +2,9 @@
 
 ## NEXT - TBD
 
+- When the download fails, `bootstrap-ubi.ps1` now stops with an error. Before, it carried on and
+  could install an old `ubi.exe` left in `%TEMP%` by an earlier run. It also now cleans up the files
+  it puts in `%TEMP%`.
 - When `curl` fails, for example because it can't connect, `bootstrap-ubi.sh` now says so and exits
   with 5. Before, it exited with `curl`'s own exit code, which could be 6, the same code the script
   uses when the server doesn't return the file.

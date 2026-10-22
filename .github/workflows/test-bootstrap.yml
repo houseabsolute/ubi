@@ -120,6 +120,21 @@ jobs:
         run: |
           ./bootstrap/test/test-bootstrap-download-errors.sh
         if: ${{ matrix.tag == '' && matrix.platform.script == 'bootstrap-ubi.sh' }}
+      # We can't make the real download fail on demand, so this test uses a fake
+      # `Invoke-WebRequest`. Users may run the script with Windows PowerShell or with `pwsh`, so we
+      # test both.
+      - name: Test bootstrap-ubi.ps1 download errors with Windows PowerShell
+        shell: powershell
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File ./bootstrap/test/test-bootstrap-ps1-offline.ps1
+          exit $LASTEXITCODE
+        if: ${{ matrix.platform.script == 'bootstrap-ubi.ps1' }}
+      - name: Test bootstrap-ubi.ps1 download errors with pwsh
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -ExecutionPolicy Bypass -File ./bootstrap/test/test-bootstrap-ps1-offline.ps1
+          exit $LASTEXITCODE
+        if: ${{ matrix.platform.script == 'bootstrap-ubi.ps1' }}
       - name: Run bootstrap script
         shell: powershell
         env:
