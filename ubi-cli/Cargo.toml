@@ -12,7 +12,8 @@ edition.workspace = true
 anyhow.workspace = true
 # The default features include things like color output, detailed errors, etc. We want to include
 # all of them.
-clap = { version = "4.6.7", features = ["default", "env", "wrap_help"] }
+clap.workspace = true
+clap_complete_command.workspace = true
 log.workspace = true
 strum.workspace = true
 tempfile.workspace = true
@@ -24,6 +25,13 @@ ubi = { version = "0.13.0", path = "../ubi", features = ["default", "logging"] }
 rstest.workspace = true
 serial_test.workspace = true
 which.workspace = true
+
+[build-dependencies]
+build-rs = "0.3.5"
+clap.workspace = true
+clap_complete_command.workspace = true
+strum.workspace = true
+ubi = { version = "0.13.0", path = "../ubi", features = ["default", "logging"] }
 
 [[bin]]
 name = "ubi"
